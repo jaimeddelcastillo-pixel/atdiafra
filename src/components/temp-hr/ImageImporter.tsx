@@ -230,23 +230,41 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <label htmlFor="bitacora-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-40">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label htmlFor="bitacora-camera" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
             {loading ? (
               <>
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                <span className="text-sm text-muted-foreground">Procesando con IA…</span>
+                <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
+                <span className="text-xs text-muted-foreground">Procesando…</span>
               </>
             ) : (
               <>
-                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                <span className="text-sm font-medium text-foreground">Click para subir imagen</span>
-                <span className="text-xs text-muted-foreground mt-1">JPG, PNG o WEBP — máx. 10 MB</span>
+                <Camera className="h-7 w-7 text-muted-foreground mb-2" />
+                <span className="text-sm font-medium text-foreground">Tomar foto</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">Abre la cámara del dispositivo</span>
+              </>
+            )}
+            <input id="bitacora-camera" type="file"
+              accept="image/*" capture="environment" className="hidden" disabled={loading}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+          </label>
+
+          <label htmlFor="bitacora-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
+            {loading ? (
+              <>
+                <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
+                <span className="text-xs text-muted-foreground">Procesando…</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-7 w-7 text-muted-foreground mb-2" />
+                <span className="text-sm font-medium text-foreground">Subir archivo</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">JPG / PNG / WEBP · máx 10 MB</span>
               </>
             )}
             <input id="bitacora-file" ref={inputRef} type="file"
               accept="image/jpeg,image/png,image/webp" className="hidden" disabled={loading}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </label>
         </div>
         {previewUrl && (
