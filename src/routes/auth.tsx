@@ -10,6 +10,8 @@ import { ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
+  // Ignore any incoming search params (prevents redirect-loop URLs from accumulating)
+  validateSearch: () => ({}),
   component: AuthPage,
 });
 
@@ -21,7 +23,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   if (!loading && session) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSignIn = async (e: FormEvent) => {
