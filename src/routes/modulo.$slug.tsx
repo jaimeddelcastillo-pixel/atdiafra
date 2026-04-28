@@ -200,7 +200,7 @@ function TempHRModule() {
               </div>
               <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
               {termohigrometros.length === 0 && (
-                <p className="text-xs text-warning">No hay termohigrómetros activos. Agrégalos en Configuración → Instrumentos.</p>
+                <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
               )}
             </div>
           </div>
