@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthGuard } from "@/components/AuthGuard";
+import { useAuth } from "@/lib/auth-context";
 import { ChevronLeft, Trash, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -14,7 +16,7 @@ export const Route = createFileRoute("/reporte")({
       { name: "description", content: "Vista global de registros, edición, borrado y cumplimiento semanal." },
     ],
   }),
-  component: ReportePage,
+  component: () => <AuthGuard><ReportePage /></AuthGuard>,
 });
 
 const MODULOS_VALIDOS: { id: Modulo; label: string }[] = [
@@ -35,6 +37,7 @@ function moduloSlug(m: Modulo): string {
 }
 
 function ReportePage() {
+  const { canDelete } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroModulo, setFiltroModulo] = useState<Modulo | "">("");
@@ -290,12 +293,14 @@ function ReportePage() {
                                   <Eye className="h-3 w-3" /> Abrir
                                 </Link>
                               )}
-                              <button
-                                onClick={() => handleDelete(r.id)}
-                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
-                              >
-                                <Trash className="h-3 w-3" /> Borrar
-                              </button>
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDelete(r.id)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
+                                >
+                                  <Trash className="h-3 w-3" /> Borrar
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>

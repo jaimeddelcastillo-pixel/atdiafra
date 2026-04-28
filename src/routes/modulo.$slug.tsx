@@ -1,6 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthGuard } from "@/components/AuthGuard";
+import { useAuth } from "@/lib/auth-context";
 import { MODULOS } from "@/lib/diafra-data";
 
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
@@ -50,7 +52,7 @@ export const Route = createFileRoute("/modulo/$slug")({
       </div>
     </div>
   ),
-  component: ModuloPage,
+  component: () => <AuthGuard><ModuloPage /></AuthGuard>,
 });
 
 function ModuloPage() {
@@ -255,6 +257,7 @@ function TempHRModule() {
 function RegistroEditor({ registro, onPersist, onDelete }: {
   registro: Registro; onPersist: (r: Registro) => Promise<void>; onDelete: () => void;
 }) {
+  const { canWriteRecords, canDelete } = useAuth();
   const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
   // Buffer local: cambios no se persisten hasta presionar "Guardar"
   const [draft, setDraft] = useState<Registro>(registro);
@@ -376,20 +379,29 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
-            <Plus className="h-4 w-4" /> Nueva semana actual
-          </Button>
-          {dirty && (
+          {canWriteRecords && (
+            <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
+              <Plus className="h-4 w-4" /> Nueva semana actual
+            </Button>
+          )}
+          {dirty && canWriteRecords && (
             <Button size="sm" variant="ghost" onClick={handleDiscard} className="gap-1">
               Descartar
             </Button>
           )}
-          <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
-            <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
-            <Trash className="h-4 w-4" /> Eliminar registro
-          </Button>
+          {canWriteRecords && (
+            <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
+              <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
+            </Button>
+          )}
+          {canDelete && (
+            <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
+              <Trash className="h-4 w-4" /> Eliminar registro
+            </Button>
+          )}
+          {!canWriteRecords && (
+            <span className="text-xs text-muted-foreground self-center">Solo lectura — no tienes permisos para editar.</span>
+          )}
         </div>
       </div>
 
@@ -451,9 +463,11 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
               className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
             />
             <div className="mt-3 flex justify-end">
-              <Button size="sm" variant="ghost" onClick={() => deleteWeek(activeWeek.id)} className="text-destructive">
-                <Trash className="h-3.5 w-3.5 mr-1" /> Eliminar semana
-              </Button>
+              {canDelete && (
+                <Button size="sm" variant="ghost" onClick={() => deleteWeek(activeWeek.id)} className="text-destructive">
+                  <Trash className="h-3.5 w-3.5 mr-1" /> Eliminar semana
+                </Button>
+              )}
             </div>
           </div>
         </>
