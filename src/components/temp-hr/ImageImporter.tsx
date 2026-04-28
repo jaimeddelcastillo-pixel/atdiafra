@@ -83,11 +83,37 @@ function normTurno(s?: string): Turno | null {
   return TURNO_MAP[s.toLowerCase().trim()] ?? null;
 }
 
+type Modo = "AUTO" | "T" | "HR";
+
+function aplicarLecturas(
+  s: Semana,
+  arrName: "lecturas" | "lecturas_hr",
+  fuente: IALectura[],
+) {
+  const arr = (s as Semana)[arrName]!.slice();
+  for (const r of fuente) {
+    const d = normDia(r.dia);
+    const t = normTurno(r.turno);
+    if (!d || !t) continue;
+    const di = DIAS.indexOf(d);
+    const ti = TURNOS.indexOf(t);
+    const idx = di * 3 + ti;
+    const v = r.valor;
+    const num = v == null || v === "" ? null : typeof v === "number" ? v : parseFloat(String(v));
+    arr[idx] = {
+      dia: d, turno: t,
+      valor: Number.isFinite(num as number) ? (num as number) : null,
+      hora: r.hora ?? null, quien: r.quien ?? null,
+    };
+  }
+  (s as Semana)[arrName] = arr;
+}
+
 export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [variable, setVariable] = useState<"T" | "HR">("T");
+  const [modo, setModo] = useState<Modo>("AUTO");
   const [fechaSemana, setFechaSemana] = useState<string>(semanaInicio);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -102,13 +128,26 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       const { base64, mediaType } = await compressImage(file);
 
       const { data, error: fnError } = await supabase.functions.invoke("extract-bitacora", {
-        body: { imageBase64: base64, mediaType, module: "temp_hr", variable, context },
+        body: { imageBase64: base64, mediaType, module: "temp_hr", context },
       });
       if (fnError) throw new Error(fnError.message);
       if (data?.error) throw new Error(data.error);
 
       const parsed = data?.parsed as IAResponse | null;
-      if (!parsed?.lecturas?.length) {
+
+      // Soporta tanto el nuevo formato (lecturas_t + lecturas_hr) como el legado (lecturas + variable)
+      let lecturasT: IALectura[] = parsed?.lecturas_t ?? [];
+      let lecturasHR: IALectura[] = parsed?.lecturas_hr ?? [];
+      if (!lecturasT.length && !lecturasHR.length && parsed?.lecturas?.length) {
+        if ((parsed.variable ?? "T").toUpperCase() === "HR") lecturasHR = parsed.lecturas;
+        else lecturasT = parsed.lecturas;
+      }
+
+      // Aplicar el filtro de modo si el usuario quiere forzar sólo una variable
+      if (modo === "T") lecturasHR = [];
+      if (modo === "HR") lecturasT = [];
+
+      if (!lecturasT.length && !lecturasHR.length) {
         setError("La IA no logró extraer lecturas. Intenta con una imagen más nítida.");
         return;
       }
@@ -118,35 +157,23 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       const fecha = new Date(lunes + "T00:00:00");
       const s = semanaVacia({
         semana_inicio: lunes,
-        mes: parsed.mes ?? nombreMes(fecha),
-        anio: parsed.anio ?? String(fecha.getFullYear()),
-        unidad: variable === "T" ? "°C" : "%HR",
+        mes: parsed?.mes ?? nombreMes(fecha),
+        anio: parsed?.anio ?? String(fecha.getFullYear()),
+        unidad: "°C",
         esTHR: true,
       });
       s.source = "imagen";
-      s.observaciones = parsed.observaciones ?? "";
+      s.observaciones = parsed?.observaciones ?? "";
 
-      const arrName = variable === "T" ? "lecturas" : "lecturas_hr";
-      const arr = (s as Semana)[arrName]!.slice();
+      if (lecturasT.length) aplicarLecturas(s, "lecturas", lecturasT);
+      if (lecturasHR.length) aplicarLecturas(s, "lecturas_hr", lecturasHR);
 
-      for (const r of parsed.lecturas) {
-        const d = normDia(r.dia);
-        const t = normTurno(r.turno);
-        if (!d || !t) continue;
-        const di = DIAS.indexOf(d);
-        const ti = TURNOS.indexOf(t);
-        const idx = di * 3 + ti;
-        const v = r.valor;
-        const num = v == null || v === "" ? null : typeof v === "number" ? v : parseFloat(String(v));
-        arr[idx] = {
-          dia: d, turno: t,
-          valor: Number.isFinite(num as number) ? (num as number) : null,
-          hora: r.hora ?? null, quien: r.quien ?? null,
-        };
-      }
-      (s as Semana)[arrName] = arr;
       onExtracted(s);
-      toast.success(`Semana extraída (${variable}). Revisa y edita antes de guardar.`);
+      const partes = [
+        lecturasT.length ? `T: ${lecturasT.filter(x => x.valor != null).length} valores` : null,
+        lecturasHR.length ? `HR: ${lecturasHR.filter(x => x.valor != null).length} valores` : null,
+      ].filter(Boolean).join(" · ");
+      toast.success(`Semana extraída (${partes}). Revisa y edita antes de guardar.`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error desconocido";
       setError(msg);
@@ -155,6 +182,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       setLoading(false);
     }
   }
+
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
