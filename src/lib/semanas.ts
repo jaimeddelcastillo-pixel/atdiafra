@@ -269,6 +269,8 @@ export function esSemanaCompleta(semana: Semana, esTHR: boolean): boolean {
   if (esp === 0) return false;
   return lecturasCapturadas(semana, esTHR) >= esp;
 }
+
+export async function deleteRegistro(id: string): Promise<void> {
   const { error } = await supabase.from("registros").delete().eq("id", id);
   if (error) throw error;
 }
