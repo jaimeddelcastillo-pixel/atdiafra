@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { MODULOS, SISTEMAS_HVAC, ISO_LIMITS, IsoClass } from "@/lib/diafra-data";
+import { MODULOS, ISO_LIMITS, IsoClass } from "@/lib/diafra-data";
+import { Input } from "@/components/ui/input";
 import { ImageImporter, type ExtractedReading } from "@/components/temp-hr/ImageImporter";
 import { ReadingsTable } from "@/components/temp-hr/ReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
@@ -67,13 +68,46 @@ function ModuloPage() {
   return <TempHRModule />;
 }
 
-function TempHRModule() {
-  // Filtros de contexto
-  const [sistemaId, setSistemaId] = useState<string>(SISTEMAS_HVAC[0].id);
-  const [iso, setIso] = useState<IsoClass>("ISO-8");
-  const sistema = useMemo(() => SISTEMAS_HVAC.find((s) => s.id === sistemaId)!, [sistemaId]);
+interface ContextState {
+  codigoArea: string;
+  nombreArea: string;
+  instrumento: string;
+  iso: IsoClass;
+}
 
-  const storageKey = `temp_hr:${sistemaId}:${iso}`;
+const CONTEXT_KEY = "temp_hr:context";
+const DEFAULT_CONTEXT: ContextState = {
+  codigoArea: "",
+  nombreArea: "",
+  instrumento: "",
+  iso: "ISO-8",
+};
+
+function TempHRModule() {
+  // Contexto editable: código de área, nombre del área, instrumento, ISO
+  const [ctx, setCtx] = useState<ContextState>(DEFAULT_CONTEXT);
+  const [ctxLoaded, setCtxLoaded] = useState(false);
+
+  // Cargar contexto persistido
+  useEffect(() => {
+    const saved = loadJSON<ContextState | null>(CONTEXT_KEY, null);
+    if (saved) setCtx({ ...DEFAULT_CONTEXT, ...saved });
+    setCtxLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (ctxLoaded) saveJSON(CONTEXT_KEY, ctx);
+  }, [ctx, ctxLoaded]);
+
+  const { codigoArea, nombreArea, instrumento, iso } = ctx;
+  const setIso = (v: IsoClass) => setCtx((c) => ({ ...c, iso: v }));
+
+  // Clave de almacenamiento por instrumento + área + ISO (con fallback)
+  const storageKey = useMemo(() => {
+    const a = (codigoArea || "sin-area").trim().replace(/\s+/g, "_");
+    const i = (instrumento || "sin-instrumento").trim().replace(/\s+/g, "_");
+    return `temp_hr:${a}:${i}:${iso}`;
+  }, [codigoArea, instrumento, iso]);
+
   const [rows, setRows] = useState<Reading[]>([]);
   const [notas, setNotas] = useState<string>("");
   const [loaded, setLoaded] = useState(false);
@@ -89,9 +123,15 @@ function TempHRModule() {
   // Auto-persist
   useEffect(() => {
     if (!loaded) return;
-    const state: ModuleState = { sistemaId, iso, readings: rows, notas, updatedAt: new Date().toISOString() };
+    const state: ModuleState = {
+      sistemaId: `${codigoArea}|${instrumento}`,
+      iso,
+      readings: rows,
+      notas,
+      updatedAt: new Date().toISOString(),
+    };
     saveJSON(storageKey, state);
-  }, [rows, notas, loaded, storageKey, sistemaId, iso]);
+  }, [rows, notas, loaded, storageKey, codigoArea, instrumento, iso]);
 
   const handleExtracted = (extracted: ExtractedReading[], notasIA?: string) => {
     const newRows: Reading[] = extracted.map((r) => ({

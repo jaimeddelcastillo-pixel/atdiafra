@@ -14,7 +14,7 @@ export interface ExtractedReading {
 }
 
 interface Props {
-  context: { sistema: string; uma: string; area: string; iso: string };
+  context: { codigoArea: string; nombreArea: string; instrumento: string; iso: string };
   onExtracted: (rows: ExtractedReading[], notas?: string) => void;
 }
 
