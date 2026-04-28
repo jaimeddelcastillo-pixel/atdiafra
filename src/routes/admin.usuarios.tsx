@@ -122,6 +122,28 @@ function UsuariosAdmin() {
     }
   };
 
+  const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setBusy("invite");
+      const accessToken = await getAccessToken();
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      const data = await inviteManagedUser({
+        data: { accessToken, email: inviteEmail, role: inviteRole, redirectTo },
+      });
+      setRows(data);
+      setInviteEmail("");
+      setInviteRole("viewer");
+      setOpenInvite(false);
+      toast.success("Invitación enviada por correo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo invitar al usuario");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const setUserRole = async (userId: string, newRole: AppRole) => {
     try {
       setBusy(`role:${userId}`);
