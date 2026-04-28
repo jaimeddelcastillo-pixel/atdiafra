@@ -161,7 +161,8 @@ function TempHRModule() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `temp-hr_${sistemaId}_${iso}_${new Date().toISOString().slice(0, 10)}.csv`;
+    const slug = `${(codigoArea || "area").trim()}_${(instrumento || "instr").trim()}`.replace(/\s+/g, "-");
+    a.download = `temp-hr_${slug}_${iso}_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -185,7 +186,7 @@ function TempHRModule() {
             <div>
               <h1 className="text-2xl font-semibold text-foreground">Temperatura y Humedad Relativa</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                {sistema.id} · {sistema.uma} · {sistema.area} · {iso}
+                {(codigoArea || "—")} · {(nombreArea || "Sin nombre de área")} · {(instrumento || "—")} · {iso}
                 {ISO_LIMITS[iso].clase ? ` (${ISO_LIMITS[iso].clase})` : ""}
               </p>
             </div>
@@ -200,47 +201,64 @@ function TempHRModule() {
           </div>
         </div>
 
-        {/* Selector de contexto */}
-        <div className="rounded-xl border border-border bg-card p-4 mb-6 grid sm:grid-cols-3 gap-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sistema HVAC</label>
-            <select
-              value={sistemaId}
-              onChange={(e) => setSistemaId(e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {SISTEMAS_HVAC.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.id} — {s.area}
-                </option>
-              ))}
-            </select>
+        {/* Contexto del área e instrumento */}
+        <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-4">
+          <div className="grid sm:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Código de área</label>
+              <Input
+                value={codigoArea}
+                onChange={(e) => setCtx((c) => ({ ...c, codigoArea: e.target.value }))}
+                placeholder="DCC-03"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nombre del área</label>
+              <Input
+                value={nombreArea}
+                onChange={(e) => setCtx((c) => ({ ...c, nombreArea: e.target.value }))}
+                placeholder="Siembras I"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Código del termohigrómetro</label>
+              <Input
+                value={instrumento}
+                onChange={(e) => setCtx((c) => ({ ...c, instrumento: e.target.value }))}
+                placeholder="INS-CMB-20"
+                className="mt-1"
+              />
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Clasificación ISO</label>
-            <select
-              value={iso}
-              onChange={(e) => setIso(e.target.value as IsoClass)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {(Object.keys(ISO_LIMITS) as IsoClass[]).map((k) => (
-                <option key={k} value={k}>
-                  {k}{ISO_LIMITS[k].clase ? ` — ${ISO_LIMITS[k].clase}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="text-xs text-muted-foreground self-end">
-            <p><span className="font-medium text-foreground">Límites aplicables:</span></p>
-            <p>T {ISO_LIMITS[iso].tempMin}–{ISO_LIMITS[iso].tempMax} °C · HR {ISO_LIMITS[iso].hrMin}–{ISO_LIMITS[iso].hrMax} %</p>
-            <p className="mt-1">Persistencia automática · {rows.length} lectura(s)</p>
+          <div className="grid sm:grid-cols-3 gap-4 items-end">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Clasificación ISO</label>
+              <select
+                value={iso}
+                onChange={(e) => setIso(e.target.value as IsoClass)}
+                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                {(Object.keys(ISO_LIMITS) as IsoClass[]).map((k) => (
+                  <option key={k} value={k}>
+                    {k}{ISO_LIMITS[k].clase ? ` — ${ISO_LIMITS[k].clase}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="sm:col-span-2 text-xs text-muted-foreground">
+              <p><span className="font-medium text-foreground">Límites aplicables:</span></p>
+              <p>T {ISO_LIMITS[iso].tempMin}–{ISO_LIMITS[iso].tempMax} °C · HR {ISO_LIMITS[iso].hrMin}–{ISO_LIMITS[iso].hrMax} %</p>
+              <p className="mt-1">Persistencia automática · {rows.length} lectura(s)</p>
+            </div>
           </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2 space-y-6">
             <ImageImporter
-              context={{ sistema: sistema.id, uma: sistema.uma, area: sistema.area, iso }}
+              context={{ codigoArea, nombreArea, instrumento, iso }}
               onExtracted={handleExtracted}
             />
             <div className="rounded-xl border border-border bg-card p-5">
