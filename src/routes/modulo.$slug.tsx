@@ -52,7 +52,7 @@ export const Route = createFileRoute("/modulo/$slug")({
       </div>
     </div>
   ),
-  component: ModuloPage,
+  component: () => <AuthGuard><ModuloPage /></AuthGuard>,
 });
 
 function ModuloPage() {

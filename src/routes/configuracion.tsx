@@ -34,7 +34,7 @@ export const Route = createFileRoute("/configuracion")({
       { name: "description", content: "Catálogos de sistemas HVAC, áreas, instrumentos y pares de cuartos." },
     ],
   }),
-  component: ConfiguracionPage,
+  component: () => <AuthGuard><ConfiguracionPage /></AuthGuard>,
 });
 
 const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];

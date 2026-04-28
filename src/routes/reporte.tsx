@@ -16,7 +16,7 @@ export const Route = createFileRoute("/reporte")({
       { name: "description", content: "Vista global de registros, edición, borrado y cumplimiento semanal." },
     ],
   }),
-  component: ReportePage,
+  component: () => <AuthGuard><ReportePage /></AuthGuard>,
 });
 
 const MODULOS_VALIDOS: { id: Modulo; label: string }[] = [
