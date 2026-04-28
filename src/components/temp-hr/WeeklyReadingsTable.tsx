@@ -54,6 +54,17 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
   // Construir matriz visual (filas: turnos, columnas: días)
   const cellIdx = (diaIdx: number, turnoIdx: number) => diaIdx * 3 + turnoIdx;
 
+  const setDayNA = (di: number, na: boolean) => {
+    const tArr = semana.lecturas.slice();
+    const hrArr = (semana.lecturas_hr ?? []).slice();
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const i = cellIdx(di, ti);
+      if (tArr[i]) tArr[i] = { ...tArr[i], _na: na, valor: na ? null : tArr[i].valor };
+      if (hrArr[i]) hrArr[i] = { ...hrArr[i], _na: na, valor: na ? null : hrArr[i].valor };
+    }
+    onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
+  };
+
   const renderRow = (which: "T" | "HR", unidad: string, min: number, max: number) => {
     const arr = which === "T" ? semana.lecturas : (semana.lecturas_hr ?? []);
     return (
@@ -69,20 +80,25 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
             {DIAS.map((dia, di) => {
               const i = cellIdx(di, ti);
               const p = arr[i];
-              const out = isOut(p?.valor ?? null, min, max);
+              const na = !!p?._na;
+              const out = !na && isOut(p?.valor ?? null, min, max);
               return (
                 <td key={dia} className="px-1 py-1">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={p?.valor ?? ""}
-                    onChange={(e) => requestEdit(which, i, e.target.value === "" ? null : parseFloat(e.target.value))}
-                    title={p?._edited ? `Editado · motivo: ${p._motivo ?? ""}` : ""}
-                    className={`w-full rounded border px-1.5 py-1 text-right text-xs tabular-nums ${
-                      out ? "border-destructive text-destructive bg-destructive/5" :
-                      p?._edited ? "border-warning bg-warning/5" : "border-input bg-background"
-                    }`}
-                  />
+                  {na ? (
+                    <div className="w-full rounded border border-dashed border-border bg-muted/30 px-1.5 py-1 text-center text-[10px] text-muted-foreground" title="No laborable / No aplica">N/A</div>
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={p?.valor ?? ""}
+                      onChange={(e) => requestEdit(which, i, e.target.value === "" ? null : parseFloat(e.target.value))}
+                      title={p?._edited ? `Editado · motivo: ${p._motivo ?? ""}` : ""}
+                      className={`w-full rounded border px-1.5 py-1 text-right text-xs tabular-nums ${
+                        out ? "border-destructive text-destructive bg-destructive/5" :
+                        p?._edited ? "border-warning bg-warning/5" : "border-input bg-background"
+                      }`}
+                    />
+                  )}
                 </td>
               );
             })}
@@ -92,11 +108,33 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
     );
   };
 
+  // Fila de control NA por día (aplica a los 3 turnos del día y a T+HR)
+  const renderNAControl = () => (
+    <tr className="border-t border-border bg-muted/10">
+      <td className="px-3 py-1 text-[10px] text-muted-foreground">No laborable</td>
+      {DIAS.map((dia, di) => {
+        const naActivo = !!semana.lecturas[cellIdx(di, 0)]?._na;
+        return (
+          <td key={dia} className="px-1 py-1 text-center">
+            <button
+              type="button"
+              onClick={() => setDayNA(di, !naActivo)}
+              className={`text-[10px] rounded px-1.5 py-0.5 border ${naActivo ? "bg-muted text-foreground border-border" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
+              title={naActivo ? "Marcar como laborable" : "Marcar día como no laborable (NA)"}
+            >
+              {naActivo ? "NA ✓" : "NA"}
+            </button>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-muted/30">
         <h3 className="text-sm font-semibold text-foreground">Lecturas semanales — semana del {semana.semana_inicio}</h3>
-        <p className="text-xs text-muted-foreground">7 días × 3 turnos = 21 lecturas por variable. Las celdas editadas tras una carga aparecen marcadas en amarillo.</p>
+        <p className="text-xs text-muted-foreground">7 días × 3 turnos = 21 lecturas por variable. Semana inglesa: Sáb/Dom marcados como <span className="font-medium">NA</span> por defecto. Toca <span className="font-medium">NA</span> para alternar si ese día sí se trabajó.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -109,6 +147,7 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
             </tr>
           </thead>
           <tbody>
+            {renderNAControl()}
             {renderRow("T", "°C", limits.tempMin, limits.tempMax)}
             {renderRow("HR", "%HR", limits.hrMin, limits.hrMax)}
           </tbody>

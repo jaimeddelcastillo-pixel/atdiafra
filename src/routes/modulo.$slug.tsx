@@ -236,10 +236,11 @@ function TempHRModule() {
               </div>
             ) : (
               <RegistroEditor
+                key={active.id}
                 registro={active}
-                onChange={async (r) => {
+                onPersist={async (r) => {
                   try { await upsertRegistro(r); await reload(); }
-                  catch (e: any) { toast.error("No se pudo guardar: " + e.message); }
+                  catch (e: any) { toast.error("No se pudo guardar: " + e.message); throw e; }
                 }}
                 onDelete={() => removeRegistro(active.id)}
               />
@@ -251,33 +252,64 @@ function TempHRModule() {
   );
 }
 
-function RegistroEditor({ registro, onChange, onDelete }: {
-  registro: Registro; onChange: (r: Registro) => void; onDelete: () => void;
+function RegistroEditor({ registro, onPersist, onDelete }: {
+  registro: Registro; onPersist: (r: Registro) => Promise<void>; onDelete: () => void;
 }) {
   const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
-  const [activeWeekId, setActiveWeekId] = useState<string | null>(registro.semanas[0]?.id ?? null);
-  useEffect(() => {
-    if (!activeWeekId && registro.semanas[0]) setActiveWeekId(registro.semanas[0].id);
-  }, [registro.semanas, activeWeekId]);
+  // Buffer local: cambios no se persisten hasta presionar "Guardar"
+  const [draft, setDraft] = useState<Registro>(registro);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const activeWeek = registro.semanas.find((s) => s.id === activeWeekId) ?? null;
+  // Si entra otro registro (cambio de activeId), reset
+  useEffect(() => {
+    setDraft(registro);
+    setDirty(false);
+  }, [registro.id]);
+
+  // Si la prop registro cambia (por reload tras persistir/importar imagen), sincronizar si no hay cambios sucios
+  useEffect(() => {
+    if (!dirty) setDraft(registro);
+  }, [registro]);
+
+  const [activeWeekId, setActiveWeekId] = useState<string | null>(draft.semanas[0]?.id ?? null);
+  useEffect(() => {
+    if (!activeWeekId && draft.semanas[0]) setActiveWeekId(draft.semanas[0].id);
+  }, [draft.semanas, activeWeekId]);
+
+  const activeWeek = draft.semanas.find((s) => s.id === activeWeekId) ?? null;
+
+  // Aviso al salir/recargar si hay cambios sin guardar
+  useEffect(() => {
+    if (!dirty) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [dirty]);
+
+  const mutate = (updater: (r: Registro) => Registro) => {
+    setDraft((d) => updater(d));
+    setDirty(true);
+  };
 
   const addEmptyWeek = (semana_inicio?: string) => {
     const fecha = semana_inicio ? new Date(semana_inicio + "T00:00:00") : new Date();
     const lunes = semana_inicio ?? lunesDe(fecha);
-    if (registro.semanas.some((s) => s.semana_inicio === lunes)) {
+    if (draft.semanas.some((s) => s.semana_inicio === lunes)) {
       toast.error("Ya existe una semana con ese lunes");
       return;
     }
     const s = semanaVacia({ semana_inicio: lunes, mes: nombreMes(fecha), anio: String(fecha.getFullYear()), unidad: "°C / %HR", esTHR: true });
-    const next = { ...registro, semanas: [...registro.semanas, s] };
-    onChange(next);
+    mutate((r) => ({ ...r, semanas: [...r.semanas, s] }));
     setActiveWeekId(s.id);
   };
 
-  const handleExtracted = (s: Semana) => {
-    // Si ya existe una semana con ese lunes, fusionamos las lecturas (la IA puede traer solo T o HR)
-    const existing = registro.semanas.find((x) => x.semana_inicio === s.semana_inicio);
+  // Importación por imagen: persiste de inmediato (con cualquier cambio sucio pendiente del draft)
+  const handleExtracted = async (s: Semana) => {
+    const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
     let semanas: Semana[];
     if (existing) {
       const merged: Semana = {
@@ -288,34 +320,72 @@ function RegistroEditor({ registro, onChange, onDelete }: {
         source: "imagen",
         saved_at: new Date().toISOString(),
       };
-      semanas = registro.semanas.map((x) => (x.id === existing.id ? merged : x));
+      semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
     } else {
-      semanas = [...registro.semanas, s];
+      semanas = [...draft.semanas, s];
       setActiveWeekId(s.id);
     }
-    onChange({ ...registro, semanas });
+    const next = { ...draft, semanas };
+    setDraft(next);
+    try {
+      await onPersist(next);
+      setDirty(false);
+      toast.success("Imagen importada y guardada en la nube");
+    } catch {
+      setDirty(true);
+    }
   };
 
-  const updateWeek = (s: Semana) => {
-    onChange({ ...registro, semanas: registro.semanas.map((x) => (x.id === s.id ? s : x)) });
-  };
+  const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
+
   const deleteWeek = (id: string) => {
-    if (!confirm("¿Eliminar esta semana?")) return;
-    onChange({ ...registro, semanas: registro.semanas.filter((x) => x.id !== id) });
+    if (!confirm("¿Eliminar esta semana? (se guarda al instante)")) return;
+    const next = { ...draft, semanas: draft.semanas.filter((x) => x.id !== id) };
+    setDraft(next);
     if (activeWeekId === id) setActiveWeekId(null);
+    onPersist(next).then(() => { setDirty(false); toast.success("Semana eliminada"); }).catch(() => {});
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onPersist(draft);
+      setDirty(false);
+      toast.success("Cambios guardados");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    if (!confirm("¿Descartar todos los cambios sin guardar?")) return;
+    setDraft(registro);
+    setDirty(false);
+    toast.info("Cambios descartados");
   };
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-end justify-between gap-3">
+      <div className={`rounded-xl border p-4 flex flex-wrap items-end justify-between gap-3 ${dirty ? "border-warning bg-warning/5" : "border-border bg-card"}`}>
         <div>
-          <h2 className="text-base font-semibold">{registro.nombre}</h2>
-          <p className="text-xs text-muted-foreground">{iso} · {registro.semanas.length} semana(s)</p>
+          <h2 className="text-base font-semibold">{draft.nombre}</h2>
+          <p className="text-xs text-muted-foreground">
+            {iso} · {draft.semanas.length} semana(s)
+            {dirty && <span className="ml-2 inline-block rounded bg-warning/20 text-warning px-1.5 py-0.5 text-[10px] font-medium">Cambios sin guardar</span>}
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
             <Plus className="h-4 w-4" /> Nueva semana actual
+          </Button>
+          {dirty && (
+            <Button size="sm" variant="ghost" onClick={handleDiscard} className="gap-1">
+              Descartar
+            </Button>
+          )}
+          <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
+            <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
           </Button>
           <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
             <Trash className="h-4 w-4" /> Eliminar registro
@@ -325,9 +395,9 @@ function RegistroEditor({ registro, onChange, onDelete }: {
 
       <ImageImporter
         context={{
-          codigoArea: registro.codigo_area_libre ?? "",
-          nombreArea: registro.nombre_area_libre ?? "",
-          instrumento: registro.instrumento_id ?? "",
+          codigoArea: draft.codigo_area_libre ?? "",
+          nombreArea: draft.nombre_area_libre ?? "",
+          instrumento: draft.instrumento_id ?? "",
           iso,
         }}
         semanaInicio={activeWeek?.semana_inicio ?? lunesDe(new Date())}
@@ -343,18 +413,18 @@ function RegistroEditor({ registro, onChange, onDelete }: {
             onChange={(e) => {
               if (!e.target.value) return;
               const lunes = lunesDe(new Date(e.target.value + "T00:00:00"));
-              const existing = registro.semanas.find((s) => s.semana_inicio === lunes);
+              const existing = draft.semanas.find((s) => s.semana_inicio === lunes);
               if (existing) { setActiveWeekId(existing.id); toast.info(`Semana ${lunes} ya existe — seleccionada`); }
-              else { addEmptyWeek(lunes); toast.success(`Semana ${lunes} creada`); }
+              else { addEmptyWeek(lunes); toast.success(`Semana ${lunes} agregada (recuerda Guardar)`); }
               e.target.value = "";
             }}
           />
           <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes de esa semana.</span>
         </div>
-        {registro.semanas.length > 0 && (
+        {draft.semanas.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs font-medium text-muted-foreground mr-1">Semanas guardadas:</span>
-            {registro.semanas
+            <span className="text-xs font-medium text-muted-foreground mr-1">Semanas:</span>
+            {draft.semanas
               .slice()
               .sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio))
               .map((s) => (
@@ -389,7 +459,16 @@ function RegistroEditor({ registro, onChange, onDelete }: {
         </>
       )}
 
-      <TempHRAnalysis semanas={registro.semanas} iso={iso} />
+      {/* Botón Guardar inferior fijo cuando hay cambios */}
+      {dirty && (
+        <div className="sticky bottom-3 flex justify-end">
+          <Button size="lg" onClick={handleSave} disabled={saving} className="gap-2 shadow-lg">
+            <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar cambios"}
+          </Button>
+        </div>
+      )}
+
+      <TempHRAnalysis semanas={draft.semanas} iso={iso} />
     </div>
   );
 }

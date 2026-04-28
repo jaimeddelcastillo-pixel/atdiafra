@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ChevronLeft, Trash, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { listRegistros, deleteRegistro, lunesDe, type Registro, type Modulo } from "@/lib/semanas";
+import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, type Registro, type Modulo } from "@/lib/semanas";
 import { MODULOS } from "@/lib/diafra-data";
 
 export const Route = createFileRoute("/reporte")({
@@ -89,14 +89,10 @@ function ReportePage() {
     return registros
       .filter((r) => !filtroModulo || r.modulo === filtroModulo)
       .map((r) => {
+        const esTHR = r.modulo === "temphr";
         const semanasAnio = r.semanas.filter((s) => s.semana_inicio.startsWith(String(anio)));
         const presentes = new Set(semanasAnio.map((s) => s.semana_inicio));
-        const completas = semanasAnio.filter((s) => {
-          const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
-          const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
-          const necesarias = r.modulo === "temphr" ? 42 : 21;
-          return (t + hr) >= necesarias;
-        }).length;
+        const completas = semanasAnio.filter((s) => esSemanaCompleta(s, esTHR)).length;
         const faltantes = lunes.filter((l) => !presentes.has(l));
         return { registro: r, totalSemanas: lunes.length, presentes: presentes.size, completas, faltantes };
       });
@@ -159,7 +155,7 @@ function ReportePage() {
         <section className="mt-6">
           <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Cada fila representa un registro (área + instrumento). Una semana se considera <span className="font-medium text-foreground">completa</span> cuando tiene todas sus lecturas del lunes al domingo.
+            El año se determina por el <span className="font-medium text-foreground">lunes</span> de cada semana, no por la fecha de captura. Una semana es <span className="font-medium text-foreground">completa</span> cuando todas sus lecturas no marcadas como NA tienen valor (semana inglesa: Sáb/Dom NA por defecto).
           </p>
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
@@ -177,7 +173,7 @@ function ReportePage() {
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Completas</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Faltantes</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Semanas capturadas (lunes)</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes (últimos 8)</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -202,7 +198,16 @@ function ReportePage() {
                             {semanasAnio.length > 0 ? semanasAnio.join(", ") : "—"}
                           </td>
                           <td className="px-3 py-2 text-[11px] text-muted-foreground">
-                            {faltantes.slice(-8).join(", ") || "—"}
+                            {faltantes.length === 0 ? (
+                              <span className="text-success">Ninguno ✓</span>
+                            ) : (
+                              <details>
+                                <summary className="cursor-pointer hover:text-foreground">Ver {faltantes.length} faltante(s)</summary>
+                                <div className="mt-1 max-h-40 overflow-y-auto leading-5">
+                                  {faltantes.join(", ")}
+                                </div>
+                              </details>
+                            )}
                           </td>
                         </tr>
                       );
@@ -240,8 +245,9 @@ function ReportePage() {
                     {filtrados.map((r) => {
                       const moduloDef = MODULOS.find((m) => moduloSlug(r.modulo) === m.slug);
                       const editable = moduloDef?.enabled;
-                      const necesarias = r.modulo === "temphr" ? 42 : 21;
+                      
                       const semanasOrden = [...r.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
+                      const esTHR = r.modulo === "temphr";
                       return (
                         <tr key={r.id} className="border-t border-border align-top">
                           <td className="px-3 py-2 font-medium text-foreground">{r.nombre}</td>
@@ -254,18 +260,17 @@ function ReportePage() {
                             ) : (
                               <div className="flex flex-col gap-0.5">
                                 {semanasOrden.map((s) => {
-                                  const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
-                                  const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
-                                  const total = t + hr;
-                                  const completa = total >= necesarias;
+                                  const cap = lecturasCapturadas(s, esTHR);
+                                  const esp = lecturasEsperadas(s, esTHR);
+                                  const completa = esSemanaCompleta(s, esTHR);
                                   return (
                                     <div key={s.id} className="flex items-center gap-2">
                                       <span className="font-mono text-foreground">{s.semana_inicio}</span>
                                       <span className="text-muted-foreground">
-                                        {r.modulo === "temphr" ? `T:${t} HR:${hr}` : `${total}`} / {necesarias}
+                                        {cap}/{esp}
                                       </span>
-                                      <span className={completa ? "text-success" : total > 0 ? "text-warning" : "text-destructive"}>
-                                        {completa ? "✓ completa" : total > 0 ? "parcial" : "vacía"}
+                                      <span className={completa ? "text-success" : cap > 0 ? "text-warning" : "text-destructive"}>
+                                        {completa ? "✓ completa" : cap > 0 ? "parcial" : "vacía"}
                                       </span>
                                     </div>
                                   );

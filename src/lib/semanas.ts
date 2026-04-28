@@ -16,7 +16,12 @@ export interface PuntoLectura {
   quien: string | null;
   _edited?: boolean;
   _motivo?: string;
+  /** No aplica: día/turno no laborable (semana inglesa: Sáb/Dom por defecto). No cuenta para "completa". */
+  _na?: boolean;
 }
+
+/** Días considerados no laborables por defecto (semana inglesa). */
+export const DIAS_NO_LABORABLES_DEFAULT: Dia[] = ["Sábado", "Domingo"];
 
 export interface Semana {
   id: string;
@@ -72,7 +77,16 @@ export function nombreMes(date: Date = new Date()): string {
 
 export function semanaVacia(opts: { semana_inicio: string; mes: string; anio: string; unidad: string; esTHR?: boolean }): Semana {
   const make = (): PuntoLectura[] =>
-    DIAS.flatMap((dia) => TURNOS.map((turno) => ({ dia, turno, valor: null, hora: null, quien: null })));
+    DIAS.flatMap((dia) =>
+      TURNOS.map((turno) => ({
+        dia,
+        turno,
+        valor: null,
+        hora: null,
+        quien: null,
+        _na: DIAS_NO_LABORABLES_DEFAULT.includes(dia),
+      })),
+    );
   return {
     id: crypto.randomUUID(),
     semana_inicio: opts.semana_inicio,
@@ -228,6 +242,32 @@ export async function upsertRegistro(r: Registro): Promise<void> {
     const { error: e4 } = await supabase.from("registro_semanas").delete().in("id", toDelete);
     if (e4) throw e4;
   }
+}
+
+// ===== Reglas de completitud =====
+/** Cuenta cuántas lecturas se esperan en una semana, descontando turnos marcados como NA. */
+export function lecturasEsperadas(semana: Semana, esTHR: boolean): number {
+  const aplica = (arr: PuntoLectura[] | undefined) =>
+    (arr ?? []).filter((p) => !p._na).length;
+  const t = aplica(semana.lecturas);
+  const hr = esTHR ? aplica(semana.lecturas_hr) : 0;
+  return t + hr;
+}
+
+/** Cuenta cuántas lecturas válidas (con valor) hay, ignorando turnos NA. */
+export function lecturasCapturadas(semana: Semana, esTHR: boolean): number {
+  const valid = (arr: PuntoLectura[] | undefined) =>
+    (arr ?? []).filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor)).length;
+  const t = valid(semana.lecturas);
+  const hr = esTHR ? valid(semana.lecturas_hr) : 0;
+  return t + hr;
+}
+
+/** Una semana está completa si todas sus lecturas no-NA tienen valor. */
+export function esSemanaCompleta(semana: Semana, esTHR: boolean): boolean {
+  const esp = lecturasEsperadas(semana, esTHR);
+  if (esp === 0) return false;
+  return lecturasCapturadas(semana, esTHR) >= esp;
 }
 
 export async function deleteRegistro(id: string): Promise<void> {
