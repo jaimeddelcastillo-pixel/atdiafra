@@ -305,19 +305,38 @@ function RegistroEditor({ registro, onChange, onDelete }: {
         onExtracted={handleExtracted}
       />
 
-      {registro.semanas.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground mr-1">Semana:</span>
-            {registro.semanas.map((s) => (
-              <button key={s.id} onClick={() => setActiveWeekId(s.id)}
-                className={`text-xs rounded-md px-2.5 py-1 border ${activeWeekId === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
-                {s.semana_inicio}
-              </button>
-            ))}
-          </div>
+      <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground mr-1">Elegir semana (cualquier fecha):</span>
+          <input
+            type="date"
+            className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+            onChange={(e) => {
+              if (!e.target.value) return;
+              const lunes = lunesDe(new Date(e.target.value + "T00:00:00"));
+              const existing = registro.semanas.find((s) => s.semana_inicio === lunes);
+              if (existing) { setActiveWeekId(existing.id); toast.info(`Semana ${lunes} ya existe — seleccionada`); }
+              else { addEmptyWeek(lunes); toast.success(`Semana ${lunes} creada`); }
+              e.target.value = "";
+            }}
+          />
+          <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes de esa semana.</span>
         </div>
-      )}
+        {registro.semanas.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Semanas guardadas:</span>
+            {registro.semanas
+              .slice()
+              .sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio))
+              .map((s) => (
+                <button key={s.id} onClick={() => setActiveWeekId(s.id)}
+                  className={`text-xs rounded-md px-2.5 py-1 border ${activeWeekId === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
+                  {s.semana_inicio}
+                </button>
+              ))}
+          </div>
+        )}
+      </div>
 
       {activeWeek && (
         <>

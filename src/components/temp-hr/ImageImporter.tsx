@@ -11,18 +11,45 @@ interface Props {
   onExtracted: (s: Semana) => void;
 }
 
-function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const [meta, data] = result.split(",");
-      const match = /data:(.*?);base64/.exec(meta);
-      resolve({ base64: data, mediaType: match?.[1] ?? "image/jpeg" });
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+/** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 1800px) para encajar en el límite de 5MB de Anthropic. */
+async function compressImage(file: File, maxDim = 1800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = reject;
+    r.readAsDataURL(file);
   });
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = reject;
+    i.src = dataUrl;
+  });
+  const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+  const w = Math.round(img.width * scale);
+  const h = Math.round(img.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d")!;
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let quality = 0.85;
+  let out = canvas.toDataURL("image/jpeg", quality);
+  // Iterar bajando calidad hasta entrar en targetBytes
+  for (let i = 0; i < 6 && approxBytes(out) > targetBytes; i++) {
+    quality -= 0.12;
+    if (quality < 0.35) quality = 0.35;
+    out = canvas.toDataURL("image/jpeg", quality);
+  }
+  const base64 = out.split(",")[1];
+  return { base64, mediaType: "image/jpeg" };
+}
+
+function approxBytes(dataUrl: string): number {
+  const b64 = dataUrl.split(",")[1] ?? "";
+  return Math.floor(b64.length * 0.75);
 }
 
 interface IALectura {
@@ -64,7 +91,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
     setLoading(true);
     try {
       setPreviewUrl(URL.createObjectURL(file));
-      const { base64, mediaType } = await fileToBase64(file);
+      const { base64, mediaType } = await compressImage(file);
 
       const { data, error: fnError } = await supabase.functions.invoke("extract-bitacora", {
         body: { imageBase64: base64, mediaType, module: "temp_hr", variable, context },
