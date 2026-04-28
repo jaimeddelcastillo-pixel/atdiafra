@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppHeader } from "@/components/AppHeader";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   createManagedUser,
   deleteManagedUser,
+  inviteManagedUser,
   listManagedUsers,
   updateManagedUserRole,
   type AdminUserView,
@@ -76,9 +77,12 @@ function UsuariosAdmin() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openInvite, setOpenInvite] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("viewer");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("viewer");
 
   const load = async () => {
     try {
