@@ -1,4 +1,4 @@
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Settings } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 
 export function AppHeader() {
@@ -14,10 +14,20 @@ export function AppHeader() {
             <p className="text-xs text-muted-foreground">DIAFRA S.A. de C.V. — Validación · FOR-VAL-16</p>
           </div>
         </Link>
-        <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-muted px-2.5 py-1">NOM-241-SSA1-2025</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">ISO 14644</span>
-          <span className="rounded-full bg-muted px-2.5 py-1">FEUM 13ª Ed.</span>
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-muted px-2.5 py-1">NOM-241-SSA1-2025</span>
+            <span className="rounded-full bg-muted px-2.5 py-1">ISO 14644</span>
+            <span className="rounded-full bg-muted px-2.5 py-1">FEUM 13ª Ed.</span>
+          </div>
+          <Link
+            to="/configuracion"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="Configuración / Catálogos"
+            title="Configuración / Catálogos"
+          >
+            <Settings className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </header>
