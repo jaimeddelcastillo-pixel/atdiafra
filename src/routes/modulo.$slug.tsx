@@ -75,7 +75,7 @@ function ModuloPage() {
   return <TempHRModule />;
 }
 
-const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
+
 
 function TempHRModule() {
   // Catálogo de termohigrómetros activos
