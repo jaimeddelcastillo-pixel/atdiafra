@@ -153,6 +153,7 @@ function ReportePage() {
               <FileText className="h-4 w-4" /> PDF
             </Button>
           </div>
+        </div>
 
         {/* Filtros */}
         <div className="mt-6 rounded-xl border border-border bg-card p-4 flex flex-wrap items-end gap-3">
