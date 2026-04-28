@@ -13,6 +13,7 @@ import { Route as ReporteRouteImport } from './routes/reporte'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReporteNormativoRouteImport } from './routes/reporte.normativo'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
@@ -37,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReporteNormativoRoute = ReporteNormativoRouteImport.update({
+  id: '/normativo',
+  path: '/normativo',
+  getParentRoute: () => ReporteRoute,
+} as any)
 const ModuloSlugRoute = ModuloSlugRouteImport.update({
   id: '/modulo/$slug',
   path: '/modulo/$slug',
@@ -57,29 +63,32 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRoute
+  '/reporte': typeof ReporteRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
+  '/reporte/normativo': typeof ReporteNormativoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRoute
+  '/reporte': typeof ReporteRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
+  '/reporte/normativo': typeof ReporteNormativoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRoute
+  '/reporte': typeof ReporteRouteWithChildren
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
+  '/reporte/normativo': typeof ReporteNormativoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +100,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
+    | '/reporte/normativo'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +110,7 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
+    | '/reporte/normativo'
   id:
     | '__root__'
     | '/'
@@ -109,13 +120,14 @@ export interface FileRouteTypes {
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
+    | '/reporte/normativo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
-  ReporteRoute: typeof ReporteRoute
+  ReporteRoute: typeof ReporteRouteWithChildren
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
@@ -151,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reporte/normativo': {
+      id: '/reporte/normativo'
+      path: '/normativo'
+      fullPath: '/reporte/normativo'
+      preLoaderRoute: typeof ReporteNormativoRouteImport
+      parentRoute: typeof ReporteRoute
+    }
     '/modulo/$slug': {
       id: '/modulo/$slug'
       path: '/modulo/$slug'
@@ -175,11 +194,22 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ReporteRouteChildren {
+  ReporteNormativoRoute: typeof ReporteNormativoRoute
+}
+
+const ReporteRouteChildren: ReporteRouteChildren = {
+  ReporteNormativoRoute: ReporteNormativoRoute,
+}
+
+const ReporteRouteWithChildren =
+  ReporteRoute._addFileChildren(ReporteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
-  ReporteRoute: ReporteRoute,
+  ReporteRoute: ReporteRouteWithChildren,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
