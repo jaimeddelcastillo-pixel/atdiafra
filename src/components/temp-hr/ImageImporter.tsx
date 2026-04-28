@@ -56,8 +56,12 @@ interface IALectura {
   dia?: string; turno?: string; valor?: number | string | null; hora?: string | null; quien?: string | null;
 }
 interface IAResponse {
-  mes?: string; anio?: string; instrumento?: string; area?: string; variable?: string;
-  lecturas?: IALectura[]; observaciones?: string;
+  mes?: string; anio?: string; instrumento?: string; area?: string;
+  // Nuevo formato: ambas variables en una sola respuesta
+  lecturas_t?: IALectura[]; lecturas_hr?: IALectura[];
+  // Compatibilidad con respuesta legada (una sola variable)
+  variable?: string; lecturas?: IALectura[];
+  observaciones?: string;
 }
 
 const DIA_MAP: Record<string, Dia> = {
