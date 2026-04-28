@@ -6,9 +6,11 @@ import {
   MINIMO_NORMATIVO,
   etiquetaGrupo,
   claveGrupo,
+  semanasDelPeriodo,
   type AnalisisRegistro,
   type AgruparPor,
 } from "./normativo";
+import { generarChartsRegistro } from "./chart-renderer";
 
 type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
 
