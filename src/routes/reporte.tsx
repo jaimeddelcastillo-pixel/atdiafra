@@ -155,7 +155,7 @@ function ReportePage() {
         <section className="mt-6">
           <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
           <p className="text-xs text-muted-foreground mb-3">
-            Cada fila representa un registro (área + instrumento). Una semana se considera <span className="font-medium text-foreground">completa</span> cuando tiene todas sus lecturas del lunes al domingo.
+            El año se determina por el <span className="font-medium text-foreground">lunes</span> de cada semana, no por la fecha de captura. Una semana es <span className="font-medium text-foreground">completa</span> cuando todas sus lecturas no marcadas como NA tienen valor (semana inglesa: Sáb/Dom NA por defecto).
           </p>
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
