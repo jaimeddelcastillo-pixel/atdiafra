@@ -1,1 +1,4 @@
 project_id = "lyywvyljddkzrwktytng"
+
+[functions.extract-bitacora]
+verify_jwt = false
