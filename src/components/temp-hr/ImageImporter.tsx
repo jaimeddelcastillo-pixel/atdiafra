@@ -165,15 +165,31 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
         </div>
       </div>
 
-      <div className="mb-3 flex items-center gap-3">
-        <label className="text-xs font-medium text-muted-foreground">Variable de la bitácora:</label>
-        <div className="inline-flex rounded-md border border-border overflow-hidden">
-          {(["T", "HR"] as const).map((v) => (
-            <button key={v} onClick={() => setVariable(v)}
-              className={`px-3 py-1 text-xs ${variable === v ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-              {v === "T" ? "Temperatura" : "Humedad"}
-            </button>
-          ))}
+      <div className="mb-3 grid gap-3 sm:grid-cols-2">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Variable:</label>
+          <div className="inline-flex rounded-md border border-border overflow-hidden">
+            {(["T", "HR"] as const).map((v) => (
+              <button key={v} onClick={() => setVariable(v)}
+                className={`px-3 py-1 text-xs ${variable === v ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
+                {v === "T" ? "Temperatura" : "Humedad"}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap flex items-center gap-1">
+            <CalendarDays className="h-3.5 w-3.5" /> Semana de la foto:
+          </label>
+          <input
+            type="date"
+            value={fechaSemana}
+            onChange={(e) => setFechaSemana(e.target.value || semanaInicio)}
+            className="rounded-md border border-input bg-background px-2 py-1 text-xs flex-1"
+          />
+          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+            → lunes {lunesDe(new Date((fechaSemana || semanaInicio) + "T00:00:00"))}
+          </span>
         </div>
       </div>
 
