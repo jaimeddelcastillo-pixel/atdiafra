@@ -30,14 +30,18 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Análisis de Tendencias - Diafra" },
+      { name: "description", content: "DIAFRA DataView is a web application for pharmaceutical quality validation and trend analysis." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Análisis de Tendencias - Diafra" },
+      { property: "og:description", content: "DIAFRA DataView is a web application for pharmaceutical quality validation and trend analysis." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Análisis de Tendencias - Diafra" },
+      { name: "twitter:description", content: "DIAFRA DataView is a web application for pharmaceutical quality validation and trend analysis." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d78b96c0-0a59-40da-a34f-49803e786bad/id-preview-739c1c33--e8811965-31be-4790-b2f1-e21100da2f34.lovable.app-1777391182046.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/d78b96c0-0a59-40da-a34f-49803e786bad/id-preview-739c1c33--e8811965-31be-4790-b2f1-e21100da2f34.lovable.app-1777391182046.png" },
     ],
     links: [
       {
