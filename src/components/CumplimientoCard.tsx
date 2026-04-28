@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Activity, ArrowRight } from "lucide-react";
-import { listRegistros, lunesDe, type Registro } from "@/lib/semanas";
+import { listRegistros, lunesDe, esSemanaCompleta, type Registro } from "@/lib/semanas";
 
 export function CumplimientoCard() {
   const [registros, setRegistros] = useState<Registro[]>([]);
@@ -30,12 +30,10 @@ export function CumplimientoCard() {
   let totalCompletas = 0;
   const porModulo: Record<string, { reg: number; completas: number; esperado: number }> = {};
   for (const r of registros) {
-    const necesarias = r.modulo === "temphr" ? 42 : 21;
-    const completas = r.semanas.filter((s) => {
-      const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
-      const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
-      return (t + hr) >= necesarias && s.semana_inicio.startsWith(String(anio));
-    }).length;
+    const esTHR = r.modulo === "temphr";
+    const completas = r.semanas.filter(
+      (s) => s.semana_inicio.startsWith(String(anio)) && esSemanaCompleta(s, esTHR),
+    ).length;
     totalEsperado += totalSemanas;
     totalCompletas += completas;
     const k = r.modulo;
