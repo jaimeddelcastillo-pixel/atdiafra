@@ -1,13 +1,13 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, AlertCircle, Sparkles } from "lucide-react";
+import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { Semana, semanaVacia, lunesDe, nombreMes, DIAS, TURNOS, type Dia, type Turno } from "@/lib/semanas";
 
 interface Props {
   context: { codigoArea: string; nombreArea: string; instrumento: string; iso: string };
-  semanaInicio: string; // YYYY-MM-DD lunes
+  semanaInicio: string; // YYYY-MM-DD lunes (sugerido por el editor)
   onExtracted: (s: Semana) => void;
 }
 
