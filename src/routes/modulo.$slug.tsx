@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { MODULOS } from "@/lib/diafra-data";
-import { Input } from "@/components/ui/input";
+
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { AreaSelector } from "@/components/AreaSelector";
