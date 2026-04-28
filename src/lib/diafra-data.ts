@@ -106,8 +106,8 @@ export const MODULOS: ModuloDef[] = [
     id: "reporte",
     slug: "reporte-consolidado",
     nombre: "Reporte consolidado",
-    descripcion: "Próximamente.",
+    descripcion: "Vista global de todos los módulos: ver, editar y borrar registros, y revisar cumplimiento semanal.",
     icon: "FileText",
-    enabled: false,
+    enabled: true,
   },
 ];
