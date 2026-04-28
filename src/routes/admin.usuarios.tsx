@@ -259,6 +259,66 @@ function UsuariosAdmin() {
                   </form>
                 </DialogContent>
               </Dialog>
+              <Dialog open={openInvite} onOpenChange={setOpenInvite}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="secondary">
+                    <Mail />
+                    Invitar por correo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Invitar usuario</DialogTitle>
+                    <DialogDescription>
+                      Le enviaremos un correo con un enlace para crear su contraseña.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form className="space-y-4" onSubmit={handleInvite}>
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-email">Correo</Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        autoComplete="email"
+                        value={inviteEmail}
+                        onChange={(event) => setInviteEmail(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rol inicial</Label>
+                      <Select
+                        value={inviteRole}
+                        onValueChange={(value) => setInviteRole(value as AppRole)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setOpenInvite(false)}
+                        disabled={busy === "invite"}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="submit" disabled={busy === "invite"}>
+                        {busy === "invite" ? "Enviando…" : "Enviar invitación"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </div>
           </CardHeader>
           <CardContent>
