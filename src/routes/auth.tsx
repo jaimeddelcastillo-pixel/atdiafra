@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Navigate } from "@tanstack/react-router";
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,6 @@ import { ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
-  // Ignore any incoming search params (prevents redirect-loop URLs from accumulating)
   validateSearch: () => ({}),
   component: AuthPage,
 });
@@ -21,6 +21,8 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
 
   if (!loading && session) {
     return <Navigate to="/" replace />;
@@ -45,6 +47,22 @@ function AuthPage() {
     setBusy(false);
     if (error) toast.error(error);
     else toast.success("Cuenta creada. Revisa tu correo si requiere confirmación, o inicia sesión.");
+  };
+
+  const handleForgot = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setBusy(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Si el correo existe, recibirás un enlace para restablecer la contraseña.");
+      setShowForgot(false);
+      setForgotEmail("");
+    }
   };
 
   return (
