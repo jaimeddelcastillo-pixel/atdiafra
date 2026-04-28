@@ -121,8 +121,16 @@ function NormativoPage() {
   };
   const handlePDF = () => {
     try {
-      exportarNormativoPDF(analisis, agrupar, { areas: areasMap, hvac: hvacMap });
-      toast.success("PDF generado");
+      const t = toast.loading(incluirGraficas ? "Generando PDF con gráficas…" : "Generando PDF…");
+      // Pequeño delay para que el toast se muestre antes del bloqueo del canvas
+      setTimeout(() => {
+        try {
+          exportarNormativoPDF(analisis, agrupar, { areas: areasMap, hvac: hvacMap }, { incluirGraficas });
+          toast.success("PDF generado", { id: t });
+        } catch (e: any) {
+          toast.error("Error: " + e.message, { id: t });
+        }
+      }, 50);
     } catch (e: any) {
       toast.error("Error: " + e.message);
     }
