@@ -245,7 +245,7 @@ function ReportePage() {
                     {filtrados.map((r) => {
                       const moduloDef = MODULOS.find((m) => moduloSlug(r.modulo) === m.slug);
                       const editable = moduloDef?.enabled;
-                      const necesarias = r.modulo === "temphr" ? 42 : 21;
+                      
                       const semanasOrden = [...r.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
                       const esTHR = r.modulo === "temphr";
                       return (
