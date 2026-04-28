@@ -23,7 +23,8 @@ async function requireSuperAdmin(accessToken: string) {
   if (!accessToken) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
-  if (userError || !userData.user) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
+  if (userError || !userData.user)
+    throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
   const { data: roleRow, error: roleError } = await supabaseAdmin
     .from("user_roles")
@@ -41,10 +42,14 @@ async function requireSuperAdmin(accessToken: string) {
 export async function getManagedUsers(accessToken: string): Promise<AdminUserView[]> {
   await requireSuperAdmin(accessToken);
 
-  const [{ data: roleRows, error: rolesError }, { data: usersData, error: usersError }] = await Promise.all([
-    supabaseAdmin.from("user_roles").select("user_id, role").order("created_at", { ascending: true }),
-    supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
-  ]);
+  const [{ data: roleRows, error: rolesError }, { data: usersData, error: usersError }] =
+    await Promise.all([
+      supabaseAdmin
+        .from("user_roles")
+        .select("user_id, role")
+        .order("created_at", { ascending: true }),
+      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    ]);
 
   if (rolesError) throw new Error(rolesError.message);
   if (usersError) throw new Error(usersError.message);
@@ -97,7 +102,8 @@ export async function createManagedUserAccount(
   const role = assertRole(input.role);
 
   if (!email) throw new Error("Captura el correo del usuario.");
-  if (password.length < 8) throw new Error("La contraseña temporal debe tener al menos 8 caracteres.");
+  if (password.length < 8)
+    throw new Error("La contraseña temporal debe tener al menos 8 caracteres.");
 
   const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
     email,
@@ -105,7 +111,8 @@ export async function createManagedUserAccount(
     email_confirm: true,
   });
 
-  if (createError || !created.user) throw new Error(createError?.message ?? "No se pudo crear el usuario.");
+  if (createError || !created.user)
+    throw new Error(createError?.message ?? "No se pudo crear el usuario.");
 
   const { error: roleError } = await supabaseAdmin
     .from("user_roles")
@@ -130,10 +137,15 @@ export async function updateManagedUserAccountRole(
     throw new Error("No puedes quitarte el rol super_admin a ti mismo.");
   }
 
-  const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", input.userId);
+  const { error: deleteError } = await supabaseAdmin
+    .from("user_roles")
+    .delete()
+    .eq("user_id", input.userId);
   if (deleteError) throw new Error(deleteError.message);
 
-  const { error: insertError } = await supabaseAdmin.from("user_roles").insert({ user_id: input.userId, role });
+  const { error: insertError } = await supabaseAdmin
+    .from("user_roles")
+    .insert({ user_id: input.userId, role });
   if (insertError) throw new Error(insertError.message);
 
   return getManagedUsers(accessToken);
@@ -147,11 +159,15 @@ export async function deleteManagedUserAccount(
 
   if (input.userId === currentUser.id) throw new Error("No puedes eliminar tu propia cuenta.");
 
-  const { error: rolesError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", input.userId);
+  const { error: rolesError } = await supabaseAdmin
+    .from("user_roles")
+    .delete()
+    .eq("user_id", input.userId);
   if (rolesError) throw new Error(rolesError.message);
 
   const { error: userError } = await supabaseAdmin.auth.admin.deleteUser(input.userId);
-  if (userError && !userError.message.toLowerCase().includes("not found")) throw new Error(userError.message);
+  if (userError && !userError.message.toLowerCase().includes("not found"))
+    throw new Error(userError.message);
 
   return getManagedUsers(accessToken);
 }

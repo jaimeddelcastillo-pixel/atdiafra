@@ -15,8 +15,22 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,7 +58,9 @@ const ROLES: AppRole[] = ["super_admin", "admin", "editor", "viewer"];
 
 function formatDate(value: string | null) {
   if (!value) return "Sin acceso";
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date(value),
+  );
 }
 
 async function getAccessToken() {
@@ -139,7 +155,12 @@ function UsuariosAdmin() {
           <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle>Gestión de usuarios y roles</CardTitle>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" size="sm" onClick={load} disabled={loading || busy !== null}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={load}
+                disabled={loading || busy !== null}
+              >
                 <RefreshCw />
                 Actualizar
               </Button>
@@ -153,7 +174,9 @@ function UsuariosAdmin() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Crear usuario</DialogTitle>
-                    <DialogDescription>El usuario podrá entrar con correo y contraseña temporal.</DialogDescription>
+                    <DialogDescription>
+                      El usuario podrá entrar con correo y contraseña temporal.
+                    </DialogDescription>
                   </DialogHeader>
                   <form className="space-y-4" onSubmit={handleCreate}>
                     <div className="space-y-2">
@@ -187,13 +210,20 @@ function UsuariosAdmin() {
                         </SelectTrigger>
                         <SelectContent>
                           {ROLES.map((item) => (
-                            <SelectItem key={item} value={item}>{item}</SelectItem>
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setOpenCreate(false)} disabled={busy === "create"}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setOpenCreate(false)}
+                        disabled={busy === "create"}
+                      >
                         Cancelar
                       </Button>
                       <Button type="submit" disabled={busy === "create"}>
@@ -214,20 +244,40 @@ function UsuariosAdmin() {
               <div className="space-y-3">
                 {rows.map((row) => {
                   const isMe = row.user_id === me?.id;
-                  const actionBusy = busy === `role:${row.user_id}` || busy === `delete:${row.user_id}`;
+                  const actionBusy =
+                    busy === `role:${row.user_id}` || busy === `delete:${row.user_id}`;
                   return (
-                    <div key={row.user_id} className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                    <div
+                      key={row.user_id}
+                      className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                    >
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">{row.email ?? "Usuario sin correo"}</p>
-                        <p className="mt-1 truncate text-xs font-mono text-muted-foreground">{row.user_id}</p>
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {row.email ?? "Usuario sin correo"}
+                        </p>
+                        <p className="mt-1 truncate text-xs font-mono text-muted-foreground">
+                          {row.user_id}
+                        </p>
                         <div className="mt-2 flex flex-wrap items-center gap-1">
                           {row.roles.map((userRole) => (
-                            <Badge key={userRole} variant="secondary" className="text-[10px]">{userRole}</Badge>
+                            <Badge key={userRole} variant="secondary" className="text-[10px]">
+                              {userRole}
+                            </Badge>
                           ))}
-                          {row.roles.length === 0 && <Badge variant="outline" className="text-[10px]">sin rol</Badge>}
-                          {isMe && <Badge variant="outline" className="text-[10px]">tú</Badge>}
+                          {row.roles.length === 0 && (
+                            <Badge variant="outline" className="text-[10px]">
+                              sin rol
+                            </Badge>
+                          )}
+                          {isMe && (
+                            <Badge variant="outline" className="text-[10px]">
+                              tú
+                            </Badge>
+                          )}
                         </div>
-                        <p className="mt-2 text-xs text-muted-foreground">Último acceso: {formatDate(row.last_sign_in_at)}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Último acceso: {formatDate(row.last_sign_in_at)}
+                        </p>
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Select
@@ -240,7 +290,9 @@ function UsuariosAdmin() {
                           </SelectTrigger>
                           <SelectContent>
                             {ROLES.map((item) => (
-                              <SelectItem key={item} value={item}>{item}</SelectItem>
+                              <SelectItem key={item} value={item}>
+                                {item}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -255,7 +307,8 @@ function UsuariosAdmin() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Esta acción elimina el acceso de {row.email ?? row.user_id} y no se puede deshacer.
+                                Esta acción elimina el acceso de {row.email ?? row.user_id} y no se
+                                puede deshacer.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -280,10 +333,19 @@ function UsuariosAdmin() {
             <CardTitle className="text-base">Permisos por rol</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            <p><Badge>super_admin</Badge> Todo, incluido eliminar y gestionar usuarios.</p>
-            <p><Badge>admin</Badge> Crea y edita catálogos y registros. No elimina ni gestiona usuarios.</p>
-            <p><Badge>editor</Badge> Captura y edita registros. No modifica catálogos ni elimina.</p>
-            <p><Badge>viewer</Badge> Solo lectura.</p>
+            <p>
+              <Badge>super_admin</Badge> Todo, incluido eliminar y gestionar usuarios.
+            </p>
+            <p>
+              <Badge>admin</Badge> Crea y edita catálogos y registros. No elimina ni gestiona
+              usuarios.
+            </p>
+            <p>
+              <Badge>editor</Badge> Captura y edita registros. No modifica catálogos ni elimina.
+            </p>
+            <p>
+              <Badge>viewer</Badge> Solo lectura.
+            </p>
           </CardContent>
         </Card>
       </main>
