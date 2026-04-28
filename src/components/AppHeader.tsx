@@ -1,7 +1,20 @@
-import { ShieldCheck, Settings } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { ShieldCheck, Settings, LogOut, Users } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useAuth } from "@/lib/auth-context";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export function AppHeader() {
+  const { user, roles, isSuperAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate({ to: "/auth" });
+  };
+
+  const primaryRole = roles[0] ?? "—";
+
   return (
     <header className="border-b border-border bg-card">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -14,12 +27,23 @@ export function AppHeader() {
             <p className="text-xs text-muted-foreground">DIAFRA S.A. de C.V. — Validación · FOR-VAL-16</p>
           </div>
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="rounded-full bg-muted px-2.5 py-1">NOM-241-SSA1-2025</span>
-            <span className="rounded-full bg-muted px-2.5 py-1">ISO 14644</span>
-            <span className="rounded-full bg-muted px-2.5 py-1">FEUM 13ª Ed.</span>
-          </div>
+        <div className="flex items-center gap-2">
+          {user && (
+            <div className="hidden md:flex items-center gap-2 mr-2">
+              <span className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</span>
+              <Badge variant="secondary" className="text-[10px]">{primaryRole}</Badge>
+            </div>
+          )}
+          {isSuperAdmin && (
+            <Link
+              to="/admin/usuarios"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Gestión de usuarios"
+              title="Gestión de usuarios"
+            >
+              <Users className="h-4 w-4" />
+            </Link>
+          )}
           <Link
             to="/configuracion"
             className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
@@ -28,6 +52,11 @@ export function AppHeader() {
           >
             <Settings className="h-4 w-4" />
           </Link>
+          {user && (
+            <Button variant="ghost" size="sm" onClick={handleLogout} title="Cerrar sesión">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
         </div>
       </div>
     </header>

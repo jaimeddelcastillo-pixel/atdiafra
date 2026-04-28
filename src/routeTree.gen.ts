@@ -14,6 +14,7 @@ import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
+import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 
 const ReporteRoute = ReporteRouteImport.update({
   id: '/reporte',
@@ -40,12 +41,18 @@ const ModuloSlugRoute = ModuloSlugRouteImport.update({
   path: '/modulo/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
+  id: '/admin/usuarios',
+  path: '/admin/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRoutesById {
@@ -61,19 +69,33 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/configuracion' | '/reporte' | '/modulo/$slug'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/configuracion'
+    | '/reporte'
+    | '/admin/usuarios'
+    | '/modulo/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/configuracion' | '/reporte' | '/modulo/$slug'
+  to:
+    | '/'
+    | '/auth'
+    | '/configuracion'
+    | '/reporte'
+    | '/admin/usuarios'
+    | '/modulo/$slug'
   id:
     | '__root__'
     | '/'
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/admin/usuarios'
     | '/modulo/$slug'
   fileRoutesById: FileRoutesById
 }
@@ -82,6 +104,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
   ReporteRoute: typeof ReporteRoute
+  AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
 }
 
@@ -122,6 +145,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ModuloSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/usuarios': {
+      id: '/admin/usuarios'
+      path: '/admin/usuarios'
+      fullPath: '/admin/usuarios'
+      preLoaderRoute: typeof AdminUsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -130,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
   ReporteRoute: ReporteRoute,
+  AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
 }
 export const routeTree = rootRouteImport
