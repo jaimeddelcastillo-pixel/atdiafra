@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReporteRouteImport } from './routes/reporte'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -21,6 +22,11 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReporteRoute = ReporteRouteImport.update({
   id: '/reporte',
   path: '/reporte',
@@ -83,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
@@ -165,6 +177,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
   ReporteRoute: typeof ReporteRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
@@ -175,6 +188,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reporte': {
       id: '/reporte'
       path: '/reporte'
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
   ReporteRoute: ReporteRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
