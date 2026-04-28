@@ -134,7 +134,7 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-muted/30">
         <h3 className="text-sm font-semibold text-foreground">Lecturas semanales — semana del {semana.semana_inicio}</h3>
-        <p className="text-xs text-muted-foreground">7 días × 3 turnos = 21 lecturas por variable. Las celdas editadas tras una carga aparecen marcadas en amarillo.</p>
+        <p className="text-xs text-muted-foreground">7 días × 3 turnos = 21 lecturas por variable. Semana inglesa: Sáb/Dom marcados como <span className="font-medium">NA</span> por defecto. Toca <span className="font-medium">NA</span> para alternar si ese día sí se trabajó.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -147,6 +147,7 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
             </tr>
           </thead>
           <tbody>
+            {renderNAControl()}
             {renderRow("T", "°C", limits.tempMin, limits.tempMax)}
             {renderRow("HR", "%HR", limits.hrMin, limits.hrMax)}
           </tbody>
