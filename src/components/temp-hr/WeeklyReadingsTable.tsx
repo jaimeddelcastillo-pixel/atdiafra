@@ -108,7 +108,7 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
     );
   };
 
-  // Fila de control NA por día (aplica a los 3 turnos del día simultáneamente para T y HR)
+  // Fila de control NA por día (aplica a los 3 turnos del día y a T+HR)
   const renderNAControl = () => (
     <tr className="border-t border-border bg-muted/10">
       <td className="px-3 py-1 text-[10px] text-muted-foreground">No laborable</td>
@@ -118,20 +118,8 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
           <td key={dia} className="px-1 py-1 text-center">
             <button
               type="button"
-              onClick={() => {
-                // toggle todos los turnos del día
-                for (let ti = 0; ti < TURNOS.length; ti++) {
-                  const i = cellIdx(di, ti);
-                  const tArr = semana.lecturas.slice();
-                  const hrArr = (semana.lecturas_hr ?? []).slice();
-                  const next = !naActivo;
-                  if (tArr[i]) tArr[i] = { ...tArr[i], _na: next, valor: next ? null : tArr[i].valor };
-                  if (hrArr[i]) hrArr[i] = { ...hrArr[i], _na: next, valor: next ? null : hrArr[i].valor };
-                  semana = { ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr };
-                }
-                onChange(semana);
-              }}
-              className={`text-[10px] rounded px-1.5 py-0.5 border ${naActivo ? "bg-muted text-muted-foreground border-border" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
+              onClick={() => setDayNA(di, !naActivo)}
+              className={`text-[10px] rounded px-1.5 py-0.5 border ${naActivo ? "bg-muted text-foreground border-border" : "bg-background text-muted-foreground border-border hover:bg-muted"}`}
               title={naActivo ? "Marcar como laborable" : "Marcar día como no laborable (NA)"}
             >
               {naActivo ? "NA ✓" : "NA"}
