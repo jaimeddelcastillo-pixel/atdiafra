@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
 import { ModuloCard } from "@/components/ModuloCard";
 import { MODULOS } from "@/lib/diafra-data";
-import { Activity, FlaskConical } from "lucide-react";
+import { Activity, FlaskConical, Library, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
