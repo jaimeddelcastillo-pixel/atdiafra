@@ -231,6 +231,7 @@ function ReportePage() {
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Módulo</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">ISO</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Semanas</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Detalle de semanas (lunes · lecturas · estado)</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Creado</th>
                       <th className="px-3 py-2 text-right font-medium text-muted-foreground">Acciones</th>
                     </tr>
@@ -239,13 +240,40 @@ function ReportePage() {
                     {filtrados.map((r) => {
                       const moduloDef = MODULOS.find((m) => moduloSlug(r.modulo) === m.slug);
                       const editable = moduloDef?.enabled;
+                      const necesarias = r.modulo === "temphr" ? 42 : 21;
+                      const semanasOrden = [...r.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
                       return (
-                        <tr key={r.id} className="border-t border-border">
+                        <tr key={r.id} className="border-t border-border align-top">
                           <td className="px-3 py-2 font-medium text-foreground">{r.nombre}</td>
                           <td className="px-3 py-2 text-muted-foreground">{r.modulo}</td>
                           <td className="px-3 py-2 text-muted-foreground">{r.iso ?? "—"}</td>
                           <td className="px-3 py-2 text-center tabular-nums">{r.semanas.length}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{r.created_at.slice(0, 10)}</td>
+                          <td className="px-3 py-2 text-[11px]">
+                            {semanasOrden.length === 0 ? (
+                              <span className="text-muted-foreground">Sin semanas</span>
+                            ) : (
+                              <div className="flex flex-col gap-0.5">
+                                {semanasOrden.map((s) => {
+                                  const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
+                                  const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
+                                  const total = t + hr;
+                                  const completa = total >= necesarias;
+                                  return (
+                                    <div key={s.id} className="flex items-center gap-2">
+                                      <span className="font-mono text-foreground">{s.semana_inicio}</span>
+                                      <span className="text-muted-foreground">
+                                        {r.modulo === "temphr" ? `T:${t} HR:${hr}` : `${total}`} / {necesarias}
+                                      </span>
+                                      <span className={completa ? "text-success" : total > 0 ? "text-warning" : "text-destructive"}>
+                                        {completa ? "✓ completa" : total > 0 ? "parcial" : "vacía"}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex gap-1">
                               {editable && (
