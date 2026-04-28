@@ -92,7 +92,7 @@ function TempHRModule() {
 
   // Lista de registros existentes en este módulo
   const [registros, setRegistros] = useState<Registro[]>([]);
-  const reload = () => setRegistros(listRegistros("temphr"));
+  const reload = () => listRegistros("temphr").then(setRegistros).catch((e) => toast.error("No se pudieron cargar registros: " + e.message));
   useEffect(() => { reload(); }, []);
 
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -107,7 +107,7 @@ function TempHRModule() {
     iso: "ISO-8 (Clase D)" as IsoClase,
   });
 
-  const createRegistro = () => {
+  const createRegistro = async () => {
     if (!draft.area_id) {
       toast.error("Selecciona o crea un área");
       return;
@@ -137,18 +137,26 @@ function TempHRModule() {
       created_at: new Date().toISOString(),
       activo: true,
     };
-    upsertRegistro(r);
-    reload();
-    setActiveId(r.id);
-    setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
-    toast.success("Registro creado");
+    try {
+      await upsertRegistro(r);
+      await reload();
+      setActiveId(r.id);
+      setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
+      toast.success("Registro creado");
+    } catch (e: any) {
+      toast.error("No se pudo crear el registro: " + e.message);
+    }
   };
 
-  const removeRegistro = (id: string) => {
+  const removeRegistro = async (id: string) => {
     if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
-    deleteRegistro(id);
-    if (activeId === id) setActiveId(null);
-    reload();
+    try {
+      await deleteRegistro(id);
+      if (activeId === id) setActiveId(null);
+      await reload();
+    } catch (e: any) {
+      toast.error("No se pudo eliminar: " + e.message);
+    }
   };
 
   return (
