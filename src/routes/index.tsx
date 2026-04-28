@@ -69,6 +69,33 @@ function Index() {
           </div>
         </section>
 
+        {/* Catálogo */}
+        <section className="mb-10">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Administración</h2>
+          </div>
+          <Link
+            to="/configuracion"
+            className="group block rounded-xl border border-border bg-card p-5 hover:border-primary/40 hover:shadow-sm transition-all"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-secondary/10 text-secondary shrink-0">
+                <Library className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-base font-semibold text-foreground">Catálogo</h3>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Da de alta y administra <span className="font-medium text-foreground">instrumentos</span> (termohigrómetros, manómetros de filtro, manómetros diferenciales, otros), <span className="font-medium text-foreground">áreas clasificadas</span>, <span className="font-medium text-foreground">sistemas HVAC</span> y <span className="font-medium text-foreground">pares de cuartos</span>. Asigna a cada instrumento la medición que le corresponde.
+                </p>
+              </div>
+            </div>
+          </Link>
+        </section>
+
+
         {/* Módulos próximos (extra) */}
         <section>
           <div className="flex items-baseline justify-between mb-4">
