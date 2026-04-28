@@ -91,7 +91,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
     setLoading(true);
     try {
       setPreviewUrl(URL.createObjectURL(file));
-      const { base64, mediaType } = await fileToBase64(file);
+      const { base64, mediaType } = await compressImage(file);
 
       const { data, error: fnError } = await supabase.functions.invoke("extract-bitacora", {
         body: { imageBase64: base64, mediaType, module: "temp_hr", variable, context },
