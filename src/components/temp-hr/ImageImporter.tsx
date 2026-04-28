@@ -84,7 +84,11 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [variable, setVariable] = useState<"T" | "HR">("T");
+  const [fechaSemana, setFechaSemana] = useState<string>(semanaInicio);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Si el editor cambia de semana activa, sincronizamos (el usuario aún puede sobreescribir).
+  useEffect(() => { setFechaSemana(semanaInicio); }, [semanaInicio]);
 
   async function handleFile(file: File) {
     setError(null);
