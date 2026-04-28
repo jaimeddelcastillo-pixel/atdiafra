@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthGuard } from "@/components/AuthGuard";
 import { ModuloCard } from "@/components/ModuloCard";
 import { LocalMigrationCard } from "@/components/LocalMigrationCard";
 import { CumplimientoCard } from "@/components/CumplimientoCard";
@@ -13,7 +14,7 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Tablero de validación: análisis de CQA's conforme a NOM-241-SSA1-2025, ISO 14644 y FEUM 13ª Edición." },
     ],
   }),
-  component: Index,
+  component: () => <AuthGuard><Index /></AuthGuard>,
 });
 
 function Index() {

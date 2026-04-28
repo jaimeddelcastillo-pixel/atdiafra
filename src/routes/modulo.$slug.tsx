@@ -1,6 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
+import { AuthGuard } from "@/components/AuthGuard";
+import { useAuth } from "@/lib/auth-context";
 import { MODULOS } from "@/lib/diafra-data";
 
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
