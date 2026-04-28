@@ -116,10 +116,43 @@ function ReportePage() {
               Todos los registros de todos los módulos. Edita, borra o revisa el cumplimiento semanal.
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={reload} className="gap-1">
-            <RefreshCw className="h-4 w-4" /> Actualizar
-          </Button>
-        </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={reload} className="gap-1">
+              <RefreshCw className="h-4 w-4" /> Actualizar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  exportarReporteExcel(registros, cumplimiento, filtroAnio);
+                  toast.success("Excel generado");
+                } catch (e: any) {
+                  toast.error("No se pudo exportar: " + e.message);
+                }
+              }}
+              disabled={loading || registros.length === 0}
+              className="gap-1"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Excel
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  exportarReportePDF(registros, cumplimiento, filtroAnio);
+                  toast.success("PDF generado");
+                } catch (e: any) {
+                  toast.error("No se pudo exportar: " + e.message);
+                }
+              }}
+              disabled={loading || registros.length === 0}
+              className="gap-1"
+            >
+              <FileText className="h-4 w-4" /> PDF
+            </Button>
+          </div>
 
         {/* Filtros */}
         <div className="mt-6 rounded-xl border border-border bg-card p-4 flex flex-wrap items-end gap-3">
