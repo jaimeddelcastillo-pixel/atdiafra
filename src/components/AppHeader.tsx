@@ -1,11 +1,12 @@
-import { ShieldCheck, Settings, LogOut, Users } from "lucide-react";
+import { ShieldCheck, Settings, LogOut, Users, ShieldAlert } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 export function AppHeader() {
-  const { user, roles, isSuperAdmin, signOut } = useAuth();
+  const { user, roles, isSuperAdmin, hasRole, signOut } = useAuth();
+  const canSeeAudit = isSuperAdmin || hasRole("admin");
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -33,6 +34,16 @@ export function AppHeader() {
               <span className="text-xs text-muted-foreground truncate max-w-[180px]">{user.email}</span>
               <Badge variant="secondary" className="text-[10px]">{primaryRole}</Badge>
             </div>
+          )}
+          {canSeeAudit && (
+            <Link
+              to="/admin/auditoria"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label="Auditoría"
+              title="Auditoría"
+            >
+              <ShieldAlert className="h-4 w-4" />
+            </Link>
           )}
           {isSuperAdmin && (
             <Link
