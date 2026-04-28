@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronLeft, Trash, Eye, RefreshCw } from "lucide-react";
+import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, type Registro, type Modulo } from "@/lib/semanas";
 import { MODULOS } from "@/lib/diafra-data";
+import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/reporte")({
   head: () => ({
@@ -115,9 +116,43 @@ function ReportePage() {
               Todos los registros de todos los módulos. Edita, borra o revisa el cumplimiento semanal.
             </p>
           </div>
-          <Button size="sm" variant="outline" onClick={reload} className="gap-1">
-            <RefreshCw className="h-4 w-4" /> Actualizar
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={reload} className="gap-1">
+              <RefreshCw className="h-4 w-4" /> Actualizar
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  exportarReporteExcel(registros, cumplimiento, filtroAnio);
+                  toast.success("Excel generado");
+                } catch (e: any) {
+                  toast.error("No se pudo exportar: " + e.message);
+                }
+              }}
+              disabled={loading || registros.length === 0}
+              className="gap-1"
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Excel
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                try {
+                  exportarReportePDF(registros, cumplimiento, filtroAnio);
+                  toast.success("PDF generado");
+                } catch (e: any) {
+                  toast.error("No se pudo exportar: " + e.message);
+                }
+              }}
+              disabled={loading || registros.length === 0}
+              className="gap-1"
+            >
+              <FileText className="h-4 w-4" /> PDF
+            </Button>
+          </div>
         </div>
 
         {/* Filtros */}
