@@ -166,6 +166,38 @@ export function exportarNormativoPDF(
         doc.setTextColor(0);
       },
     });
+
+    // Gráficas de tendencia (2 por página landscape)
+    if (incluirGraficas) {
+      const chartW = 520;
+      const chartH = 180;
+      const margin = 40;
+      const gap = 16;
+      let yCursor = (doc as any).lastAutoTable.finalY + 24;
+      let col = 0;
+
+      for (const a of g.items) {
+        const sems = semanasDelPeriodo(a.registro, a.periodo);
+        const charts = generarChartsRegistro(a.registro, sems, chartW, chartH);
+        for (const c of charts) {
+          // ¿Cabe en la página actual?
+          if (yCursor + chartH > pageH - 30) {
+            doc.addPage();
+            doc.setFontSize(13).setFont("helvetica", "bold");
+            doc.text(`${g.etiqueta} — gráficas`, 40, 40);
+            yCursor = 60;
+            col = 0;
+          }
+          const x = margin + col * (chartW + gap);
+          doc.addImage(c.dataUrl, "PNG", x, yCursor, chartW, chartH);
+          col++;
+          if (col >= 2) {
+            col = 0;
+            yCursor += chartH + gap;
+          }
+        }
+      }
+    }
   }
 
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
