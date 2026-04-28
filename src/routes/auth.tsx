@@ -23,7 +23,7 @@ function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   if (!loading && session) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSignIn = async (e: FormEvent) => {
