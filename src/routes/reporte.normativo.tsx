@@ -51,6 +51,7 @@ function NormativoPage() {
   const [agrupar, setAgrupar] = useState<AgruparPor>("registro");
   const [filtroArea, setFiltroArea] = useState<string>("");
   const [filtroHvac, setFiltroHvac] = useState<string>("");
+  const [incluirGraficas, setIncluirGraficas] = useState(true);
 
   const reload = async () => {
     setLoading(true);
@@ -120,8 +121,16 @@ function NormativoPage() {
   };
   const handlePDF = () => {
     try {
-      exportarNormativoPDF(analisis, agrupar, { areas: areasMap, hvac: hvacMap });
-      toast.success("PDF generado");
+      const t = toast.loading(incluirGraficas ? "Generando PDF con gráficas…" : "Generando PDF…");
+      // Pequeño delay para que el toast se muestre antes del bloqueo del canvas
+      setTimeout(() => {
+        try {
+          exportarNormativoPDF(analisis, agrupar, { areas: areasMap, hvac: hvacMap }, { incluirGraficas });
+          toast.success("PDF generado", { id: t });
+        } catch (e: any) {
+          toast.error("Error: " + e.message, { id: t });
+        }
+      }, 50);
     } catch (e: any) {
       toast.error("Error: " + e.message);
     }
@@ -154,6 +163,15 @@ function NormativoPage() {
             <Button size="sm" variant="outline" onClick={handleExcel} disabled={loading || analisis.length === 0} className="gap-1">
               <FileSpreadsheet className="h-4 w-4" /> Excel
             </Button>
+            <label className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-input rounded-md px-2 h-9">
+              <input
+                type="checkbox"
+                checked={incluirGraficas}
+                onChange={(e) => setIncluirGraficas(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Gráficas en PDF
+            </label>
             <Button size="sm" onClick={handlePDF} disabled={loading || analisis.length === 0} className="gap-1">
               <FileText className="h-4 w-4" /> PDF
             </Button>

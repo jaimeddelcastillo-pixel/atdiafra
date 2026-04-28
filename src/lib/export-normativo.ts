@@ -6,9 +6,11 @@ import {
   MINIMO_NORMATIVO,
   etiquetaGrupo,
   claveGrupo,
+  semanasDelPeriodo,
   type AnalisisRegistro,
   type AgruparPor,
 } from "./normativo";
+import { generarChartsRegistro } from "./chart-renderer";
 
 type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
 
@@ -73,7 +75,9 @@ export function exportarNormativoPDF(
   analisis: AnalisisRegistro[],
   agrupar: AgruparPor,
   cat: Catalogos,
+  opts: { incluirGraficas?: boolean } = {},
 ) {
+  const incluirGraficas = opts.incluirGraficas !== false;
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -162,6 +166,38 @@ export function exportarNormativoPDF(
         doc.setTextColor(0);
       },
     });
+
+    // Gráficas de tendencia (2 por página landscape)
+    if (incluirGraficas) {
+      const chartW = 520;
+      const chartH = 180;
+      const margin = 40;
+      const gap = 16;
+      let yCursor = (doc as any).lastAutoTable.finalY + 24;
+      let col = 0;
+
+      for (const a of g.items) {
+        const sems = semanasDelPeriodo(a.registro, a.periodo);
+        const charts = generarChartsRegistro(a.registro, sems, chartW, chartH);
+        for (const c of charts) {
+          // ¿Cabe en la página actual?
+          if (yCursor + chartH > pageH - 30) {
+            doc.addPage();
+            doc.setFontSize(13).setFont("helvetica", "bold");
+            doc.text(`${g.etiqueta} — gráficas`, 40, 40);
+            yCursor = 60;
+            col = 0;
+          }
+          const x = margin + col * (chartW + gap);
+          doc.addImage(c.dataUrl, "PNG", x, yCursor, chartW, chartH);
+          col++;
+          if (col >= 2) {
+            col = 0;
+            yCursor += chartH + gap;
+          }
+        }
+      }
+    }
   }
 
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
