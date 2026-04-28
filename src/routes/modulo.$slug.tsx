@@ -237,7 +237,10 @@ function TempHRModule() {
             ) : (
               <RegistroEditor
                 registro={active}
-                onChange={(r) => { upsertRegistro(r); reload(); }}
+                onChange={async (r) => {
+                  try { await upsertRegistro(r); await reload(); }
+                  catch (e: any) { toast.error("No se pudo guardar: " + e.message); }
+                }}
                 onDelete={() => removeRegistro(active.id)}
               />
             )}
