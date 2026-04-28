@@ -126,6 +126,34 @@ export async function createManagedUserAccount(
   return getManagedUsers(accessToken);
 }
 
+export async function inviteManagedUserAccount(
+  accessToken: string,
+  input: { email: string; role: string; redirectTo?: string },
+): Promise<AdminUserView[]> {
+  await requireSuperAdmin(accessToken);
+
+  const email = input.email.trim().toLowerCase();
+  const role = assertRole(input.role);
+  if (!email) throw new Error("Captura el correo del usuario.");
+
+  const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    email,
+    input.redirectTo ? { redirectTo: input.redirectTo } : undefined,
+  );
+
+  if (inviteError || !invited.user) {
+    throw new Error(inviteError?.message ?? "No se pudo enviar la invitación.");
+  }
+
+  const { error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .upsert({ user_id: invited.user.id, role }, { onConflict: "user_id,role" });
+
+  if (roleError) throw new Error(roleError.message);
+
+  return getManagedUsers(accessToken);
+}
+
 export async function updateManagedUserAccountRole(
   accessToken: string,
   input: { userId: string; role: string },
