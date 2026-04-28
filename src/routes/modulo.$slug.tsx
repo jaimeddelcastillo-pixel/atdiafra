@@ -80,10 +80,14 @@ const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", 
 function TempHRModule() {
   // Catálogo de termohigrómetros activos
   const [termohigrometros, setTermohigrometros] = useState<Instrumento[]>([]);
+  const [areas, setAreas] = useState<AreaClasificada[]>([]);
   useEffect(() => {
     listInstrumentos({ tipo: "termohigrometro", soloActivos: true })
       .then(setTermohigrometros)
       .catch((e) => toast.error("No se pudieron cargar instrumentos: " + e.message));
+    listAreas(true)
+      .then(setAreas)
+      .catch((e) => toast.error("No se pudieron cargar áreas: " + e.message));
   }, []);
 
   // Lista de registros existentes en este módulo
@@ -96,6 +100,7 @@ function TempHRModule() {
 
   // Estado del formulario nuevo registro
   const [draft, setDraft] = useState({
+    area_id: "",
     codigoArea: "",
     nombreArea: "",
     instrumento_id: "",
