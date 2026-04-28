@@ -106,9 +106,14 @@ function ReportePage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-3">
-          <ChevronLeft className="h-4 w-4" /> Tablero
-        </Link>
+        <div className="flex items-center justify-between mb-3">
+          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+            <ChevronLeft className="h-4 w-4" /> Tablero
+          </Link>
+          <Link to="/reporte/normativo" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+            Reporte normativo (≥90 lecturas) →
+          </Link>
+        </div>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Reporte consolidado</h1>
