@@ -73,6 +73,14 @@ function Index() {
           </div>
         </section>
 
+        {/* Cumplimiento */}
+        <section className="mb-10">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Resumen</h2>
+          </div>
+          <CumplimientoCard />
+        </section>
+
         {/* Catálogo */}
         <section className="mb-10">
           <div className="flex items-baseline justify-between mb-4">
