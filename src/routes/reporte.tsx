@@ -173,7 +173,7 @@ function ReportePage() {
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Completas</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Faltantes</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Semanas capturadas (lunes)</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes (últimos 8)</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -198,7 +198,16 @@ function ReportePage() {
                             {semanasAnio.length > 0 ? semanasAnio.join(", ") : "—"}
                           </td>
                           <td className="px-3 py-2 text-[11px] text-muted-foreground">
-                            {faltantes.slice(-8).join(", ") || "—"}
+                            {faltantes.length === 0 ? (
+                              <span className="text-success">Ninguno ✓</span>
+                            ) : (
+                              <details>
+                                <summary className="cursor-pointer hover:text-foreground">Ver {faltantes.length} faltante(s)</summary>
+                                <div className="mt-1 max-h-40 overflow-y-auto leading-5">
+                                  {faltantes.join(", ")}
+                                </div>
+                              </details>
+                            )}
                           </td>
                         </tr>
                       );
