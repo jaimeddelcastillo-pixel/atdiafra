@@ -16,7 +16,12 @@ export interface PuntoLectura {
   quien: string | null;
   _edited?: boolean;
   _motivo?: string;
+  /** No aplica: día/turno no laborable (semana inglesa: Sáb/Dom por defecto). No cuenta para "completa". */
+  _na?: boolean;
 }
+
+/** Días considerados no laborables por defecto (semana inglesa). */
+export const DIAS_NO_LABORABLES_DEFAULT: Dia[] = ["Sábado", "Domingo"];
 
 export interface Semana {
   id: string;
@@ -72,7 +77,16 @@ export function nombreMes(date: Date = new Date()): string {
 
 export function semanaVacia(opts: { semana_inicio: string; mes: string; anio: string; unidad: string; esTHR?: boolean }): Semana {
   const make = (): PuntoLectura[] =>
-    DIAS.flatMap((dia) => TURNOS.map((turno) => ({ dia, turno, valor: null, hora: null, quien: null })));
+    DIAS.flatMap((dia) =>
+      TURNOS.map((turno) => ({
+        dia,
+        turno,
+        valor: null,
+        hora: null,
+        quien: null,
+        _na: DIAS_NO_LABORABLES_DEFAULT.includes(dia),
+      })),
+    );
   return {
     id: crypto.randomUUID(),
     semana_inicio: opts.semana_inicio,
