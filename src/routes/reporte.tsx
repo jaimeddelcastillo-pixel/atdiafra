@@ -3,11 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronLeft, Trash, Eye, RefreshCw } from "lucide-react";
+import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, type Registro, type Modulo } from "@/lib/semanas";
 import { MODULOS } from "@/lib/diafra-data";
+import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
 
 export const Route = createFileRoute("/reporte")({
   head: () => ({
