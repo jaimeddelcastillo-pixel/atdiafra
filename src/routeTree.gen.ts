@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReporteRouteImport } from './routes/reporte'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -18,7 +19,14 @@ import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReporteRoute = ReporteRouteImport.update({
   id: '/reporte',
   path: '/reporte',
@@ -65,16 +73,29 @@ const LovableEmailQueueProcessRoute =
     path: '/lovable/email/queue/process',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
@@ -82,10 +103,13 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
@@ -94,10 +118,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
@@ -107,10 +134,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -118,10 +148,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
   id:
     | '__root__'
@@ -129,10 +162,13 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
@@ -141,14 +177,24 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
   ReporteRoute: typeof ReporteRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reporte': {
       id: '/reporte'
       path: '/reporte'
@@ -212,6 +258,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -231,9 +291,12 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
   ReporteRoute: ReporteRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport

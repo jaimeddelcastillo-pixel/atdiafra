@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
-import { Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppHeader } from "@/components/AppHeader";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   createManagedUser,
   deleteManagedUser,
+  inviteManagedUser,
   listManagedUsers,
   updateManagedUserRole,
   type AdminUserView,
@@ -76,9 +77,12 @@ function UsuariosAdmin() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
+  const [openInvite, setOpenInvite] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<AppRole>("viewer");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("viewer");
 
   const load = async () => {
     try {
@@ -113,6 +117,28 @@ function UsuariosAdmin() {
       toast.success("Usuario creado");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo crear el usuario");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleInvite = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    try {
+      setBusy("invite");
+      const accessToken = await getAccessToken();
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      const data = await inviteManagedUser({
+        data: { accessToken, email: inviteEmail, role: inviteRole, redirectTo },
+      });
+      setRows(data);
+      setInviteEmail("");
+      setInviteRole("viewer");
+      setOpenInvite(false);
+      toast.success("Invitación enviada por correo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo invitar al usuario");
     } finally {
       setBusy(null);
     }
@@ -228,6 +254,66 @@ function UsuariosAdmin() {
                       </Button>
                       <Button type="submit" disabled={busy === "create"}>
                         {busy === "create" ? "Creando…" : "Crear usuario"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+              <Dialog open={openInvite} onOpenChange={setOpenInvite}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="secondary">
+                    <Mail />
+                    Invitar por correo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Invitar usuario</DialogTitle>
+                    <DialogDescription>
+                      Le enviaremos un correo con un enlace para crear su contraseña.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form className="space-y-4" onSubmit={handleInvite}>
+                    <div className="space-y-2">
+                      <Label htmlFor="invite-email">Correo</Label>
+                      <Input
+                        id="invite-email"
+                        type="email"
+                        autoComplete="email"
+                        value={inviteEmail}
+                        onChange={(event) => setInviteEmail(event.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rol inicial</Label>
+                      <Select
+                        value={inviteRole}
+                        onValueChange={(value) => setInviteRole(value as AppRole)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ROLES.map((item) => (
+                            <SelectItem key={item} value={item}>
+                              {item}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setOpenInvite(false)}
+                        disabled={busy === "invite"}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="submit" disabled={busy === "invite"}>
+                        {busy === "invite" ? "Enviando…" : "Enviar invitación"}
                       </Button>
                     </DialogFooter>
                   </form>

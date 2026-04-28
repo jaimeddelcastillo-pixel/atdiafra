@@ -4,6 +4,7 @@ import {
   createManagedUserAccount,
   deleteManagedUserAccount,
   getManagedUsers,
+  inviteManagedUserAccount,
   updateManagedUserAccountRole,
 } from "./admin-users.server";
 
@@ -27,6 +28,18 @@ export const createManagedUser = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => createManagedUserAccount(data.accessToken, data));
+
+export const inviteManagedUser = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    tokenSchema
+      .extend({
+        email: z.string().email(),
+        role: roleSchema,
+        redirectTo: z.string().url().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => inviteManagedUserAccount(data.accessToken, data));
 
 export const updateManagedUserRole = createServerFn({ method: "POST" })
   .inputValidator((data) =>
