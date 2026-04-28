@@ -40,6 +40,7 @@ export const Route = createFileRoute("/configuracion")({
 const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
 
 function ConfiguracionPage() {
+  const { canWriteCatalogs } = useAuth();
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -56,6 +57,11 @@ function ConfiguracionPage() {
             </p>
           </div>
         </div>
+        {!canWriteCatalogs && (
+          <div className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Estás en modo solo lectura. Solo <strong>super_admin</strong> y <strong>admin</strong> pueden modificar catálogos.
+          </div>
+        )}
 
         <Tabs defaultValue="hvac" className="w-full">
           <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
