@@ -188,8 +188,13 @@ function TempHRModule() {
             <div className="border-t border-border pt-4 space-y-3">
               <h3 className="text-sm font-semibold">Nuevo registro</h3>
               <div className="space-y-2">
-                <Input placeholder="Código de área (DCC-03)" value={draft.codigoArea} onChange={(e) => setDraft({ ...draft, codigoArea: e.target.value })} />
-                <Input placeholder="Nombre del área (Siembras I)" value={draft.nombreArea} onChange={(e) => setDraft({ ...draft, nombreArea: e.target.value })} />
+                <AreaSelector
+                  value={draft.area_id}
+                  areas={areas}
+                  onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
+                  onCatalogChanged={setAreas}
+                  defaultIso={draft.iso}
+                />
                 <InstrumentoSelector
                   tipo="termohigrometro"
                   tipoLabel="termohigrómetro"
@@ -200,16 +205,16 @@ function TempHRModule() {
                   onCatalogChanged={setTermohigrometros}
                   placeholderCodigo="INS-CMB-20"
                 />
-
-                <select
-                  value={draft.iso}
-                  onChange={(e) => setDraft({ ...draft, iso: e.target.value as IsoClase })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {ISO_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
+                {draft.area_id && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
+                  </p>
+                )}
               </div>
               <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
+              {areas.length === 0 && (
+                <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
+              )}
               {termohigrometros.length === 0 && (
                 <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
               )}
