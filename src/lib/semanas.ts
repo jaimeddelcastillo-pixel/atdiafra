@@ -156,7 +156,7 @@ export async function listRegistros(modulo?: Modulo): Promise<Registro[]> {
     .order("semana_inicio");
   if (e2) throw e2;
   const byReg = new Map<string, Semana[]>();
-  for (const s of (sems ?? []) as DbSemana[]) {
+  for (const s of (sems ?? []) as unknown as DbSemana[]) {
     const arr = byReg.get(s.registro_id) ?? [];
     arr.push({
       id: s.id,
@@ -182,7 +182,7 @@ export async function getRegistro(id: string): Promise<Registro | null> {
   const { data: sems, error: e2 } = await supabase
     .from("registro_semanas").select("*").eq("registro_id", id).order("semana_inicio");
   if (e2) throw e2;
-  const semanas: Semana[] = ((sems ?? []) as DbSemana[]).map((s) => ({
+  const semanas: Semana[] = ((sems ?? []) as unknown as DbSemana[]).map((s) => ({
     id: s.id, semana_inicio: s.semana_inicio, mes: s.mes, anio: s.anio, unidad: s.unidad,
     lecturas: (s.lecturas ?? []) as PuntoLectura[],
     lecturas_hr: (s.lecturas_hr ?? undefined) as PuntoLectura[] | undefined,
@@ -215,7 +215,7 @@ export async function upsertRegistro(r: Registro): Promise<void> {
 
   // Sincronizar semanas: upsert todas y borrar las que ya no estén
   if (r.semanas.length > 0) {
-    const rows = r.semanas.map((s) => semanaToRow(s, r.id));
+    const rows = r.semanas.map((s) => semanaToRow(s, r.id)) as unknown as never[];
     const { error: e2 } = await supabase.from("registro_semanas").upsert(rows, { onConflict: "id" });
     if (e2) throw e2;
   }
