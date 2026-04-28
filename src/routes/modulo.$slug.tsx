@@ -108,24 +108,29 @@ function TempHRModule() {
   });
 
   const createRegistro = () => {
-    if (!draft.codigoArea.trim() || !draft.nombreArea.trim()) {
-      toast.error("Captura código y nombre del área");
+    if (!draft.area_id) {
+      toast.error("Selecciona o crea un área");
       return;
     }
     if (!draft.instrumento_id) {
       toast.error("Selecciona el termohigrómetro");
       return;
     }
+    const area = areas.find((a) => a.id === draft.area_id);
     const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
-    const limits = ISO_TEMP_HR[draft.iso];
+    const iso = (area?.iso ?? draft.iso) as IsoClase;
+    const limits = ISO_TEMP_HR[iso];
+    const codigoArea = area?.codigo ?? "";
+    const nombreArea = area?.nombre ?? "";
     const r: Registro = {
       id: crypto.randomUUID(),
       modulo: "temphr",
-      nombre: `${draft.codigoArea.trim()} ${draft.nombreArea.trim()} · ${instr?.codigo ?? ""}`,
+      nombre: `${codigoArea} ${nombreArea} · ${instr?.codigo ?? ""}`,
+      area_id: draft.area_id,
       instrumento_id: draft.instrumento_id,
-      codigo_area_libre: draft.codigoArea.trim(),
-      nombre_area_libre: draft.nombreArea.trim(),
-      iso: draft.iso,
+      codigo_area_libre: codigoArea,
+      nombre_area_libre: nombreArea,
+      iso,
       lse_t: limits.tempMax, lie_t: limits.tempMin,
       lse_hr: limits.hrMax, lie_hr: limits.hrMin,
       semanas: [],
@@ -135,7 +140,7 @@ function TempHRModule() {
     upsertRegistro(r);
     reload();
     setActiveId(r.id);
-    setDraft({ codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
+    setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
     toast.success("Registro creado");
   };
 
