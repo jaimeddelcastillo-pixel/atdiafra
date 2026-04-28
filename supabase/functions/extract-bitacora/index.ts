@@ -1,4 +1,4 @@
-// Edge function: recibe imagen base64 + tipo de bitácora y devuelve datos extraídos via Anthropic Vision
+// Edge function: extrae datos de bitácoras semanales (T/HR, Filtros, Presiones) via Anthropic Vision
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -6,39 +6,45 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  imageBase64: string; // sin el prefijo data:
-  mediaType?: string; // image/jpeg | image/png | image/webp
+  imageBase64: string;
+  mediaType?: string;
   module: "temp_hr" | "filtros" | "presiones" | "agua";
-  context?: {
-    sistema?: string;
-    uma?: string;
-    area?: string;
-    iso?: string;
-  };
+  variable?: "T" | "HR"; // sólo temp_hr
+  context?: Record<string, string>;
 }
 
-const PROMPTS: Record<string, string> = {
-  temp_hr: `Eres un asistente de validación farmacéutica. Analiza esta imagen de una bitácora de Temperatura y Humedad Relativa de un área clasificada (NOM-241-SSA1-2025, ISO 14644).
+function buildPrompt(module: string, variable?: string): string {
+  if (module === "temp_hr") {
+    const varTxt = variable === "HR" ? "HUMEDAD RELATIVA (%HR)" : "TEMPERATURA (°C)";
+    return `Eres un asistente de validación farmacéutica analizando una bitácora de TEMPERATURA y HUMEDAD RELATIVA de DIAFRA S.A. de C.V. (formato FOR-MAN-06-01).
+La bitácora tiene columnas Lunes a Domingo con 3 sub-columnas por día: Mañana, Media Tarde, Tarde.
+Hay una cuadrícula gráfica que el operador usa para marcar visualmente el valor — NO la uses.
+Extrae ÚNICAMENTE los valores numéricos de ${varTxt} escritos en las filas de texto al pie de la tabla, junto con Hora de lectura y Nombre/iniciales de quien registra.
+Lee también instrumento, área, mes y año del encabezado.
 
-Extrae TODAS las lecturas visibles. Cada lectura tiene: fecha, hora, temperatura (°C), humedad relativa (%), y opcionalmente turno y operador/iniciales.
+Responde SOLO en JSON sin texto adicional, sin markdown, con esta forma exacta:
+{"mes":"","anio":"","instrumento":"","area":"","variable":"${variable === "HR" ? "HR" : "T"}","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}
 
-Devuelve EXCLUSIVAMENTE un JSON válido con esta forma exacta (sin markdown, sin texto adicional):
-{
-  "readings": [
-    { "fecha": "YYYY-MM-DD", "hora": "HH:MM", "temperatura": 22.5, "humedad": 45.2, "turno": "M", "operador": "JL" }
-  ],
-  "notas": "string con observaciones legibles en la bitácora, o vacío"
+Incluye las 21 combinaciones (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
+Si una celda está vacía o ilegible escribe valor:null. Los demás campos en null si no son legibles.`;
+  }
+  if (module === "presiones") {
+    return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIONES DIFERENCIALES de DIAFRA S.A. de C.V. (formato FOR-MAN-07-01).
+Columnas Lunes a Domingo, 3 sub-columnas: Mañana, Media Tarde, Tarde. Hay una cuadrícula gráfica con escala en Pa o inH₂O — NO la uses para extraer valores.
+Extrae los valores numéricos de las filas de texto Presión escritas al pie de cada columna. Lee también código de instrumento, área, mes y año del encabezado.
+
+Responde SOLO en JSON, 21 combinaciones, vacíos como null:
+{"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}`;
+  }
+  if (module === "filtros") {
+    return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIÓN DE BANCO DE FILTROS de DIAFRA S.A. de C.V. Registra presión diferencial en inH₂O.
+Estructura: columnas Lunes a Domingo, 3 turnos por día, cuadrícula gráfica (ignórala), filas de texto al pie con el valor numérico escrito.
+
+Responde SOLO en JSON, 21 combinaciones, vacíos como null:
+{"mes":"","anio":"","instrumento":"","area":"","unidad":"inH2O","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}`;
+  }
+  return "";
 }
-
-Reglas:
-- Si la fecha está en formato DD/MM/AAAA conviértela a YYYY-MM-DD.
-- Si un campo no es legible usa null.
-- No inventes datos. Si una fila no es legible omítela.
-- Las temperaturas suelen estar entre 15 y 30°C, la humedad entre 20 y 80%.`,
-  filtros: `Eres un asistente de validación. Extrae lecturas de una bitácora de Banco de Filtros (presión diferencial por etapa). Devuelve JSON: { "readings": [{"fecha":"YYYY-MM-DD","hora":"HH:MM","etapa":"35%","dp_pa":120,"operador":"JL"}], "notas":"" }`,
-  presiones: `Extrae lecturas de presiones diferenciales entre áreas. JSON: { "readings": [{"fecha":"YYYY-MM-DD","hora":"HH:MM","area":"X","dp_pa":15,"operador":"JL"}], "notas":"" }`,
-  agua: `Extrae lecturas de sistema de agua purificada nivel 1. JSON: { "readings": [{"fecha":"YYYY-MM-DD","hora":"HH:MM","conductividad":1.2,"toc":120,"temperatura":22,"operador":"JL"}], "notas":"" }`,
-};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -47,23 +53,19 @@ Deno.serve(async (req: Request) => {
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const body = (await req.json()) as RequestBody;
     if (!body.imageBase64 || !body.module) {
       return new Response(JSON.stringify({ error: "Faltan campos: imageBase64 y module son requeridos" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const prompt = PROMPTS[body.module] ?? PROMPTS.temp_hr;
-    const ctx = body.context
-      ? `\nContexto: Sistema=${body.context.sistema ?? "?"}, UMA=${body.context.uma ?? "?"}, Área=${body.context.area ?? "?"}, Clasificación=${body.context.iso ?? "?"}.`
-      : "";
+    const prompt = buildPrompt(body.module, body.variable);
+    const ctx = body.context ? `\nContexto adicional: ${JSON.stringify(body.context)}.` : "";
 
     const anthropicResp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -75,38 +77,27 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 4096,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: body.mediaType ?? "image/jpeg",
-                  data: body.imageBase64,
-                },
-              },
-              { type: "text", text: prompt + ctx },
-            ],
-          },
-        ],
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: body.mediaType ?? "image/jpeg", data: body.imageBase64 } },
+            { type: "text", text: prompt + ctx },
+          ],
+        }],
       }),
     });
 
     if (!anthropicResp.ok) {
       const errText = await anthropicResp.text();
       console.error("Anthropic error:", anthropicResp.status, errText);
-      return new Response(
-        JSON.stringify({ error: `Anthropic API error ${anthropicResp.status}`, detail: errText }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ error: `Anthropic API error ${anthropicResp.status}`, detail: errText }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await anthropicResp.json();
     const textOut: string = data?.content?.[0]?.text ?? "";
 
-    // Intentar parsear JSON limpio (a veces el modelo envuelve en ```json)
     let parsed: unknown = null;
     let parseError: string | null = null;
     try {
@@ -116,15 +107,13 @@ Deno.serve(async (req: Request) => {
       parseError = e instanceof Error ? e.message : String(e);
     }
 
-    return new Response(
-      JSON.stringify({ raw: textOut, parsed, parseError, usage: data?.usage }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return new Response(JSON.stringify({ raw: textOut, parsed, parseError, usage: data?.usage }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("extract-bitacora error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Error desconocido" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

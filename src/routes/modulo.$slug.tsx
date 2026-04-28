@@ -1,16 +1,22 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { MODULOS, ISO_LIMITS, IsoClass } from "@/lib/diafra-data";
+import { MODULOS } from "@/lib/diafra-data";
 import { Input } from "@/components/ui/input";
-import { ImageImporter, type ExtractedReading } from "@/components/temp-hr/ImageImporter";
-import { ReadingsTable } from "@/components/temp-hr/ReadingsTable";
+import { ImageImporter } from "@/components/temp-hr/ImageImporter";
+import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
-import { Reading, ModuleState } from "@/components/temp-hr/types";
-import { loadJSON, saveJSON } from "@/lib/storage";
-import { ChevronLeft, Save, Download, Trash } from "lucide-react";
+import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  Instrumento, IsoClase, ISO_TEMP_HR,
+  listInstrumentos,
+} from "@/lib/catalogos";
+import {
+  Registro, Semana, lunesDe, nombreMes, semanaVacia,
+  upsertRegistro, listRegistros, deleteRegistro,
+} from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
   head: ({ params }) => {
@@ -27,7 +33,6 @@ export const Route = createFileRoute("/modulo/$slug")({
       <AppHeader />
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-semibold text-foreground">Módulo no disponible</h1>
-        <p className="mt-2 text-muted-foreground">El módulo solicitado no existe o aún no está habilitado.</p>
         <Link to="/" className="inline-flex mt-6 items-center gap-1 text-primary hover:underline">
           <ChevronLeft className="h-4 w-4" /> Volver al tablero
         </Link>
@@ -68,218 +73,275 @@ function ModuloPage() {
   return <TempHRModule />;
 }
 
-interface ContextState {
-  codigoArea: string;
-  nombreArea: string;
-  instrumento: string;
-  iso: IsoClass;
-}
-
-const CONTEXT_KEY = "temp_hr:context";
-const DEFAULT_CONTEXT: ContextState = {
-  codigoArea: "",
-  nombreArea: "",
-  instrumento: "",
-  iso: "ISO-8",
-};
+const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
 
 function TempHRModule() {
-  // Contexto editable: código de área, nombre del área, instrumento, ISO
-  const [ctx, setCtx] = useState<ContextState>(DEFAULT_CONTEXT);
-  const [ctxLoaded, setCtxLoaded] = useState(false);
-
-  // Cargar contexto persistido
+  // Catálogo de termohigrómetros activos
+  const [termohigrometros, setTermohigrometros] = useState<Instrumento[]>([]);
   useEffect(() => {
-    const saved = loadJSON<ContextState | null>(CONTEXT_KEY, null);
-    if (saved) setCtx({ ...DEFAULT_CONTEXT, ...saved });
-    setCtxLoaded(true);
+    listInstrumentos({ tipo: "termohigrometro", soloActivos: true })
+      .then(setTermohigrometros)
+      .catch((e) => toast.error("No se pudieron cargar instrumentos: " + e.message));
   }, []);
-  useEffect(() => {
-    if (ctxLoaded) saveJSON(CONTEXT_KEY, ctx);
-  }, [ctx, ctxLoaded]);
 
-  const { codigoArea, nombreArea, instrumento, iso } = ctx;
-  const setIso = (v: IsoClass) => setCtx((c) => ({ ...c, iso: v }));
+  // Lista de registros existentes en este módulo
+  const [registros, setRegistros] = useState<Registro[]>([]);
+  const reload = () => setRegistros(listRegistros("temphr"));
+  useEffect(() => { reload(); }, []);
 
-  // Clave de almacenamiento por instrumento + área + ISO (con fallback)
-  const storageKey = useMemo(() => {
-    const a = (codigoArea || "sin-area").trim().replace(/\s+/g, "_");
-    const i = (instrumento || "sin-instrumento").trim().replace(/\s+/g, "_");
-    return `temp_hr:${a}:${i}:${iso}`;
-  }, [codigoArea, instrumento, iso]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const active = useMemo(() => registros.find((r) => r.id === activeId) ?? null, [registros, activeId]);
 
-  const [rows, setRows] = useState<Reading[]>([]);
-  const [notas, setNotas] = useState<string>("");
-  const [loaded, setLoaded] = useState(false);
+  // Estado del formulario nuevo registro
+  const [draft, setDraft] = useState({
+    codigoArea: "",
+    nombreArea: "",
+    instrumento_id: "",
+    iso: "ISO-8 (Clase D)" as IsoClase,
+  });
 
-  // Cargar al cambiar contexto
-  useEffect(() => {
-    const state = loadJSON<ModuleState | null>(storageKey, null);
-    setRows(state?.readings ?? []);
-    setNotas(state?.notas ?? "");
-    setLoaded(true);
-  }, [storageKey]);
-
-  // Auto-persist
-  useEffect(() => {
-    if (!loaded) return;
-    const state: ModuleState = {
-      sistemaId: `${codigoArea}|${instrumento}`,
-      iso,
-      readings: rows,
-      notas,
-      updatedAt: new Date().toISOString(),
-    };
-    saveJSON(storageKey, state);
-  }, [rows, notas, loaded, storageKey, codigoArea, instrumento, iso]);
-
-  const handleExtracted = (extracted: ExtractedReading[], notasIA?: string) => {
-    const newRows: Reading[] = extracted.map((r) => ({
+  const createRegistro = () => {
+    if (!draft.codigoArea.trim() || !draft.nombreArea.trim()) {
+      toast.error("Captura código y nombre del área");
+      return;
+    }
+    if (!draft.instrumento_id) {
+      toast.error("Selecciona el termohigrómetro");
+      return;
+    }
+    const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
+    const limits = ISO_TEMP_HR[draft.iso];
+    const r: Registro = {
       id: crypto.randomUUID(),
-      fecha: r.fecha,
-      hora: r.hora,
-      temperatura: r.temperatura,
-      humedad: r.humedad,
-      turno: r.turno ?? "",
-      operador: r.operador ?? "",
-    }));
-    setRows((prev) => [...prev, ...newRows]);
-    if (notasIA) setNotas((n) => (n ? `${n}\n${notasIA}` : notasIA));
+      modulo: "temphr",
+      nombre: `${draft.codigoArea.trim()} ${draft.nombreArea.trim()} · ${instr?.codigo ?? ""}`,
+      instrumento_id: draft.instrumento_id,
+      codigo_area_libre: draft.codigoArea.trim(),
+      nombre_area_libre: draft.nombreArea.trim(),
+      iso: draft.iso,
+      lse_t: limits.tempMax, lie_t: limits.tempMin,
+      lse_hr: limits.hrMax, lie_hr: limits.hrMin,
+      semanas: [],
+      created_at: new Date().toISOString(),
+      activo: true,
+    };
+    upsertRegistro(r);
+    reload();
+    setActiveId(r.id);
+    setDraft({ codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
+    toast.success("Registro creado");
   };
 
-  const exportCSV = () => {
-    const header = ["Fecha", "Hora", "Temperatura (C)", "Humedad (%)", "Turno", "Operador"];
-    const lines = [header.join(",")];
-    rows.forEach((r) => {
-      lines.push(
-        [r.fecha ?? "", r.hora ?? "", r.temperatura ?? "", r.humedad ?? "", r.turno ?? "", r.operador ?? ""]
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-          .join(","),
-      );
-    });
-    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    const slug = `${(codigoArea || "area").trim()}_${(instrumento || "instr").trim()}`.replace(/\s+/g, "-");
-    a.download = `temp-hr_${slug}_${iso}_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const clearAll = () => {
-    if (!confirm("¿Eliminar todas las lecturas de este contexto? Esta acción no se puede deshacer.")) return;
-    setRows([]);
-    setNotas("");
-    toast.success("Lecturas eliminadas");
+  const removeRegistro = (id: string) => {
+    if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
+    deleteRegistro(id);
+    if (activeId === id) setActiveId(null);
+    reload();
   };
 
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="mb-6">
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-3">
-            <ChevronLeft className="h-4 w-4" /> Tablero
-          </Link>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">Temperatura y Humedad Relativa</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                {(codigoArea || "—")} · {(nombreArea || "Sin nombre de área")} · {(instrumento || "—")} · {iso}
-                {ISO_LIMITS[iso].clase ? ` (${ISO_LIMITS[iso].clase})` : ""}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={exportCSV} disabled={!rows.length} className="gap-1">
-                <Download className="h-4 w-4" /> Exportar CSV
-              </Button>
-              <Button variant="outline" size="sm" onClick={clearAll} disabled={!rows.length} className="gap-1 text-destructive hover:text-destructive">
-                <Trash className="h-4 w-4" /> Limpiar
-              </Button>
-            </div>
-          </div>
-        </div>
+        <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-3">
+          <ChevronLeft className="h-4 w-4" /> Tablero
+        </Link>
+        <h1 className="text-2xl font-semibold text-foreground">Temperatura y Humedad Relativa</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Captura semanal por área e instrumento (Lunes–Domingo × 3 turnos = 21 lecturas).
+        </p>
 
-        {/* Contexto del área e instrumento */}
-        <div className="rounded-xl border border-border bg-card p-4 mb-6 space-y-4">
-          <div className="grid sm:grid-cols-3 gap-4">
+        {/* Selector / creación de registro */}
+        <div className="mt-6 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1 rounded-xl border border-border bg-card p-4 space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Código de área</label>
-              <Input
-                value={codigoArea}
-                onChange={(e) => setCtx((c) => ({ ...c, codigoArea: e.target.value }))}
-                placeholder="DCC-03"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nombre del área</label>
-              <Input
-                value={nombreArea}
-                onChange={(e) => setCtx((c) => ({ ...c, nombreArea: e.target.value }))}
-                placeholder="Siembras I"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Código del termohigrómetro</label>
-              <Input
-                value={instrumento}
-                onChange={(e) => setCtx((c) => ({ ...c, instrumento: e.target.value }))}
-                placeholder="INS-CMB-20"
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Clasificación ISO</label>
-              <select
-                value={iso}
-                onChange={(e) => setIso(e.target.value as IsoClass)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {(Object.keys(ISO_LIMITS) as IsoClass[]).map((k) => (
-                  <option key={k} value={k}>
-                    {k}{ISO_LIMITS[k].clase ? ` — ${ISO_LIMITS[k].clase}` : ""}
-                  </option>
+              <h3 className="text-sm font-semibold mb-2">Registros</h3>
+              {registros.length === 0 && <p className="text-xs text-muted-foreground">Sin registros aún. Crea uno nuevo abajo.</p>}
+              <ul className="space-y-1">
+                {registros.map((r) => (
+                  <li key={r.id}>
+                    <button
+                      onClick={() => setActiveId(r.id)}
+                      className={`w-full text-left rounded-md px-3 py-2 text-xs ${activeId === r.id ? "bg-primary/10 text-foreground border border-primary/30" : "hover:bg-muted"}`}>
+                      <div className="font-medium">{r.nombre}</div>
+                      <div className="text-muted-foreground mt-0.5">
+                        {r.iso} · {r.semanas.length} semana(s)
+                      </div>
+                    </button>
+                  </li>
                 ))}
-              </select>
+              </ul>
             </div>
-            <div className="sm:col-span-2 text-xs text-muted-foreground">
-              <p><span className="font-medium text-foreground">Límites aplicables:</span></p>
-              <p>T {ISO_LIMITS[iso].tempMin}–{ISO_LIMITS[iso].tempMax} °C · HR {ISO_LIMITS[iso].hrMin}–{ISO_LIMITS[iso].hrMax} %</p>
-              <p className="mt-1">Persistencia automática · {rows.length} lectura(s)</p>
-            </div>
-          </div>
-        </div>
 
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-2 space-y-6">
-            <ImageImporter
-              context={{ codigoArea, nombreArea, instrumento, iso }}
-              onExtracted={handleExtracted}
-            />
-            <div className="rounded-xl border border-border bg-card p-5">
-              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Save className="h-4 w-4 text-muted-foreground" /> Notas y observaciones
-              </label>
-              <textarea
-                value={notas}
-                onChange={(e) => setNotas(e.target.value)}
-                rows={5}
-                placeholder="Observaciones de la bitácora, desviaciones, acciones tomadas…"
-                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
-              />
+            <div className="border-t border-border pt-4 space-y-3">
+              <h3 className="text-sm font-semibold">Nuevo registro</h3>
+              <div className="space-y-2">
+                <Input placeholder="Código de área (DCC-03)" value={draft.codigoArea} onChange={(e) => setDraft({ ...draft, codigoArea: e.target.value })} />
+                <Input placeholder="Nombre del área (Siembras I)" value={draft.nombreArea} onChange={(e) => setDraft({ ...draft, nombreArea: e.target.value })} />
+                <select
+                  value={draft.instrumento_id}
+                  onChange={(e) => setDraft({ ...draft, instrumento_id: e.target.value })}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">— Seleccionar termohigrómetro —</option>
+                  {termohigrometros.map((i) => (
+                    <option key={i.id} value={i.id}>{i.codigo}{i.especificacion ? ` · ${i.especificacion}` : ""}</option>
+                  ))}
+                </select>
+                <select
+                  value={draft.iso}
+                  onChange={(e) => setDraft({ ...draft, iso: e.target.value as IsoClase })}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {ISO_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
+              {termohigrometros.length === 0 && (
+                <p className="text-xs text-warning">No hay termohigrómetros activos. Agrégalos en Configuración → Instrumentos.</p>
+              )}
             </div>
           </div>
-          <div className="lg:col-span-3 space-y-6">
-            <ReadingsTable rows={rows} iso={iso} onChange={setRows} />
-            <TempHRAnalysis rows={rows} iso={iso} />
+
+          <div className="lg:col-span-2">
+            {!active ? (
+              <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
+                Selecciona un registro de la lista o crea uno nuevo para empezar a capturar.
+              </div>
+            ) : (
+              <RegistroEditor
+                registro={active}
+                onChange={(r) => { upsertRegistro(r); reload(); }}
+                onDelete={() => removeRegistro(active.id)}
+              />
+            )}
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function RegistroEditor({ registro, onChange, onDelete }: {
+  registro: Registro; onChange: (r: Registro) => void; onDelete: () => void;
+}) {
+  const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
+  const [activeWeekId, setActiveWeekId] = useState<string | null>(registro.semanas[0]?.id ?? null);
+  useEffect(() => {
+    if (!activeWeekId && registro.semanas[0]) setActiveWeekId(registro.semanas[0].id);
+  }, [registro.semanas, activeWeekId]);
+
+  const activeWeek = registro.semanas.find((s) => s.id === activeWeekId) ?? null;
+
+  const addEmptyWeek = (semana_inicio?: string) => {
+    const fecha = semana_inicio ? new Date(semana_inicio + "T00:00:00") : new Date();
+    const lunes = semana_inicio ?? lunesDe(fecha);
+    if (registro.semanas.some((s) => s.semana_inicio === lunes)) {
+      toast.error("Ya existe una semana con ese lunes");
+      return;
+    }
+    const s = semanaVacia({ semana_inicio: lunes, mes: nombreMes(fecha), anio: String(fecha.getFullYear()), unidad: "°C / %HR", esTHR: true });
+    const next = { ...registro, semanas: [...registro.semanas, s] };
+    onChange(next);
+    setActiveWeekId(s.id);
+  };
+
+  const handleExtracted = (s: Semana) => {
+    // Si ya existe una semana con ese lunes, fusionamos las lecturas (la IA puede traer solo T o HR)
+    const existing = registro.semanas.find((x) => x.semana_inicio === s.semana_inicio);
+    let semanas: Semana[];
+    if (existing) {
+      const merged: Semana = {
+        ...existing,
+        lecturas: s.lecturas.some((p) => p.valor != null) ? s.lecturas : existing.lecturas,
+        lecturas_hr: s.lecturas_hr?.some((p) => p.valor != null) ? s.lecturas_hr : existing.lecturas_hr,
+        observaciones: [existing.observaciones, s.observaciones].filter(Boolean).join("\n"),
+        source: "imagen",
+        saved_at: new Date().toISOString(),
+      };
+      semanas = registro.semanas.map((x) => (x.id === existing.id ? merged : x));
+      setActiveWeekId(existing.id);
+    } else {
+      semanas = [...registro.semanas, s];
+      setActiveWeekId(s.id);
+    }
+    onChange({ ...registro, semanas });
+  };
+
+  const updateWeek = (s: Semana) => {
+    onChange({ ...registro, semanas: registro.semanas.map((x) => (x.id === s.id ? s : x)) });
+  };
+  const deleteWeek = (id: string) => {
+    if (!confirm("¿Eliminar esta semana?")) return;
+    onChange({ ...registro, semanas: registro.semanas.filter((x) => x.id !== id) });
+    if (activeWeekId === id) setActiveWeekId(null);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold">{registro.nombre}</h2>
+          <p className="text-xs text-muted-foreground">{iso} · {registro.semanas.length} semana(s)</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
+            <Plus className="h-4 w-4" /> Nueva semana actual
+          </Button>
+          <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
+            <Trash className="h-4 w-4" /> Eliminar registro
+          </Button>
+        </div>
+      </div>
+
+      <ImageImporter
+        context={{
+          codigoArea: registro.codigo_area_libre ?? "",
+          nombreArea: registro.nombre_area_libre ?? "",
+          instrumento: registro.instrumento_id ?? "",
+          iso,
+        }}
+        semanaInicio={activeWeek?.semana_inicio ?? lunesDe(new Date())}
+        onExtracted={handleExtracted}
+      />
+
+      {registro.semanas.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground mr-1">Semana:</span>
+            {registro.semanas.map((s) => (
+              <button key={s.id} onClick={() => setActiveWeekId(s.id)}
+                className={`text-xs rounded-md px-2.5 py-1 border ${activeWeekId === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
+                {s.semana_inicio}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeWeek && (
+        <>
+          <WeeklyReadingsTable semana={activeWeek} iso={iso} onChange={updateWeek} />
+          <div className="rounded-xl border border-border bg-card p-4">
+            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Save className="h-4 w-4 text-muted-foreground" /> Observaciones de la semana
+            </label>
+            <textarea
+              value={activeWeek.observaciones}
+              onChange={(e) => updateWeek({ ...activeWeek, observaciones: e.target.value })}
+              rows={3}
+              className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-y"
+            />
+            <div className="mt-3 flex justify-end">
+              <Button size="sm" variant="ghost" onClick={() => deleteWeek(activeWeek.id)} className="text-destructive">
+                <Trash className="h-3.5 w-3.5 mr-1" /> Eliminar semana
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <TempHRAnalysis semanas={registro.semanas} iso={iso} />
     </div>
   );
 }
