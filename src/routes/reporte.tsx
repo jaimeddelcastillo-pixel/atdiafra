@@ -247,6 +247,7 @@ function ReportePage() {
                       const editable = moduloDef?.enabled;
                       const necesarias = r.modulo === "temphr" ? 42 : 21;
                       const semanasOrden = [...r.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
+                      const esTHR = r.modulo === "temphr";
                       return (
                         <tr key={r.id} className="border-t border-border align-top">
                           <td className="px-3 py-2 font-medium text-foreground">{r.nombre}</td>
@@ -259,18 +260,17 @@ function ReportePage() {
                             ) : (
                               <div className="flex flex-col gap-0.5">
                                 {semanasOrden.map((s) => {
-                                  const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
-                                  const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
-                                  const total = t + hr;
-                                  const completa = total >= necesarias;
+                                  const cap = lecturasCapturadas(s, esTHR);
+                                  const esp = lecturasEsperadas(s, esTHR);
+                                  const completa = esSemanaCompleta(s, esTHR);
                                   return (
                                     <div key={s.id} className="flex items-center gap-2">
                                       <span className="font-mono text-foreground">{s.semana_inicio}</span>
                                       <span className="text-muted-foreground">
-                                        {r.modulo === "temphr" ? `T:${t} HR:${hr}` : `${total}`} / {necesarias}
+                                        {cap}/{esp}
                                       </span>
-                                      <span className={completa ? "text-success" : total > 0 ? "text-warning" : "text-destructive"}>
-                                        {completa ? "✓ completa" : total > 0 ? "parcial" : "vacía"}
+                                      <span className={completa ? "text-success" : cap > 0 ? "text-warning" : "text-destructive"}>
+                                        {completa ? "✓ completa" : cap > 0 ? "parcial" : "vacía"}
                                       </span>
                                     </div>
                                   );
