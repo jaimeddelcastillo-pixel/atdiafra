@@ -17,6 +17,7 @@ import { Route as ReporteNormativoRouteImport } from './routes/reporte.normativo
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
 import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 
 const ReporteRoute = ReporteRouteImport.update({
   id: '/reporte',
@@ -58,6 +59,12 @@ const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
   path: '/admin/auditoria',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +86,7 @@ export interface FileRoutesByTo {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +98,7 @@ export interface FileRoutesById {
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/queue/process'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/queue/process'
   id:
     | '__root__'
     | '/'
@@ -121,6 +133,7 @@ export interface FileRouteTypes {
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/normativo'
+    | '/lovable/email/queue/process'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,6 +144,7 @@ export interface RootRouteChildren {
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
+  LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -191,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAuditoriaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -213,6 +234,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
+  LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
