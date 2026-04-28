@@ -50,9 +50,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("LOVABLE_API_KEY");
     if (!apiKey) {
-      return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY no configurada" }), {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY no configurada" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -66,37 +66,42 @@ Deno.serve(async (req: Request) => {
 
     const prompt = buildPrompt(body.module, body.variable);
     const ctx = body.context ? `\nContexto adicional: ${JSON.stringify(body.context)}.` : "";
+    const mediaType = body.mediaType ?? "image/jpeg";
+    const dataUrl = `data:${mediaType};base64,${body.imageBase64}`;
 
-    const anthropicResp = await fetch("https://api.anthropic.com/v1/messages", {
+    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        model: "google/gemini-2.5-flash",
         messages: [{
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: body.mediaType ?? "image/jpeg", data: body.imageBase64 } },
             { type: "text", text: prompt + ctx },
+            { type: "image_url", image_url: { url: dataUrl } },
           ],
         }],
       }),
     });
 
-    if (!anthropicResp.ok) {
-      const errText = await anthropicResp.text();
-      console.error("Anthropic error:", anthropicResp.status, errText);
-      return new Response(JSON.stringify({ error: `Anthropic API error ${anthropicResp.status}`, detail: errText }), {
+    if (!aiResp.ok) {
+      const errText = await aiResp.text();
+      console.error("AI Gateway error:", aiResp.status, errText);
+      const msg = aiResp.status === 429
+        ? "Límite de uso alcanzado. Intenta más tarde."
+        : aiResp.status === 402
+        ? "Sin créditos en Lovable AI. Agrega fondos en Settings → Workspace → Usage."
+        : `AI Gateway error ${aiResp.status}`;
+      return new Response(JSON.stringify({ error: msg, detail: errText }), {
         status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await anthropicResp.json();
-    const textOut: string = data?.content?.[0]?.text ?? "";
+    const data = await aiResp.json();
+    const textOut: string = data?.choices?.[0]?.message?.content ?? "";
 
     let parsed: unknown = null;
     let parseError: string | null = null;
