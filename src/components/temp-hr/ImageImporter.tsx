@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays } from "lucide-react";
+import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { Semana, semanaVacia, lunesDe, nombreMes, DIAS, TURNOS, type Dia, type Turno } from "@/lib/semanas";
 
@@ -12,7 +12,7 @@ interface Props {
 }
 
 /** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 1800px) para encajar en el límite de 5MB de Anthropic. */
-async function compressImage(file: File, maxDim = 1800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
@@ -147,8 +147,15 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       if (modo === "T") lecturasHR = [];
       if (modo === "HR") lecturasT = [];
 
-      if (!lecturasT.length && !lecturasHR.length) {
-        setError("La IA no logró extraer lecturas. Intenta con una imagen más nítida.");
+      const valoresT = lecturasT.filter(x => x.valor != null && x.valor !== "").length;
+      const valoresHR = lecturasHR.filter(x => x.valor != null && x.valor !== "").length;
+      if (valoresT === 0 && valoresHR === 0) {
+        console.warn("[extract-bitacora] respuesta sin valores numéricos:", data);
+        setError(
+          parsed
+            ? "La IA leyó la estructura pero no pudo reconocer los valores numéricos. Intenta con una foto más cerca de las filas de números (Temperatura °C / Humedad Relativa) y bien iluminada."
+            : "La IA no devolvió un JSON válido. Intenta con una imagen más nítida o recortada a la tabla."
+        );
         return;
       }
 
@@ -230,23 +237,41 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex-1">
-          <label htmlFor="bitacora-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-6 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-40">
+        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label htmlFor="bitacora-camera" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
             {loading ? (
               <>
-                <Loader2 className="h-8 w-8 animate-spin text-primary mb-2" />
-                <span className="text-sm text-muted-foreground">Procesando con IA…</span>
+                <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
+                <span className="text-xs text-muted-foreground">Procesando…</span>
               </>
             ) : (
               <>
-                <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                <span className="text-sm font-medium text-foreground">Click para subir imagen</span>
-                <span className="text-xs text-muted-foreground mt-1">JPG, PNG o WEBP — máx. 10 MB</span>
+                <Camera className="h-7 w-7 text-muted-foreground mb-2" />
+                <span className="text-sm font-medium text-foreground">Tomar foto</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">Abre la cámara del dispositivo</span>
+              </>
+            )}
+            <input id="bitacora-camera" type="file"
+              accept="image/*" capture="environment" className="hidden" disabled={loading}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+          </label>
+
+          <label htmlFor="bitacora-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
+            {loading ? (
+              <>
+                <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
+                <span className="text-xs text-muted-foreground">Procesando…</span>
+              </>
+            ) : (
+              <>
+                <Upload className="h-7 w-7 text-muted-foreground mb-2" />
+                <span className="text-sm font-medium text-foreground">Subir archivo</span>
+                <span className="text-[11px] text-muted-foreground mt-0.5 text-center">JPG / PNG / WEBP · máx 10 MB</span>
               </>
             )}
             <input id="bitacora-file" ref={inputRef} type="file"
               accept="image/jpeg,image/png,image/webp" className="hidden" disabled={loading}
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </label>
         </div>
         {previewUrl && (
