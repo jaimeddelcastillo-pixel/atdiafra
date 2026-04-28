@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays } from "lucide-react";
+import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays, Camera } from "lucide-react";
 import { toast } from "sonner";
 import { Semana, semanaVacia, lunesDe, nombreMes, DIAS, TURNOS, type Dia, type Turno } from "@/lib/semanas";
 
