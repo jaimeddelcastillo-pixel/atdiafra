@@ -75,7 +75,9 @@ export function exportarNormativoPDF(
   analisis: AnalisisRegistro[],
   agrupar: AgruparPor,
   cat: Catalogos,
+  opts: { incluirGraficas?: boolean } = {},
 ) {
+  const incluirGraficas = opts.incluirGraficas !== false;
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
