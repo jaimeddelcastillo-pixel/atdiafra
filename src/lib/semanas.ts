@@ -244,7 +244,31 @@ export async function upsertRegistro(r: Registro): Promise<void> {
   }
 }
 
-export async function deleteRegistro(id: string): Promise<void> {
+// ===== Reglas de completitud =====
+/** Cuenta cuántas lecturas se esperan en una semana, descontando turnos marcados como NA. */
+export function lecturasEsperadas(semana: Semana, esTHR: boolean): number {
+  const aplica = (arr: PuntoLectura[] | undefined) =>
+    (arr ?? []).filter((p) => !p._na).length;
+  const t = aplica(semana.lecturas);
+  const hr = esTHR ? aplica(semana.lecturas_hr) : 0;
+  return t + hr;
+}
+
+/** Cuenta cuántas lecturas válidas (con valor) hay, ignorando turnos NA. */
+export function lecturasCapturadas(semana: Semana, esTHR: boolean): number {
+  const valid = (arr: PuntoLectura[] | undefined) =>
+    (arr ?? []).filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor)).length;
+  const t = valid(semana.lecturas);
+  const hr = esTHR ? valid(semana.lecturas_hr) : 0;
+  return t + hr;
+}
+
+/** Una semana está completa si todas sus lecturas no-NA tienen valor. */
+export function esSemanaCompleta(semana: Semana, esTHR: boolean): boolean {
+  const esp = lecturasEsperadas(semana, esTHR);
+  if (esp === 0) return false;
+  return lecturasCapturadas(semana, esTHR) >= esp;
+}
   const { error } = await supabase.from("registros").delete().eq("id", id);
   if (error) throw error;
 }
