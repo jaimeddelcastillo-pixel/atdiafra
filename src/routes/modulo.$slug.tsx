@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { MODULOS } from "@/lib/diafra-data";
 import { Input } from "@/components/ui/input";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
+import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
@@ -178,16 +179,17 @@ function TempHRModule() {
               <div className="space-y-2">
                 <Input placeholder="Código de área (DCC-03)" value={draft.codigoArea} onChange={(e) => setDraft({ ...draft, codigoArea: e.target.value })} />
                 <Input placeholder="Nombre del área (Siembras I)" value={draft.nombreArea} onChange={(e) => setDraft({ ...draft, nombreArea: e.target.value })} />
-                <select
+                <InstrumentoSelector
+                  tipo="termohigrometro"
+                  tipoLabel="termohigrómetro"
+                  parametroDefault="Temperatura/HR"
                   value={draft.instrumento_id}
-                  onChange={(e) => setDraft({ ...draft, instrumento_id: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">— Seleccionar termohigrómetro —</option>
-                  {termohigrometros.map((i) => (
-                    <option key={i.id} value={i.id}>{i.codigo}{i.especificacion ? ` · ${i.especificacion}` : ""}</option>
-                  ))}
-                </select>
+                  instrumentos={termohigrometros}
+                  onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
+                  onCatalogChanged={setTermohigrometros}
+                  placeholderCodigo="INS-CMB-20"
+                />
+
                 <select
                   value={draft.iso}
                   onChange={(e) => setDraft({ ...draft, iso: e.target.value as IsoClase })}
@@ -198,7 +200,7 @@ function TempHRModule() {
               </div>
               <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
               {termohigrometros.length === 0 && (
-                <p className="text-xs text-warning">No hay termohigrómetros activos. Agrégalos en Configuración → Instrumentos.</p>
+                <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
               )}
             </div>
           </div>
