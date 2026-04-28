@@ -54,14 +54,14 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
   // Construir matriz visual (filas: turnos, columnas: días)
   const cellIdx = (diaIdx: number, turnoIdx: number) => diaIdx * 3 + turnoIdx;
 
-  const toggleNA = (di: number, ti: number) => {
-    const i = cellIdx(di, ti);
-    const tArr = (semana.lecturas ?? []).slice();
+  const setDayNA = (di: number, na: boolean) => {
+    const tArr = semana.lecturas.slice();
     const hrArr = (semana.lecturas_hr ?? []).slice();
-    const currentlyNA = !!tArr[i]?._na;
-    const next = !currentlyNA;
-    if (tArr[i]) tArr[i] = { ...tArr[i], _na: next, valor: next ? null : tArr[i].valor };
-    if (hrArr[i]) hrArr[i] = { ...hrArr[i], _na: next, valor: next ? null : hrArr[i].valor };
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const i = cellIdx(di, ti);
+      if (tArr[i]) tArr[i] = { ...tArr[i], _na: na, valor: na ? null : tArr[i].valor };
+      if (hrArr[i]) hrArr[i] = { ...hrArr[i], _na: na, valor: na ? null : hrArr[i].valor };
+    }
     onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
   };
 
