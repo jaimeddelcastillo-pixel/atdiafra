@@ -37,6 +37,7 @@ function moduloSlug(m: Modulo): string {
 }
 
 function ReportePage() {
+  const { canDelete } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroModulo, setFiltroModulo] = useState<Modulo | "">("");
@@ -292,12 +293,14 @@ function ReportePage() {
                                   <Eye className="h-3 w-3" /> Abrir
                                 </Link>
                               )}
-                              <button
-                                onClick={() => handleDelete(r.id)}
-                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
-                              >
-                                <Trash className="h-3 w-3" /> Borrar
-                              </button>
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDelete(r.id)}
+                                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
+                                >
+                                  <Trash className="h-3 w-3" /> Borrar
+                                </button>
+                              )}
                             </div>
                           </td>
                         </tr>
