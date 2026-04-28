@@ -5,14 +5,15 @@ import { MODULOS } from "@/lib/diafra-data";
 import { Input } from "@/components/ui/input";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
+import { AreaSelector } from "@/components/AreaSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Instrumento, IsoClase, ISO_TEMP_HR,
-  listInstrumentos,
+  Instrumento, IsoClase, ISO_TEMP_HR, AreaClasificada,
+  listInstrumentos, listAreas,
 } from "@/lib/catalogos";
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
