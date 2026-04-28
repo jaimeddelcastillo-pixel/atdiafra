@@ -137,7 +137,7 @@ function AnalysisBlock({ rows, cfg }: { rows: Reading[]; cfg: VarConfig }) {
               />
               <Tooltip
                 labelFormatter={(v) => new Date(v as number).toLocaleString()}
-                formatter={(val: number) => [`${fmt(val as number)} ${cfg.unit}`, cfg.label]}
+                formatter={(val) => [`${fmt(Number(val))} ${cfg.unit}`, cfg.label]}
                 contentStyle={{ borderRadius: 8, border: "1px solid oklch(0.9 0.012 250)" }}
               />
               <Legend wrapperStyle={{ fontSize: 11 }} />
