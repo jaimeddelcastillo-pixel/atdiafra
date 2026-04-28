@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppHeader } from "@/components/AppHeader";
 import { ModuloCard } from "@/components/ModuloCard";
+import { LocalMigrationCard } from "@/components/LocalMigrationCard";
+import { CumplimientoCard } from "@/components/CumplimientoCard";
 import { MODULOS } from "@/lib/diafra-data";
 import { Activity, FlaskConical, Library, ChevronRight } from "lucide-react";
 
@@ -23,6 +25,8 @@ function Index() {
       <AppHeader />
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        <LocalMigrationCard />
+
         {/* Hero / contexto */}
         <section className="mb-10">
           <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-secondary/5 p-6 sm:p-8">
@@ -67,6 +71,14 @@ function Index() {
               <ModuloCard key={m.id} modulo={m} />
             ))}
           </div>
+        </section>
+
+        {/* Cumplimiento */}
+        <section className="mb-10">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Resumen</h2>
+          </div>
+          <CumplimientoCard />
         </section>
 
         {/* Catálogo */}

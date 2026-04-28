@@ -44,6 +44,9 @@ export function ModuloCard({ modulo }: Props) {
   );
 
   if (!modulo.enabled) return card;
+  if (modulo.id === "reporte") {
+    return <Link to="/reporte" className="block h-full">{card}</Link>;
+  }
   return (
     <Link to="/modulo/$slug" params={{ slug: modulo.slug }} className="block h-full">
       {card}

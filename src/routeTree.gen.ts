@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ReporteRouteImport } from './routes/reporte'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
 
+const ReporteRoute = ReporteRouteImport.update({
+  id: '/reporte',
+  path: '/reporte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
@@ -32,35 +38,46 @@ const ModuloSlugRoute = ModuloSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/reporte': typeof ReporteRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/reporte': typeof ReporteRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/reporte': typeof ReporteRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/configuracion' | '/modulo/$slug'
+  fullPaths: '/' | '/configuracion' | '/reporte' | '/modulo/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/configuracion' | '/modulo/$slug'
-  id: '__root__' | '/' | '/configuracion' | '/modulo/$slug'
+  to: '/' | '/configuracion' | '/reporte' | '/modulo/$slug'
+  id: '__root__' | '/' | '/configuracion' | '/reporte' | '/modulo/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
+  ReporteRoute: typeof ReporteRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/reporte': {
+      id: '/reporte'
+      path: '/reporte'
+      fullPath: '/reporte'
+      preLoaderRoute: typeof ReporteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuracion': {
       id: '/configuracion'
       path: '/configuracion'
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfiguracionRoute: ConfiguracionRoute,
+  ReporteRoute: ReporteRoute,
   ModuloSlugRoute: ModuloSlugRoute,
 }
 export const routeTree = rootRouteImport
