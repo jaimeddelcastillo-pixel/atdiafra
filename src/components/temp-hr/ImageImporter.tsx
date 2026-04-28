@@ -109,10 +109,11 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
         return;
       }
 
-      // Construir semana base y rellenar la variable correspondiente
-      const fecha = new Date(semanaInicio + "T00:00:00");
+      // Construir semana base usando la fecha elegida por el usuario (normalizada a lunes)
+      const lunes = lunesDe(new Date(fechaSemana + "T00:00:00"));
+      const fecha = new Date(lunes + "T00:00:00");
       const s = semanaVacia({
-        semana_inicio: semanaInicio,
+        semana_inicio: lunes,
         mes: parsed.mes ?? nombreMes(fecha),
         anio: parsed.anio ?? String(fecha.getFullYear()),
         unidad: variable === "T" ? "°C" : "%HR",
