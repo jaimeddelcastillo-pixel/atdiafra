@@ -76,45 +76,84 @@ function AuthPage() {
           <CardDescription>DIAFRA · Acceso restringido</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Iniciar sesión</TabsTrigger>
-              <TabsTrigger value="signup">Crear cuenta</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin">
-              <form onSubmit={handleSignIn} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-in">Correo</Label>
-                  <Input id="email-in" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pwd-in">Contraseña</Label>
-                  <Input id="pwd-in" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Entrando..." : "Entrar"}
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="email-up">Correo</Label>
-                  <Input id="email-up" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pwd-up">Contraseña</Label>
-                  <Input id="pwd-up" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
+          {showForgot ? (
+            <form onSubmit={handleForgot} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Correo de tu cuenta</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  required
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  placeholder="tu@correo.com"
+                />
                 <p className="text-xs text-muted-foreground">
-                  El primer usuario registrado recibe el rol <strong>super_admin</strong>. Los demás entran como <strong>viewer</strong> hasta ser promovidos.
+                  Te enviaremos un enlace para restablecer tu contraseña.
                 </p>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? "Creando..." : "Crear cuenta"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+              </div>
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? "Enviando..." : "Enviar enlace"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setShowForgot(false)}
+              >
+                Volver
+              </Button>
+            </form>
+          ) : (
+            <Tabs defaultValue="signin">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Iniciar sesión</TabsTrigger>
+                <TabsTrigger value="signup">Crear cuenta</TabsTrigger>
+              </TabsList>
+              <TabsContent value="signin">
+                <form onSubmit={handleSignIn} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-in">Correo</Label>
+                    <Input id="email-in" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="pwd-in">Contraseña</Label>
+                      <button
+                        type="button"
+                        onClick={() => { setForgotEmail(email); setShowForgot(true); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    </div>
+                    <Input id="pwd-in" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Entrando..." : "Entrar"}
+                  </Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email-up">Correo</Label>
+                    <Input id="email-up" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pwd-up">Contraseña</Label>
+                    <Input id="pwd-up" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    El primer usuario registrado recibe el rol <strong>super_admin</strong>. Los demás entran como <strong>viewer</strong> hasta ser promovidos.
+                  </p>
+                  <Button type="submit" className="w-full" disabled={busy}>
+                    {busy ? "Creando..." : "Crear cuenta"}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          )}
         </CardContent>
       </Card>
     </div>
