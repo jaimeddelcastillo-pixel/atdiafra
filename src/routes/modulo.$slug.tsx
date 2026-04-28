@@ -179,16 +179,17 @@ function TempHRModule() {
               <div className="space-y-2">
                 <Input placeholder="Código de área (DCC-03)" value={draft.codigoArea} onChange={(e) => setDraft({ ...draft, codigoArea: e.target.value })} />
                 <Input placeholder="Nombre del área (Siembras I)" value={draft.nombreArea} onChange={(e) => setDraft({ ...draft, nombreArea: e.target.value })} />
-                <select
+                <InstrumentoSelector
+                  tipo="termohigrometro"
+                  tipoLabel="termohigrómetro"
+                  parametroDefault="Temperatura/HR"
                   value={draft.instrumento_id}
-                  onChange={(e) => setDraft({ ...draft, instrumento_id: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">— Seleccionar termohigrómetro —</option>
-                  {termohigrometros.map((i) => (
-                    <option key={i.id} value={i.id}>{i.codigo}{i.especificacion ? ` · ${i.especificacion}` : ""}</option>
-                  ))}
-                </select>
+                  instrumentos={termohigrometros}
+                  onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
+                  onCatalogChanged={setTermohigrometros}
+                  placeholderCodigo="INS-CMB-20"
+                />
+
                 <select
                   value={draft.iso}
                   onChange={(e) => setDraft({ ...draft, iso: e.target.value as IsoClase })}
