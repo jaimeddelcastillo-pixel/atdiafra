@@ -15,18 +15,20 @@ interface RequestBody {
 
 function buildPrompt(module: string, variable?: string): string {
   if (module === "temp_hr") {
-    const varTxt = variable === "HR" ? "HUMEDAD RELATIVA (%HR)" : "TEMPERATURA (°C)";
     return `Eres un asistente de validación farmacéutica analizando una bitácora de TEMPERATURA y HUMEDAD RELATIVA de DIAFRA S.A. de C.V. (formato FOR-MAN-06-01).
-La bitácora tiene columnas Lunes a Domingo con 3 sub-columnas por día: Mañana, Media Tarde, Tarde.
-Hay una cuadrícula gráfica que el operador usa para marcar visualmente el valor — NO la uses.
-Extrae ÚNICAMENTE los valores numéricos de ${varTxt} escritos en las filas de texto al pie de la tabla, junto con Hora de lectura y Nombre/iniciales de quien registra.
-Lee también instrumento, área, mes y año del encabezado.
+La bitácora tiene columnas Lunes a Domingo con 3 sub-columnas por día: Mañana (1°), Media Tarde (2°), Tarde (3°).
+Hay DOS cuadrículas gráficas (una para Temperatura °C, otra para Humedad Relativa %) que el operador usa para marcar visualmente — NO las uses para extraer valores.
+Debes extraer AMBAS variables al mismo tiempo:
+  • TEMPERATURA (°C): valores en la fila de texto "TEMPERATURA °C" al pie de la primera cuadrícula (típicamente 16-27 °C).
+  • HUMEDAD RELATIVA (%): valores en la fila de texto "HUMEDAD RELATIVA" al pie de la segunda cuadrícula (típicamente 30-65 %).
+Lee también: HORA DE LECTURA, ANTEFIRMA DE QUIEN REGISTRA, código de instrumento, área, mes, año y observaciones.
 
 Responde SOLO en JSON sin texto adicional, sin markdown, con esta forma exacta:
-{"mes":"","anio":"","instrumento":"","area":"","variable":"${variable === "HR" ? "HR" : "T"}","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}
+{"mes":"","anio":"","instrumento":"","area":"","lecturas_t":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"lecturas_hr":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}
 
-Incluye las 21 combinaciones (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
-Si una celda está vacía o ilegible escribe valor:null. Los demás campos en null si no son legibles.`;
+Incluye las 21 combinaciones por cada variable (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
+La hora y quien registra es la MISMA para T y HR del mismo turno (cópiala en ambos arreglos).
+Si una celda está vacía, tachada, marcada N/A o ilegible escribe valor:null.`;
   }
   if (module === "presiones") {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIONES DIFERENCIALES de DIAFRA S.A. de C.V. (formato FOR-MAN-07-01).
