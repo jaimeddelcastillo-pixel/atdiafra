@@ -1,10 +1,9 @@
 import { ReactNode } from "react";
-import { Navigate, useLocation } from "@tanstack/react-router";
+import { Navigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { session, loading } = useAuth();
-  const location = useLocation();
 
   if (loading) {
     return (
@@ -15,7 +14,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
   }
 
   if (!session) {
-    return <Navigate to="/auth" search={{ redirect: location.href }} />;
+    return <Navigate to="/auth" />;
   }
 
   return <>{children}</>;
