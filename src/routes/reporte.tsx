@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ChevronLeft, Trash, Eye, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { listRegistros, deleteRegistro, lunesDe, type Registro, type Modulo } from "@/lib/semanas";
+import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, type Registro, type Modulo } from "@/lib/semanas";
 import { MODULOS } from "@/lib/diafra-data";
 
 export const Route = createFileRoute("/reporte")({
@@ -89,14 +89,10 @@ function ReportePage() {
     return registros
       .filter((r) => !filtroModulo || r.modulo === filtroModulo)
       .map((r) => {
+        const esTHR = r.modulo === "temphr";
         const semanasAnio = r.semanas.filter((s) => s.semana_inicio.startsWith(String(anio)));
         const presentes = new Set(semanasAnio.map((s) => s.semana_inicio));
-        const completas = semanasAnio.filter((s) => {
-          const t = (s.lecturas ?? []).filter((p) => p.valor != null).length;
-          const hr = (s.lecturas_hr ?? []).filter((p) => p.valor != null).length;
-          const necesarias = r.modulo === "temphr" ? 42 : 21;
-          return (t + hr) >= necesarias;
-        }).length;
+        const completas = semanasAnio.filter((s) => esSemanaCompleta(s, esTHR)).length;
         const faltantes = lunes.filter((l) => !presentes.has(l));
         return { registro: r, totalSemanas: lunes.length, presentes: presentes.size, completas, faltantes };
       });
