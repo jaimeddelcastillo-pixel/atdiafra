@@ -147,8 +147,15 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       if (modo === "T") lecturasHR = [];
       if (modo === "HR") lecturasT = [];
 
-      if (!lecturasT.length && !lecturasHR.length) {
-        setError("La IA no logró extraer lecturas. Intenta con una imagen más nítida.");
+      const valoresT = lecturasT.filter(x => x.valor != null && x.valor !== "").length;
+      const valoresHR = lecturasHR.filter(x => x.valor != null && x.valor !== "").length;
+      if (valoresT === 0 && valoresHR === 0) {
+        console.warn("[extract-bitacora] respuesta sin valores numéricos:", data);
+        setError(
+          parsed
+            ? "La IA leyó la estructura pero no pudo reconocer los valores numéricos. Intenta con una foto más cerca de las filas de números (Temperatura °C / Humedad Relativa) y bien iluminada."
+            : "La IA no devolvió un JSON válido. Intenta con una imagen más nítida o recortada a la tabla."
+        );
         return;
       }
 
