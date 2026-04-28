@@ -163,6 +163,15 @@ function NormativoPage() {
             <Button size="sm" variant="outline" onClick={handleExcel} disabled={loading || analisis.length === 0} className="gap-1">
               <FileSpreadsheet className="h-4 w-4" /> Excel
             </Button>
+            <label className="inline-flex items-center gap-1 text-xs text-muted-foreground border border-input rounded-md px-2 h-9">
+              <input
+                type="checkbox"
+                checked={incluirGraficas}
+                onChange={(e) => setIncluirGraficas(e.target.checked)}
+                className="h-3.5 w-3.5"
+              />
+              Gráficas en PDF
+            </label>
             <Button size="sm" onClick={handlePDF} disabled={loading || analisis.length === 0} className="gap-1">
               <FileText className="h-4 w-4" /> PDF
             </Button>
