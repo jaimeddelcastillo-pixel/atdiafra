@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { MODULOS } from "@/lib/diafra-data";
 import { Input } from "@/components/ui/input";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
+import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
