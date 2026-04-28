@@ -2,17 +2,18 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { MODULOS } from "@/lib/diafra-data";
-import { Input } from "@/components/ui/input";
+
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
+import { AreaSelector } from "@/components/AreaSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
-  Instrumento, IsoClase, ISO_TEMP_HR,
-  listInstrumentos,
+  Instrumento, IsoClase, ISO_TEMP_HR, AreaClasificada,
+  listInstrumentos, listAreas,
 } from "@/lib/catalogos";
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
@@ -74,15 +75,19 @@ function ModuloPage() {
   return <TempHRModule />;
 }
 
-const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
+
 
 function TempHRModule() {
   // Catálogo de termohigrómetros activos
   const [termohigrometros, setTermohigrometros] = useState<Instrumento[]>([]);
+  const [areas, setAreas] = useState<AreaClasificada[]>([]);
   useEffect(() => {
     listInstrumentos({ tipo: "termohigrometro", soloActivos: true })
       .then(setTermohigrometros)
       .catch((e) => toast.error("No se pudieron cargar instrumentos: " + e.message));
+    listAreas(true)
+      .then(setAreas)
+      .catch((e) => toast.error("No se pudieron cargar áreas: " + e.message));
   }, []);
 
   // Lista de registros existentes en este módulo
@@ -95,6 +100,7 @@ function TempHRModule() {
 
   // Estado del formulario nuevo registro
   const [draft, setDraft] = useState({
+    area_id: "",
     codigoArea: "",
     nombreArea: "",
     instrumento_id: "",
@@ -102,24 +108,29 @@ function TempHRModule() {
   });
 
   const createRegistro = () => {
-    if (!draft.codigoArea.trim() || !draft.nombreArea.trim()) {
-      toast.error("Captura código y nombre del área");
+    if (!draft.area_id) {
+      toast.error("Selecciona o crea un área");
       return;
     }
     if (!draft.instrumento_id) {
       toast.error("Selecciona el termohigrómetro");
       return;
     }
+    const area = areas.find((a) => a.id === draft.area_id);
     const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
-    const limits = ISO_TEMP_HR[draft.iso];
+    const iso = (area?.iso ?? draft.iso) as IsoClase;
+    const limits = ISO_TEMP_HR[iso];
+    const codigoArea = area?.codigo ?? "";
+    const nombreArea = area?.nombre ?? "";
     const r: Registro = {
       id: crypto.randomUUID(),
       modulo: "temphr",
-      nombre: `${draft.codigoArea.trim()} ${draft.nombreArea.trim()} · ${instr?.codigo ?? ""}`,
+      nombre: `${codigoArea} ${nombreArea} · ${instr?.codigo ?? ""}`,
+      area_id: draft.area_id,
       instrumento_id: draft.instrumento_id,
-      codigo_area_libre: draft.codigoArea.trim(),
-      nombre_area_libre: draft.nombreArea.trim(),
-      iso: draft.iso,
+      codigo_area_libre: codigoArea,
+      nombre_area_libre: nombreArea,
+      iso,
       lse_t: limits.tempMax, lie_t: limits.tempMin,
       lse_hr: limits.hrMax, lie_hr: limits.hrMin,
       semanas: [],
@@ -129,7 +140,7 @@ function TempHRModule() {
     upsertRegistro(r);
     reload();
     setActiveId(r.id);
-    setDraft({ codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
+    setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
     toast.success("Registro creado");
   };
 
@@ -177,8 +188,13 @@ function TempHRModule() {
             <div className="border-t border-border pt-4 space-y-3">
               <h3 className="text-sm font-semibold">Nuevo registro</h3>
               <div className="space-y-2">
-                <Input placeholder="Código de área (DCC-03)" value={draft.codigoArea} onChange={(e) => setDraft({ ...draft, codigoArea: e.target.value })} />
-                <Input placeholder="Nombre del área (Siembras I)" value={draft.nombreArea} onChange={(e) => setDraft({ ...draft, nombreArea: e.target.value })} />
+                <AreaSelector
+                  value={draft.area_id}
+                  areas={areas}
+                  onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
+                  onCatalogChanged={setAreas}
+                  defaultIso={draft.iso}
+                />
                 <InstrumentoSelector
                   tipo="termohigrometro"
                   tipoLabel="termohigrómetro"
@@ -189,16 +205,16 @@ function TempHRModule() {
                   onCatalogChanged={setTermohigrometros}
                   placeholderCodigo="INS-CMB-20"
                 />
-
-                <select
-                  value={draft.iso}
-                  onChange={(e) => setDraft({ ...draft, iso: e.target.value as IsoClase })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  {ISO_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
+                {draft.area_id && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
+                  </p>
+                )}
               </div>
               <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
+              {areas.length === 0 && (
+                <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
+              )}
               {termohigrometros.length === 0 && (
                 <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
               )}
