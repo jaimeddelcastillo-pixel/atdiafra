@@ -199,12 +199,16 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
 
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Variable:</label>
+          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Variables:</label>
           <div className="inline-flex rounded-md border border-border overflow-hidden">
-            {(["T", "HR"] as const).map((v) => (
-              <button key={v} onClick={() => setVariable(v)}
-                className={`px-3 py-1 text-xs ${variable === v ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
-                {v === "T" ? "Temperatura" : "Humedad"}
+            {([
+              { v: "AUTO", label: "Ambas (auto)" },
+              { v: "T", label: "Sólo T" },
+              { v: "HR", label: "Sólo HR" },
+            ] as const).map(({ v, label }) => (
+              <button key={v} onClick={() => setModo(v)}
+                className={`px-3 py-1 text-xs ${modo === v ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}>
+                {label}
               </button>
             ))}
           </div>
