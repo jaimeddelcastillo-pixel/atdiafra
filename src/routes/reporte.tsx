@@ -157,7 +157,10 @@ function ReportePage() {
 
         {/* Cumplimiento */}
         <section className="mt-6">
-          <h2 className="text-lg font-semibold text-foreground mb-3">Cumplimiento {filtroAnio}</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            Cada fila representa un registro (área + instrumento). Una semana se considera <span className="font-medium text-foreground">completa</span> cuando tiene todas sus lecturas del lunes al domingo.
+          </p>
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
           ) : cumplimiento.length === 0 ? (
@@ -169,10 +172,11 @@ function ReportePage() {
                   <thead className="bg-muted/40">
                     <tr>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Registro</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Semanas en el año</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground" title={`Lunes esperados desde 01-ene-${filtroAnio} a la fecha`}>Semanas esperadas</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Capturadas</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Completas</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground">Faltantes</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Semanas capturadas (lunes)</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes (últimos 8)</th>
                     </tr>
                   </thead>
@@ -180,6 +184,10 @@ function ReportePage() {
                     {cumplimiento.map(({ registro, totalSemanas, presentes, completas, faltantes }) => {
                       const pct = totalSemanas > 0 ? Math.round((completas / totalSemanas) * 100) : 0;
                       const color = pct >= 90 ? "text-success" : pct >= 60 ? "text-warning" : "text-destructive";
+                      const semanasAnio = registro.semanas
+                        .filter((s) => s.semana_inicio.startsWith(filtroAnio))
+                        .map((s) => s.semana_inicio)
+                        .sort();
                       return (
                         <tr key={registro.id} className="border-t border-border">
                           <td className="px-3 py-2">
@@ -190,6 +198,9 @@ function ReportePage() {
                           <td className="px-3 py-2 text-center tabular-nums">{presentes}</td>
                           <td className={`px-3 py-2 text-center tabular-nums font-semibold ${color}`}>{completas} ({pct}%)</td>
                           <td className="px-3 py-2 text-center tabular-nums">{faltantes.length}</td>
+                          <td className="px-3 py-2 text-[11px] text-muted-foreground">
+                            {semanasAnio.length > 0 ? semanasAnio.join(", ") : "—"}
+                          </td>
                           <td className="px-3 py-2 text-[11px] text-muted-foreground">
                             {faltantes.slice(-8).join(", ") || "—"}
                           </td>
