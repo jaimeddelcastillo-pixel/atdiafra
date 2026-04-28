@@ -55,6 +55,42 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          operation: string
+          record_id: string | null
+          table_name: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation: string
+          record_id?: string | null
+          table_name: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation?: string
+          record_id?: string | null
+          table_name?: string
+        }
+        Relationships: []
+      }
       instrumentos: {
         Row: {
           activo: boolean

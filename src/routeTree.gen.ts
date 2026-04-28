@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
 import { Route as AdminUsuariosRouteImport } from './routes/admin.usuarios'
+import { Route as AdminAuditoriaRouteImport } from './routes/admin.auditoria'
 
 const ReporteRoute = ReporteRouteImport.update({
   id: '/reporte',
@@ -46,12 +47,18 @@ const AdminUsuariosRoute = AdminUsuariosRouteImport.update({
   path: '/admin/usuarios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAuditoriaRoute = AdminAuditoriaRouteImport.update({
+  id: '/admin/auditoria',
+  path: '/admin/auditoria',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
   '/reporte': typeof ReporteRoute
+  '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
 }
@@ -79,6 +88,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -87,6 +97,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
   id:
@@ -95,6 +106,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/configuracion'
     | '/reporte'
+    | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
   fileRoutesById: FileRoutesById
@@ -104,6 +116,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
   ReporteRoute: typeof ReporteRoute
+  AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
 }
@@ -152,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsuariosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/auditoria': {
+      id: '/admin/auditoria'
+      path: '/admin/auditoria'
+      fullPath: '/admin/auditoria'
+      preLoaderRoute: typeof AdminAuditoriaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -160,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
   ReporteRoute: ReporteRoute,
+  AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
 }
