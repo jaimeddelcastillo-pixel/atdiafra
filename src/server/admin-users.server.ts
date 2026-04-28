@@ -1,0 +1,157 @@
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+export type AdminRole = "super_admin" | "admin" | "editor" | "viewer";
+
+export interface AdminUserView {
+  user_id: string;
+  email: string | null;
+  roles: AdminRole[];
+  primary_role: AdminRole;
+  auth_created_at: string | null;
+  last_sign_in_at: string | null;
+}
+
+const ROLE_ORDER: AdminRole[] = ["super_admin", "admin", "editor", "viewer"];
+const ROLE_SET = new Set<AdminRole>(ROLE_ORDER);
+
+function assertRole(value: string): AdminRole {
+  if (!ROLE_SET.has(value as AdminRole)) throw new Error("Rol inválido.");
+  return value as AdminRole;
+}
+
+async function requireSuperAdmin(accessToken: string) {
+  if (!accessToken) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
+
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
+  if (userError || !userData.user) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
+
+  const { data: roleRow, error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userData.user.id)
+    .eq("role", "super_admin")
+    .maybeSingle();
+
+  if (roleError) throw new Error(roleError.message);
+  if (!roleRow) throw new Error("No tienes permisos para gestionar usuarios.");
+
+  return userData.user;
+}
+
+export async function getManagedUsers(accessToken: string): Promise<AdminUserView[]> {
+  await requireSuperAdmin(accessToken);
+
+  const [{ data: roleRows, error: rolesError }, { data: usersData, error: usersError }] = await Promise.all([
+    supabaseAdmin.from("user_roles").select("user_id, role").order("created_at", { ascending: true }),
+    supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+  ]);
+
+  if (rolesError) throw new Error(rolesError.message);
+  if (usersError) throw new Error(usersError.message);
+
+  const usersById = new Map(
+    (usersData.users ?? []).map((user) => [
+      user.id,
+      {
+        email: user.email ?? null,
+        auth_created_at: user.created_at ?? null,
+        last_sign_in_at: user.last_sign_in_at ?? null,
+      },
+    ]),
+  );
+
+  const rolesByUser = new Map<string, AdminRole[]>();
+  for (const row of roleRows ?? []) {
+    const role = assertRole(row.role);
+    rolesByUser.set(row.user_id, [...(rolesByUser.get(row.user_id) ?? []), role]);
+  }
+
+  for (const userId of usersById.keys()) {
+    if (!rolesByUser.has(userId)) rolesByUser.set(userId, []);
+  }
+
+  return Array.from(rolesByUser.entries())
+    .map(([userId, roles]) => {
+      const user = usersById.get(userId);
+      const sortedRoles = [...roles].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
+      return {
+        user_id: userId,
+        email: user?.email ?? null,
+        roles: sortedRoles,
+        primary_role: sortedRoles[0] ?? "viewer",
+        auth_created_at: user?.auth_created_at ?? null,
+        last_sign_in_at: user?.last_sign_in_at ?? null,
+      } satisfies AdminUserView;
+    })
+    .sort((a, b) => (a.email ?? a.user_id).localeCompare(b.email ?? b.user_id));
+}
+
+export async function createManagedUserAccount(
+  accessToken: string,
+  input: { email: string; password: string; role: string },
+): Promise<AdminUserView[]> {
+  await requireSuperAdmin(accessToken);
+
+  const email = input.email.trim().toLowerCase();
+  const password = input.password.trim();
+  const role = assertRole(input.role);
+
+  if (!email) throw new Error("Captura el correo del usuario.");
+  if (password.length < 8) throw new Error("La contraseña temporal debe tener al menos 8 caracteres.");
+
+  const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (createError || !created.user) throw new Error(createError?.message ?? "No se pudo crear el usuario.");
+
+  const { error: roleError } = await supabaseAdmin
+    .from("user_roles")
+    .insert({ user_id: created.user.id, role });
+
+  if (roleError) {
+    await supabaseAdmin.auth.admin.deleteUser(created.user.id);
+    throw new Error(roleError.message);
+  }
+
+  return getManagedUsers(accessToken);
+}
+
+export async function updateManagedUserAccountRole(
+  accessToken: string,
+  input: { userId: string; role: string },
+): Promise<AdminUserView[]> {
+  const currentUser = await requireSuperAdmin(accessToken);
+  const role = assertRole(input.role);
+
+  if (input.userId === currentUser.id && role !== "super_admin") {
+    throw new Error("No puedes quitarte el rol super_admin a ti mismo.");
+  }
+
+  const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", input.userId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  const { error: insertError } = await supabaseAdmin.from("user_roles").insert({ user_id: input.userId, role });
+  if (insertError) throw new Error(insertError.message);
+
+  return getManagedUsers(accessToken);
+}
+
+export async function deleteManagedUserAccount(
+  accessToken: string,
+  input: { userId: string },
+): Promise<AdminUserView[]> {
+  const currentUser = await requireSuperAdmin(accessToken);
+
+  if (input.userId === currentUser.id) throw new Error("No puedes eliminar tu propia cuenta.");
+
+  const { error: rolesError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", input.userId);
+  if (rolesError) throw new Error(rolesError.message);
+
+  const { error: userError } = await supabaseAdmin.auth.admin.deleteUser(input.userId);
+  if (userError && !userError.message.toLowerCase().includes("not found")) throw new Error(userError.message);
+
+  return getManagedUsers(accessToken);
+}
