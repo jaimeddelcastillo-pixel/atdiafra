@@ -51,6 +51,7 @@ function NormativoPage() {
   const [agrupar, setAgrupar] = useState<AgruparPor>("registro");
   const [filtroArea, setFiltroArea] = useState<string>("");
   const [filtroHvac, setFiltroHvac] = useState<string>("");
+  const [incluirGraficas, setIncluirGraficas] = useState(true);
 
   const reload = async () => {
     setLoading(true);
