@@ -12,7 +12,7 @@ interface Props {
 }
 
 /** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 1800px) para encajar en el límite de 5MB de Anthropic. */
-async function compressImage(file: File, maxDim = 1800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
