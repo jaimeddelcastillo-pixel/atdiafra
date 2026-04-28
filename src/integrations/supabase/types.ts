@@ -163,6 +163,131 @@ export type Database = {
           },
         ]
       }
+      registro_semanas: {
+        Row: {
+          anio: string
+          created_at: string
+          id: string
+          lecturas: Json
+          lecturas_hr: Json | null
+          mes: string
+          observaciones: string
+          registro_id: string
+          saved_at: string
+          semana_inicio: string
+          source: string
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          anio: string
+          created_at?: string
+          id?: string
+          lecturas?: Json
+          lecturas_hr?: Json | null
+          mes: string
+          observaciones?: string
+          registro_id: string
+          saved_at?: string
+          semana_inicio: string
+          source?: string
+          unidad: string
+          updated_at?: string
+        }
+        Update: {
+          anio?: string
+          created_at?: string
+          id?: string
+          lecturas?: Json
+          lecturas_hr?: Json | null
+          mes?: string
+          observaciones?: string
+          registro_id?: string
+          saved_at?: string
+          semana_inicio?: string
+          source?: string
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_semanas_registro_id_fkey"
+            columns: ["registro_id"]
+            isOneToOne: false
+            referencedRelation: "registros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registros: {
+        Row: {
+          activo: boolean
+          area_id: string | null
+          codigo_area_libre: string | null
+          created_at: string
+          etapa: string | null
+          hvac_id: string | null
+          id: string
+          instrumento_id: string | null
+          iso: string | null
+          lie: number | null
+          lie_hr: number | null
+          lie_t: number | null
+          lse: number | null
+          lse_hr: number | null
+          lse_t: number | null
+          modulo: string
+          nombre: string
+          nombre_area_libre: string | null
+          par_cuartos_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          area_id?: string | null
+          codigo_area_libre?: string | null
+          created_at?: string
+          etapa?: string | null
+          hvac_id?: string | null
+          id?: string
+          instrumento_id?: string | null
+          iso?: string | null
+          lie?: number | null
+          lie_hr?: number | null
+          lie_t?: number | null
+          lse?: number | null
+          lse_hr?: number | null
+          lse_t?: number | null
+          modulo: string
+          nombre: string
+          nombre_area_libre?: string | null
+          par_cuartos_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          area_id?: string | null
+          codigo_area_libre?: string | null
+          created_at?: string
+          etapa?: string | null
+          hvac_id?: string | null
+          id?: string
+          instrumento_id?: string | null
+          iso?: string | null
+          lie?: number | null
+          lie_hr?: number | null
+          lie_t?: number | null
+          lse?: number | null
+          lse_hr?: number | null
+          lse_t?: number | null
+          modulo?: string
+          nombre?: string
+          nombre_area_libre?: string | null
+          par_cuartos_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sistemas_hvac: {
         Row: {
           activo: boolean
