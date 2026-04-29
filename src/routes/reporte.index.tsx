@@ -14,10 +14,11 @@ import {
   listRegistros, deleteRegistro, rangoFechasRegistro,
   detectarDuplicados, fusionarRegistros, type Registro,
 } from "@/lib/semanas";
-import { listAreas, listInstrumentos, type AreaClasificada, type Instrumento } from "@/lib/catalogos";
+import { listAreas, listInstrumentos, listSistemasHVAC, type AreaClasificada, type Instrumento } from "@/lib/catalogos";
 import { MODULOS } from "@/lib/diafra-data";
-import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
-import { MINIMO_NORMATIVO, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
+import { exportarNormativoExcel, exportarNormativoPDF } from "@/lib/export-normativo";
+import { Input } from "@/components/ui/input";
+import { MINIMO_NORMATIVO, analizarRegistro, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
 
 export const Route = createFileRoute("/reporte/")({
   head: () => ({
