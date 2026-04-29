@@ -120,6 +120,40 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
     onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
   };
 
+  /** Mueve los 3 turnos (T y HR) de un día al día contiguo (←/→). El día origen queda con valor:null pero NO se marca NA.
+   *  Útil cuando la IA recorrió valores por un festivo: corres todo un día hacia su columna correcta. */
+  const shiftDay = (fromDi: number, dir: -1 | 1) => {
+    const toDi = fromDi + dir;
+    if (toDi < 0 || toDi >= DIAS.length) return;
+    const tArr = semana.lecturas.slice();
+    const hrArr = (semana.lecturas_hr ?? []).slice();
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const iFrom = cellIdx(fromDi, ti);
+      const iTo = cellIdx(toDi, ti);
+      if (tArr[iFrom] && tArr[iTo]) {
+        tArr[iTo] = { ...tArr[iTo], valor: tArr[iFrom].valor, _dudoso: false, _edited: true, _motivo: tArr[iTo]._motivo ?? "Recorrido manual" };
+        tArr[iFrom] = { ...tArr[iFrom], valor: null, _dudoso: false };
+      }
+      if (hrArr[iFrom] && hrArr[iTo]) {
+        hrArr[iTo] = { ...hrArr[iTo], valor: hrArr[iFrom].valor, _dudoso: false, _edited: true, _motivo: hrArr[iTo]._motivo ?? "Recorrido manual" };
+        hrArr[iFrom] = { ...hrArr[iFrom], valor: null, _dudoso: false };
+      }
+    }
+    onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
+  };
+
+  /** Limpia los valores (T y HR) de un día sin marcarlo NA — útil para borrar columna que la IA llenó por error. */
+  const clearDay = (di: number) => {
+    const tArr = semana.lecturas.slice();
+    const hrArr = (semana.lecturas_hr ?? []).slice();
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const i = cellIdx(di, ti);
+      if (tArr[i]) tArr[i] = { ...tArr[i], valor: null, _dudoso: false };
+      if (hrArr[i]) hrArr[i] = { ...hrArr[i], valor: null, _dudoso: false };
+    }
+    onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
+  };
+
   const renderRow = (which: "T" | "HR", unidad: string, min: number, max: number) => {
     const arr = which === "T" ? semana.lecturas : (semana.lecturas_hr ?? []);
     return (
