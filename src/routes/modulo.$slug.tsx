@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -194,65 +194,78 @@ function TempHRModule() {
         {/* Selector / creación de registro */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1 rounded-xl border border-border bg-card p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Registros</h3>
-              {registros.length === 0 && <p className="text-xs text-muted-foreground">Sin registros aún. Crea uno nuevo abajo.</p>}
-              <ul className="space-y-1">
-                {registros.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      onClick={() => setActiveId(r.id)}
-                      className={`w-full text-left rounded-md px-3 py-2 text-xs ${activeId === r.id ? "bg-primary/10 text-foreground border border-primary/30" : "hover:bg-muted"}`}>
-                      <div className="font-medium">{r.nombre}</div>
-                      <div className="text-muted-foreground mt-0.5">
-                        {r.iso} · {r.semanas.length} semana(s)
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t border-border pt-4 space-y-3">
-              <h3 className="text-sm font-semibold">Nuevo registro</h3>
-              <div className="space-y-2">
-                <AreaSelector
-                  value={draft.area_id}
-                  areas={areas}
-                  onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
-                  onCatalogChanged={setAreas}
-                  defaultIso={draft.iso}
-                />
-                <InstrumentoSelector
-                  tipo="termohigrometro"
-                  tipoLabel="termohigrómetro"
-                  parametroDefault="Temperatura/HR"
-                  value={draft.instrumento_id}
-                  instrumentos={termohigrometros}
-                  onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
-                  onCatalogChanged={setTermohigrometros}
-                  placeholderCodigo="INS-CMB-20"
-                />
-                {draft.area_id && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
-                  </p>
-                )}
+            {active ? (
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Registro activo</h3>
+                <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  <div className="font-medium text-foreground">{active.nombre}</div>
+                  <div className="text-muted-foreground mt-0.5">
+                    {active.iso} · {active.semanas.length} semana(s)
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full mt-3"
+                  onClick={() => setActiveId(null)}>
+                  Crear otro registro
+                </Button>
+                <Link
+                  to="/reporte"
+                  className="block text-center text-xs text-muted-foreground hover:text-primary mt-2">
+                  Ver todos los registros en Reportes →
+                </Link>
               </div>
-              <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
-              {areas.length === 0 && (
-                <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
-              )}
-              {termohigrometros.length === 0 && (
-                <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
-              )}
-            </div>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold">Nuevo registro</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    El listado completo vive en{" "}
+                    <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <AreaSelector
+                    value={draft.area_id}
+                    areas={areas}
+                    onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
+                    onCatalogChanged={setAreas}
+                    defaultIso={draft.iso}
+                  />
+                  <InstrumentoSelector
+                    tipo="termohigrometro"
+                    tipoLabel="termohigrómetro"
+                    parametroDefault="Temperatura/HR"
+                    value={draft.instrumento_id}
+                    instrumentos={termohigrometros}
+                    onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
+                    onCatalogChanged={setTermohigrometros}
+                    placeholderCodigo="INS-CMB-20"
+                  />
+                  {draft.area_id && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
+                    </p>
+                  )}
+                </div>
+                <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
+                {areas.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
+                )}
+                {termohigrometros.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
+                )}
+              </>
+            )}
           </div>
 
           <div className="lg:col-span-2">
             {!active ? (
               <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
-                Selecciona un registro de la lista o crea uno nuevo para empezar a capturar.
+                Crea un registro nuevo o ábrelo desde{" "}
+                <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>{" "}
+                para empezar a capturar.
               </div>
             ) : (
               <RegistroEditor
@@ -275,6 +288,7 @@ function TempHRModule() {
 function RegistroEditor({ registro, onPersist, onDelete }: {
   registro: Registro; onPersist: (r: Registro) => Promise<void>; onDelete: () => void;
 }) {
+  const navigate = useNavigate();
   const { canWriteRecords, canDelete } = useAuth();
   const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
   // Buffer local: cambios no se persisten hasta presionar "Guardar"
@@ -282,6 +296,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
+  const [nuevaSemanaFecha, setNuevaSemanaFecha] = useState<string>("");
 
   // Export PDF normativo (rango personalizado por registro)
   const today = new Date().toISOString().slice(0, 10);
@@ -359,8 +374,9 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
     setActiveWeekId(s.id);
   };
 
-  // Importación por imagen: persiste de inmediato (con cualquier cambio sucio pendiente del draft)
-  const handleExtracted = async (s: Semana) => {
+  // Importación por imagen: SOLO actualiza el draft local. NO persiste.
+  // El usuario debe revisar y dar "Guardar" para que se mande a la nube.
+  const handleExtracted = (s: Semana) => {
     const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
     let semanas: Semana[];
     if (existing) {
@@ -375,26 +391,18 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
     } else {
-      // Detectar semanas vacías de OTRA fecha que probablemente se crearon por accidente
-      // (e.g. el blank "hoy" creado al abrir el editor). Las eliminamos automáticamente
-      // para no dejar semanas huérfanas en blanco.
+      // Descartar semanas vacías de OTRA fecha (e.g. blank "hoy" creado al abrir el editor).
       const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, true));
       const removidas = draft.semanas.length - limpias.length;
       semanas = [...limpias, s];
       setActiveWeekId(s.id);
       if (removidas > 0) {
-        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos para evitar duplicados.`);
+        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos.`);
       }
     }
-    const next = { ...draft, semanas };
-    setDraft(next);
-    try {
-      await onPersist(next);
-      setDirty(false);
-      toast.success("Imagen importada y guardada en la nube");
-    } catch {
-      setDirty(true);
-    }
+    setDraft({ ...draft, semanas });
+    setDirty(true);
+    toast.success("Imagen importada — revisa y presiona Guardar");
   };
 
   const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
@@ -420,29 +428,45 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       await onPersist(draft);
       setDirty(false);
       toast.success("Cambios guardados");
+      // Sugerir fecha inicial: siguiente lunes que no exista
+      const hoy = new Date();
+      let candidato = lunesDe(hoy);
+      let intentos = 0;
+      while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
+        const d = new Date(candidato + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        candidato = lunesDe(d);
+        intentos++;
+      }
+      setNuevaSemanaFecha(candidato);
       setPostSaveOpen(true);
     } finally {
       setSaving(false);
     }
   };
 
-  // "Continuar con otra semana" tras guardar = nueva semana en blanco en el mismo
-  // registro (misma área/instrumento), lista para subir foto o capturar manualmente.
+  // "Continuar con otra semana" tras guardar = nueva semana en blanco con la fecha
+  // que el usuario elija, en el mismo registro (misma área/instrumento).
   const handleNuevoRegistro = () => {
-    setPostSaveOpen(false);
-    // Buscar el siguiente lunes que no exista aún en este registro
-    const hoy = new Date();
-    let candidato = lunesDe(hoy);
-    let intentos = 0;
-    while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
-      const d = new Date(candidato + "T00:00:00");
-      d.setDate(d.getDate() + 7);
-      candidato = lunesDe(d);
-      intentos++;
+    if (!nuevaSemanaFecha) {
+      toast.error("Selecciona una fecha para la nueva semana");
+      return;
     }
-    addEmptyWeek(candidato);
-    toast.success(`Nueva semana ${candidato} agregada — sube la foto o captura manualmente`);
+    const lunes = lunesDe(new Date(nuevaSemanaFecha + "T00:00:00"));
+    if (draft.semanas.some((s) => s.semana_inicio === lunes)) {
+      toast.error(`Ya existe la semana del ${lunes} en este registro`);
+      return;
+    }
+    setPostSaveOpen(false);
+    addEmptyWeek(lunes);
+    toast.success(`Nueva semana ${lunes} agregada — sube la foto o captura manualmente`);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
+  };
+
+  // "Cerrar" en el diálogo post-guardado = volver al tablero inicial.
+  const handleCerrarPostSave = () => {
+    setPostSaveOpen(false);
+    navigate({ to: "/" });
   };
 
   const handleDiscard = () => {
@@ -647,18 +671,40 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Registro guardado ✓</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Quieres capturar otra semana del mismo registro
-              <span className="font-medium text-foreground"> ({draft.nombre})</span>?
-              <br /><br />
-              <span className="text-xs">
-                <b>Continuar</b>: añade una nueva semana en blanco y sigues capturando aquí mismo.<br />
-                <b>Cerrar</b>: te quedas en la semana actual sin agregar nada.
-              </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <div>
+                  ¿Quieres capturar otra semana del mismo registro
+                  <span className="font-medium text-foreground"> ({draft.nombre})</span>?
+                </div>
+                <div className="text-xs space-y-1">
+                  <div><b>Continuar con otra semana</b>: elige la fecha y se añade una semana nueva en blanco para seguir capturando aquí.</div>
+                  <div><b>Cerrar</b>: regresa al tablero principal.</div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">
+                    Fecha de la nueva semana (cualquier día — se ajusta al lunes)
+                  </label>
+                  <input
+                    type="date"
+                    value={nuevaSemanaFecha}
+                    onChange={(e) => setNuevaSemanaFecha(e.target.value)}
+                    className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                  {nuevaSemanaFecha && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Lunes resultante:{" "}
+                      <span className="font-mono text-foreground">
+                        {lunesDe(new Date(nuevaSemanaFecha + "T00:00:00"))}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPostSaveOpen(false)}>Cerrar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCerrarPostSave}>Cerrar (volver al tablero)</AlertDialogCancel>
             <AlertDialogAction onClick={handleNuevoRegistro}>
               Continuar con otra semana
             </AlertDialogAction>
