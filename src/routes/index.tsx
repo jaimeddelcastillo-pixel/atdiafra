@@ -5,7 +5,7 @@ import { ModuloCard } from "@/components/ModuloCard";
 import { LocalMigrationCard } from "@/components/LocalMigrationCard";
 import { CumplimientoCard } from "@/components/CumplimientoCard";
 import { MODULOS } from "@/lib/diafra-data";
-import { Activity, FlaskConical, Library, ChevronRight } from "lucide-react";
+import { Activity, FlaskConical, Library, ChevronRight, Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
