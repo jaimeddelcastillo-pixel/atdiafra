@@ -10,7 +10,7 @@ import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCaptu
 import { MODULOS } from "@/lib/diafra-data";
 import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
 
-export const Route = createFileRoute("/reporte")({
+export const Route = createFileRoute("/reporte/")({
   head: () => ({
     meta: [
       { title: "Reporte consolidado — DIAFRA" },

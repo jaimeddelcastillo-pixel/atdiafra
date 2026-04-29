@@ -10,10 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as ReporteRouteImport } from './routes/reporte'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ReporteIndexRouteImport } from './routes/reporte.index'
 import { Route as ReporteNormativoRouteImport } from './routes/reporte.normativo'
 import { Route as ReporteIdRouteImport } from './routes/reporte.$id'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
@@ -26,11 +26,6 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReporteRoute = ReporteRouteImport.update({
-  id: '/reporte',
-  path: '/reporte',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
@@ -46,6 +41,11 @@ const AuthRoute = AuthRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReporteIndexRoute = ReporteIndexRouteImport.update({
+  id: '/reporte/',
+  path: '/reporte/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReporteNormativoRoute = ReporteNormativoRouteImport.update({
@@ -94,13 +94,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -109,13 +109,13 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -125,13 +125,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/configuracion': typeof ConfiguracionRoute
-  '/reporte': typeof ReporteRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/admin/auditoria': typeof AdminAuditoriaRoute
   '/admin/usuarios': typeof AdminUsuariosRoute
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -142,13 +142,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/configuracion'
-    | '/reporte'
     | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -157,13 +157,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/configuracion'
-    | '/reporte'
     | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -172,13 +172,13 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/configuracion'
-    | '/reporte'
     | '/reset-password'
     | '/admin/auditoria'
     | '/admin/usuarios'
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -188,11 +188,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
-  ReporteRoute: typeof ReporteRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   AdminAuditoriaRoute: typeof AdminAuditoriaRoute
   AdminUsuariosRoute: typeof AdminUsuariosRoute
   ModuloSlugRoute: typeof ModuloSlugRoute
+  ReporteIndexRoute: typeof ReporteIndexRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -205,13 +205,6 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reporte': {
-      id: '/reporte'
-      path: '/reporte'
-      fullPath: '/reporte'
-      preLoaderRoute: typeof ReporteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracion': {
@@ -233,6 +226,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reporte/': {
+      id: '/reporte/'
+      path: '/reporte'
+      fullPath: '/reporte/'
+      preLoaderRoute: typeof ReporteIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reporte/normativo': {
@@ -294,28 +294,15 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ReporteRouteChildren {
-  ReporteIdRoute: typeof ReporteIdRoute
-  ReporteNormativoRoute: typeof ReporteNormativoRoute
-}
-
-const ReporteRouteChildren: ReporteRouteChildren = {
-  ReporteIdRoute: ReporteIdRoute,
-  ReporteNormativoRoute: ReporteNormativoRoute,
-}
-
-const ReporteRouteWithChildren =
-  ReporteRoute._addFileChildren(ReporteRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   ConfiguracionRoute: ConfiguracionRoute,
-  ReporteRoute: ReporteRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   AdminAuditoriaRoute: AdminAuditoriaRoute,
   AdminUsuariosRoute: AdminUsuariosRoute,
   ModuloSlugRoute: ModuloSlugRoute,
+  ReporteIndexRoute: ReporteIndexRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
