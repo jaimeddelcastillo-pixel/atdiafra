@@ -151,6 +151,9 @@ function fueraDeSpec(values: number[], lse: number | null | undefined, lie: numb
   return { altos, bajos, total: altos + bajos };
 }
 
+/** Mínimo de lecturas consolidadas para que Cp/Cpk sea estadísticamente confiable. */
+export const N_MINIMO_CPK = 30;
+
 export type EstadisticaSerie = {
   serie: "Temperatura" | "Humedad" | "Valor";
   unidad: string;
@@ -167,6 +170,8 @@ export type EstadisticaSerie = {
   cp: number | null;
   cpk: number | null;
   ppk: number | null;
+  /** true si n < N_MINIMO_CPK: Cp/Cpk no son confiables y deben mostrarse como "n insuficiente". */
+  cpkInsuficiente: boolean;
   pctDentroSpec: number | null;
   fueraSpec: { altos: number; bajos: number; total: number };
 };
@@ -203,7 +208,11 @@ function construirSerie(
   lie: number | null | undefined,
 ): EstadisticaSerie {
   const s = statsBasicas(values);
-  const cap = indicesCapacidad(s.media, s.sdMuestral, lse, lie);
+  const insuf = s.n < N_MINIMO_CPK;
+  // Si n < 30, Cp/Cpk no son confiables → no se reportan (null)
+  const cap = insuf
+    ? { cp: null, cpk: null, ppk: null }
+    : indicesCapacidad(s.media, s.sdMuestral, lse, lie);
   return {
     serie: nombre,
     unidad,
@@ -213,6 +222,7 @@ function construirSerie(
     cp: cap.cp,
     cpk: cap.cpk,
     ppk: cap.ppk,
+    cpkInsuficiente: insuf,
     pctDentroSpec: porcentajeDentroSpec(values, lse, lie),
     fueraSpec: fueraDeSpec(values, lse, lie),
   };
