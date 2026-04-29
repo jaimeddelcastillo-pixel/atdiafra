@@ -214,7 +214,6 @@ export function exportarNormativoPDF(
     return [22, 163, 74];
   };
 
-  const tieneDesgloseMensual = (a: AnalisisRegistro) => a.desgloseMensual.length >= 2;
 
   const filaSerie = (s: EstadisticaSerie): string[] => {
     const cpkTxt = s.cpkInsuficiente
