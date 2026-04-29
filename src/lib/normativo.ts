@@ -71,13 +71,75 @@ function lecturasValidas(arr: PuntoLectura[] | undefined): number[] {
     .map((p) => p.valor as number);
 }
 
+function percentil(sorted: number[], p: number): number | null {
+  if (sorted.length === 0) return null;
+  if (sorted.length === 1) return sorted[0];
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
 function statsBasicas(values: number[]) {
-  if (values.length === 0) return { n: 0, media: null, sd: null, min: null, max: null };
+  if (values.length === 0) {
+    return { n: 0, media: null, sd: null, sdMuestral: null, min: null, max: null, p5: null, p95: null };
+  }
   const n = values.length;
   const media = values.reduce((a, b) => a + b, 0) / n;
   const variance = values.reduce((s, v) => s + (v - media) ** 2, 0) / n;
   const sd = Math.sqrt(variance);
-  return { n, media, sd, min: Math.min(...values), max: Math.max(...values) };
+  // sd muestral (n-1) — usada para Cp/Cpk
+  const sdMuestral = n > 1 ? Math.sqrt(values.reduce((s, v) => s + (v - media) ** 2, 0) / (n - 1)) : null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return {
+    n,
+    media,
+    sd,
+    sdMuestral,
+    min: sorted[0],
+    max: sorted[sorted.length - 1],
+    p5: percentil(sorted, 5),
+    p95: percentil(sorted, 95),
+  };
+}
+
+function indicesCapacidad(
+  media: number | null,
+  sdMuestral: number | null,
+  lse: number | null | undefined,
+  lie: number | null | undefined,
+) {
+  if (media == null || sdMuestral == null || sdMuestral === 0) {
+    return { cp: null, cpk: null, ppk: null };
+  }
+  const tieneLSE = lse != null;
+  const tieneLIE = lie != null;
+  let cp: number | null = null;
+  if (tieneLSE && tieneLIE) cp = (lse - lie) / (6 * sdMuestral);
+  let cpu: number | null = null;
+  let cpl: number | null = null;
+  if (tieneLSE) cpu = (lse - media) / (3 * sdMuestral);
+  if (tieneLIE) cpl = (media - lie) / (3 * sdMuestral);
+  const candidatos = [cpu, cpl].filter((v): v is number => v != null);
+  const cpk = candidatos.length ? Math.min(...candidatos) : null;
+  // Ppk = Cpk en este contexto (mismo sd muestral, sin sub-grupos)
+  return { cp, cpk, ppk: cpk };
+}
+
+function porcentajeDentroSpec(
+  values: number[],
+  lse: number | null | undefined,
+  lie: number | null | undefined,
+): number | null {
+  if (values.length === 0) return null;
+  let dentro = 0;
+  for (const v of values) {
+    const okSup = lse == null || v <= lse;
+    const okInf = lie == null || v >= lie;
+    if (okSup && okInf) dentro++;
+  }
+  return (dentro / values.length) * 100;
 }
 
 function fueraDeSpec(values: number[], lse: number | null | undefined, lie: number | null | undefined) {
