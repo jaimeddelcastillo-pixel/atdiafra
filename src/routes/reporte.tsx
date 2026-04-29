@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText } from "lucide-react";
+import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText, Merge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro, detectarDuplicados, fusionarRegistros, type Registro, type Modulo } from "@/lib/semanas";
