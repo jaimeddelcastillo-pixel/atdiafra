@@ -102,10 +102,15 @@ function aplicarLecturas(
     const idx = di * 3 + ti;
     const v = r.valor;
     const num = v == null || v === "" ? null : typeof v === "number" ? v : parseFloat(String(v));
+    const valorFinal = Number.isFinite(num as number) ? (num as number) : null;
+    const conf = typeof r.confianza === "number" ? r.confianza : null;
+    // Marcar como dudoso si la IA reportó confianza < 0.7 o si no pudo leer el valor
+    const dudoso = (conf !== null && conf < 0.7) || (valorFinal === null && conf !== 0);
     arr[idx] = {
       dia: d, turno: t,
-      valor: Number.isFinite(num as number) ? (num as number) : null,
+      valor: valorFinal,
       hora: r.hora ?? null, quien: r.quien ?? null,
+      _dudoso: dudoso || undefined,
     };
   }
   (s as Semana)[arrName] = arr;
