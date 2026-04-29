@@ -422,6 +422,46 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Popover open={exportOpen} onOpenChange={setExportOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1">
+                <FileText className="h-4 w-4" /> Exportar PDF
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold">PDF normativo</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Solo este registro, en el rango que elijas.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Desde</label>
+                  <input
+                    type="date"
+                    value={exportDesde}
+                    max={exportHasta}
+                    onChange={(e) => setExportDesde(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Hasta</label>
+                  <input
+                    type="date"
+                    value={exportHasta}
+                    min={exportDesde}
+                    onChange={(e) => setExportHasta(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleExportPDF} disabled={exportingPDF} className="w-full gap-1">
+                <FileText className="h-4 w-4" /> {exportingPDF ? "Generando…" : "Generar PDF"}
+              </Button>
+            </PopoverContent>
+          </Popover>
           {canWriteRecords && (
             <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
               <Plus className="h-4 w-4" /> Nueva semana actual
