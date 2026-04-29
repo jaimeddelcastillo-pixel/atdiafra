@@ -14,10 +14,11 @@ import {
   listRegistros, deleteRegistro, rangoFechasRegistro,
   detectarDuplicados, fusionarRegistros, type Registro,
 } from "@/lib/semanas";
-import { listAreas, listInstrumentos, type AreaClasificada, type Instrumento } from "@/lib/catalogos";
+import { listAreas, listInstrumentos, listSistemasHVAC, type AreaClasificada, type Instrumento } from "@/lib/catalogos";
 import { MODULOS } from "@/lib/diafra-data";
-import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
-import { MINIMO_NORMATIVO, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
+import { exportarNormativoExcel, exportarNormativoPDF } from "@/lib/export-normativo";
+import { Input } from "@/components/ui/input";
+import { MINIMO_NORMATIVO, analizarRegistro, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
 
 export const Route = createFileRoute("/reporte/")({
   head: () => ({
@@ -73,11 +74,16 @@ function ReportePage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
   const [instrumentos, setInstrumentos] = useState<Instrumento[]>([]);
+  const [hvacMap, setHvacMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   // Drill-down: área seleccionada → instrumento seleccionado
   const [areaSel, setAreaSel] = useState<string | null>(null);
   const [instrSel, setInstrSel] = useState<string | null>(null);
+
+  // Filtros de texto
+  const [filtroArea, setFiltroArea] = useState("");
+  const [filtroInstr, setFiltroInstr] = useState("");
 
   // Periodo desde / hasta (default: últimos 90 días)
   const hoy = new Date();
@@ -88,8 +94,9 @@ function ReportePage() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [regs, ar, ins] = await Promise.all([listRegistros(), listAreas(), listInstrumentos()]);
+      const [regs, ar, ins, hv] = await Promise.all([listRegistros(), listAreas(), listInstrumentos(), listSistemasHVAC()]);
       setRegistros(regs); setAreas(ar); setInstrumentos(ins);
+      setHvacMap(new Map(hv.map((h) => [h.id, `${h.codigo} · ${h.nombre_uma}`])));
     } catch (e: any) {
       toast.error("No se pudieron cargar datos: " + e.message);
     } finally {
@@ -109,7 +116,7 @@ function ReportePage() {
 
   const periodoEtiqueta = `${format(desde, "dd/MM/yyyy")} – ${format(hasta, "dd/MM/yyyy")}`;
 
-  // Agrupar todo por área
+  // Agrupar todo por área (con filtro de texto)
   const grupoPorArea = useMemo(() => {
     const m = new Map<string, { etiqueta: string; registros: Registro[] }>();
     for (const r of registros) {
@@ -119,12 +126,14 @@ function ReportePage() {
       if (cur) cur.registros.push(r);
       else m.set(k, { etiqueta: et, registros: [r] });
     }
+    const q = filtroArea.trim().toLowerCase();
     return Array.from(m.entries())
       .map(([k, v]) => ({ key: k, ...v }))
+      .filter((g) => !q || g.etiqueta.toLowerCase().includes(q))
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
-  }, [registros, areasMap]);
+  }, [registros, areasMap, filtroArea]);
 
-  // Para el área seleccionada, agrupar por instrumento
+  // Para el área seleccionada, agrupar por instrumento (con filtro de texto)
   const instrumentosDelArea = useMemo(() => {
     if (!areaSel) return [];
     const grp = grupoPorArea.find((g) => g.key === areaSel);
@@ -137,10 +146,12 @@ function ReportePage() {
       if (cur) cur.registros.push(r);
       else m.set(k, { etiqueta: et, registros: [r] });
     }
+    const q = filtroInstr.trim().toLowerCase();
     return Array.from(m.entries())
       .map(([k, v]) => ({ key: k, ...v }))
+      .filter((g) => !q || g.etiqueta.toLowerCase().includes(q))
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
-  }, [areaSel, grupoPorArea, instrMap]);
+  }, [areaSel, grupoPorArea, instrMap, filtroInstr]);
 
   // Registros del instrumento seleccionado
   const registrosDelInstrumento = useMemo(() => {
@@ -200,8 +211,13 @@ function ReportePage() {
       return;
     }
     try {
-      if (tipo === "excel") exportarReporteExcel(registrosParaExportar, periodo, periodoEtiqueta);
-      else exportarReportePDF(registrosParaExportar, periodo, periodoEtiqueta);
+      const analisis = registrosParaExportar.map((r) => analizarRegistro(r, periodo));
+      const cat = {
+        areas: new Map(areas.map((a) => [a.id, `${a.codigo} · ${a.nombre}`])),
+        hvac: hvacMap,
+      };
+      if (tipo === "excel") exportarNormativoExcel(analisis, "area", cat);
+      else exportarNormativoPDF(analisis, "area", cat, { incluirGraficas: true });
       toast.success(`${tipo === "excel" ? "Excel" : "PDF"} generado (${registrosParaExportar.length} registros)`);
     } catch (e: any) {
       toast.error("No se pudo exportar: " + e.message);
@@ -313,6 +329,31 @@ function ReportePage() {
                 {instrumentosDelArea.find((g) => g.key === instrSel)?.etiqueta ?? "—"} ({registrosDelInstrumento.length} reg.)
               </span>
             </>
+          )}
+        </div>
+
+        {/* Filtros de búsqueda contextuales */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {!areaSel && (
+            <Input
+              placeholder="Filtrar áreas por código o nombre…"
+              value={filtroArea}
+              onChange={(e) => setFiltroArea(e.target.value)}
+              className="max-w-xs h-9"
+            />
+          )}
+          {areaSel && !instrSel && (
+            <Input
+              placeholder="Filtrar instrumentos por código o parámetro…"
+              value={filtroInstr}
+              onChange={(e) => setFiltroInstr(e.target.value)}
+              className="max-w-xs h-9"
+            />
+          )}
+          {(filtroArea || filtroInstr) && (
+            <Button size="sm" variant="ghost" onClick={() => { setFiltroArea(""); setFiltroInstr(""); }}>
+              Limpiar filtro
+            </Button>
           )}
         </div>
 
