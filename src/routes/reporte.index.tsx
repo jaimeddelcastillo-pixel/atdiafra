@@ -74,11 +74,16 @@ function ReportePage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
   const [instrumentos, setInstrumentos] = useState<Instrumento[]>([]);
+  const [hvacMap, setHvacMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   // Drill-down: área seleccionada → instrumento seleccionado
   const [areaSel, setAreaSel] = useState<string | null>(null);
   const [instrSel, setInstrSel] = useState<string | null>(null);
+
+  // Filtros de texto
+  const [filtroArea, setFiltroArea] = useState("");
+  const [filtroInstr, setFiltroInstr] = useState("");
 
   // Periodo desde / hasta (default: últimos 90 días)
   const hoy = new Date();
@@ -89,8 +94,9 @@ function ReportePage() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [regs, ar, ins] = await Promise.all([listRegistros(), listAreas(), listInstrumentos()]);
+      const [regs, ar, ins, hv] = await Promise.all([listRegistros(), listAreas(), listInstrumentos(), listSistemasHVAC()]);
       setRegistros(regs); setAreas(ar); setInstrumentos(ins);
+      setHvacMap(new Map(hv.map((h) => [h.id, `${h.codigo} · ${h.nombre_uma}`])));
     } catch (e: any) {
       toast.error("No se pudieron cargar datos: " + e.message);
     } finally {
