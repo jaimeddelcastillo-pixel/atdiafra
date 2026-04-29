@@ -538,12 +538,42 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
             {draft.semanas
               .slice()
               .sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio))
-              .map((s) => (
-                <button key={s.id} onClick={() => setActiveWeekId(s.id)}
-                  className={`text-xs rounded-md px-2.5 py-1 border ${activeWeekId === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
-                  {s.semana_inicio}
-                </button>
-              ))}
+              .map((s) => {
+                const cap = lecturasCapturadas(s, true);
+                const esp = lecturasEsperadas(s, true);
+                const vacia = cap === 0;
+                const completa = esp > 0 && cap >= esp;
+                const isActive = activeWeekId === s.id;
+                return (
+                  <div key={s.id} className={`inline-flex items-stretch rounded-md border overflow-hidden ${isActive ? "border-primary" : "border-border"}`}>
+                    <button
+                      onClick={() => setActiveWeekId(s.id)}
+                      title={`Semana del ${s.semana_inicio} — ${cap}/${esp} lecturas`}
+                      className={`text-xs px-2.5 py-1 flex items-center gap-1.5 ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+                      <span>{s.semana_inicio}</span>
+                      <span className={`text-[10px] px-1 rounded ${
+                        isActive
+                          ? "bg-primary-foreground/20"
+                          : vacia
+                            ? "bg-warning/20 text-warning"
+                            : completa
+                              ? "bg-success/20 text-success"
+                              : "bg-muted text-muted-foreground"
+                      }`}>
+                        {vacia ? "vacía" : completa ? "✓" : `${cap}/${esp}`}
+                      </span>
+                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteWeek(s.id); }}
+                        title={`Eliminar semana del ${s.semana_inicio}`}
+                        className={`px-1.5 text-xs border-l ${isActive ? "border-primary-foreground/30 text-primary-foreground hover:bg-destructive" : "border-border text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"}`}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>
