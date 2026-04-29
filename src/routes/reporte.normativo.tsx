@@ -200,23 +200,26 @@ function NormativoPage() {
           <CardContent className="pt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Periodo</label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v as "trimestre" | "anual")}>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as "trimestre" | "anual" | "custom")}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="trimestre">Trimestral</SelectItem>
                   <SelectItem value="anual">Anual</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Año</label>
-              <input
-                type="number"
-                value={anio}
-                onChange={(e) => setAnio(parseInt(e.target.value, 10) || new Date().getFullYear())}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
-              />
-            </div>
+            {tipo !== "custom" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Año</label>
+                <input
+                  type="number"
+                  value={anio}
+                  onChange={(e) => setAnio(parseInt(e.target.value, 10) || new Date().getFullYear())}
+                  className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                />
+              </div>
+            )}
             {tipo === "trimestre" && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Trimestre</label>
@@ -227,6 +230,30 @@ function NormativoPage() {
                   </SelectContent>
                 </Select>
               </div>
+            )}
+            {tipo === "custom" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Desde</label>
+                  <input
+                    type="date"
+                    value={desde}
+                    max={hasta}
+                    onChange={(e) => setDesde(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Hasta</label>
+                  <input
+                    type="date"
+                    value={hasta}
+                    min={desde}
+                    onChange={(e) => setHasta(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+              </>
             )}
             <div>
               <label className="text-xs font-medium text-muted-foreground">Módulo</label>
