@@ -426,8 +426,8 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
     }
   };
 
-  // "Nuevo registro" tras guardar = nueva semana en blanco para la misma área/instrumento,
-  // lista para subir otra foto. No crea otro Registro de catálogo.
+  // "Continuar con otra semana" tras guardar = nueva semana en blanco en el mismo
+  // registro (misma área/instrumento), lista para subir foto o capturar manualmente.
   const handleNuevoRegistro = () => {
     setPostSaveOpen(false);
     // Buscar el siguiente lunes que no exista aún en este registro
@@ -441,11 +441,8 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       intentos++;
     }
     addEmptyWeek(candidato);
-    toast.success(`Lista nueva semana ${candidato} — sube la foto o captura manualmente`);
-    // Scroll al importador
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 100);
+    toast.success(`Nueva semana ${candidato} agregada — sube la foto o captura manualmente`);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
   };
 
   const handleDiscard = () => {
