@@ -23,7 +23,7 @@ import {
 } from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { registroId?: string } => ({
     registroId: typeof search.registroId === "string" ? search.registroId : undefined,
   }),
   head: ({ params }) => {
