@@ -226,6 +226,43 @@ function ReportePage() {
           </div>
         </div>
 
+        {/* Duplicados detectados */}
+        {duplicados.length > 0 && (
+          <section className="mt-6 rounded-xl border border-warning/40 bg-warning/5 p-4">
+            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Merge className="h-4 w-4 text-warning" />
+              Registros duplicados detectados ({duplicados.length} grupo{duplicados.length === 1 ? "" : "s"})
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Estos registros comparten la misma área e instrumento. Fusionarlos consolida todas sus semanas en uno solo (se conserva el más antiguo).
+            </p>
+            <div className="mt-3 space-y-2">
+              {duplicados.map((grupo, i) => (
+                <div key={i} className="rounded-md border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-foreground">{grupo[0].nombre}</div>
+                      <ul className="mt-1 space-y-0.5">
+                        {[...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((r, idx) => (
+                          <li key={r.id} className="text-[11px] text-muted-foreground">
+                            {idx === 0 && <span className="text-success font-medium">[se conserva] </span>}
+                            <span className="font-mono">{r.id.slice(0, 8)}…</span> · {rangoFechasRegistro(r)} · creado {r.created_at.slice(0, 10)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {canDelete && (
+                      <Button size="sm" variant="outline" onClick={() => handleFusionarGrupo(grupo)} className="gap-1">
+                        <Merge className="h-3.5 w-3.5" /> Fusionar en uno
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Cumplimiento */}
         <section className="mt-6">
           <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
