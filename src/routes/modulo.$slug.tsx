@@ -136,16 +136,11 @@ function TempHRModule() {
       toast.error("Selecciona el termohigrómetro");
       return;
     }
-    // Bloquear duplicados: si ya existe un registro con esa misma área+instrumento, abrirlo en vez de crear otro.
-    const existente = registros.find(
-      (r) => r.modulo === "temphr" && r.area_id === draft.area_id && r.instrumento_id === draft.instrumento_id,
-    );
-    if (existente) {
-      setActiveId(existente.id);
-      setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
-      toast.info(`Ya existe un registro para esa área + instrumento — se abrió el existente para evitar duplicados.`);
-      return;
-    }
+    // Nota: NO bloqueamos por área+instrumento ya que un mismo punto de medición
+    // puede tener múltiples registros legítimos correspondientes a distintos periodos
+    // (ej. un registro por trimestre). Lo único que se considera duplicado es cuando
+    // dos registros comparten alguna semana (mismo lunes) — eso lo detecta el banner
+    // de duplicados en /reporte.
     const area = areas.find((a) => a.id === draft.area_id);
     const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
     const iso = (area?.iso ?? draft.iso) as IsoClase;

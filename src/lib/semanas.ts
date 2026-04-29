@@ -312,7 +312,11 @@ export function nombreRegistroConFechas(r: Registro): string {
   return `${r.nombre} (${rangoFechasRegistro(r)})`;
 }
 
-/** Detecta grupos de registros con el mismo módulo + área + instrumento (potenciales duplicados). */
+/** Detecta grupos de registros REALMENTE duplicados:
+ * misma área + instrumento + módulo Y AL MENOS UN LUNES (semana_inicio) en común.
+ * Registros de la misma área+instrumento pero con semanas distintas NO son duplicados:
+ * son periodos diferentes (ej. ene–mar vs abr–jun) y deben coexistir.
+ */
 export function detectarDuplicados(registros: Registro[]): Registro[][] {
   const grupos = new Map<string, Registro[]>();
   for (const r of registros) {
@@ -327,7 +331,25 @@ export function detectarDuplicados(registros: Registro[]): Registro[][] {
     arr.push(r);
     grupos.set(key, arr);
   }
-  return Array.from(grupos.values()).filter((g) => g.length > 1);
+  // Solo es duplicado si dos registros del mismo grupo comparten al menos un lunes.
+  const resultado: Registro[][] = [];
+  for (const grupo of grupos.values()) {
+    if (grupo.length < 2) continue;
+    const lunesPorRegistro = grupo.map((r) => new Set(r.semanas.map((s) => s.semana_inicio)));
+    let haySolape = false;
+    outer: for (let i = 0; i < grupo.length; i++) {
+      for (let j = i + 1; j < grupo.length; j++) {
+        for (const l of lunesPorRegistro[i]) {
+          if (lunesPorRegistro[j].has(l)) { haySolape = true; break outer; }
+        }
+      }
+    }
+    // También consideramos duplicado si hay 2+ registros del mismo grupo SIN ninguna semana
+    // (vacíos creados por accidente).
+    const todosVacios = grupo.every((r) => r.semanas.length === 0);
+    if (haySolape || todosVacios) resultado.push(grupo);
+  }
+  return resultado;
 }
 
 /** Fusiona varios registros en uno solo: conserva el más antiguo y mueve todas las semanas (sin duplicar lunes). */
