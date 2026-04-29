@@ -40,17 +40,17 @@ function Index() {
                   TRACEA
                 </h1>
                 <p className="mt-1 text-sm sm:text-base font-medium text-primary">
-                  Análisis de Tendencias · Módulo 2 de TRACEA Suite
+                  Análisis de Tendencias
                 </p>
                 <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl">
                   Registra, digitaliza desde imagen, analiza estadísticamente y visualiza tendencias
-                  de los parámetros críticos de calidad conforme a NOM-241-SSA1.
+                  de los parámetros críticos de calidad.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     to="/modulo/$slug"
                     params={{ slug: "temperatura-humedad" }}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary transition-colors"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow"
                   >
                     <Activity className="h-4 w-4" /> Abrir Temperatura y HR
                   </Link>
