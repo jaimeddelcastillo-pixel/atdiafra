@@ -210,7 +210,10 @@ function TempHRModule() {
                 <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
                   <div className="font-medium text-foreground">{active.nombre}</div>
                   <div className="text-muted-foreground mt-0.5">
-                    {active.iso} · {active.semanas.length} semana(s)
+                    {active.iso} · {rangoFechasRegistro(active)}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5">
+                    ID {active.id.slice(0, 8)}…
                   </div>
                 </div>
                 <Button
