@@ -428,29 +428,45 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       await onPersist(draft);
       setDirty(false);
       toast.success("Cambios guardados");
+      // Sugerir fecha inicial: siguiente lunes que no exista
+      const hoy = new Date();
+      let candidato = lunesDe(hoy);
+      let intentos = 0;
+      while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
+        const d = new Date(candidato + "T00:00:00");
+        d.setDate(d.getDate() + 7);
+        candidato = lunesDe(d);
+        intentos++;
+      }
+      setNuevaSemanaFecha(candidato);
       setPostSaveOpen(true);
     } finally {
       setSaving(false);
     }
   };
 
-  // "Continuar con otra semana" tras guardar = nueva semana en blanco en el mismo
-  // registro (misma área/instrumento), lista para subir foto o capturar manualmente.
+  // "Continuar con otra semana" tras guardar = nueva semana en blanco con la fecha
+  // que el usuario elija, en el mismo registro (misma área/instrumento).
   const handleNuevoRegistro = () => {
-    setPostSaveOpen(false);
-    // Buscar el siguiente lunes que no exista aún en este registro
-    const hoy = new Date();
-    let candidato = lunesDe(hoy);
-    let intentos = 0;
-    while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
-      const d = new Date(candidato + "T00:00:00");
-      d.setDate(d.getDate() + 7);
-      candidato = lunesDe(d);
-      intentos++;
+    if (!nuevaSemanaFecha) {
+      toast.error("Selecciona una fecha para la nueva semana");
+      return;
     }
-    addEmptyWeek(candidato);
-    toast.success(`Nueva semana ${candidato} agregada — sube la foto o captura manualmente`);
+    const lunes = lunesDe(new Date(nuevaSemanaFecha + "T00:00:00"));
+    if (draft.semanas.some((s) => s.semana_inicio === lunes)) {
+      toast.error(`Ya existe la semana del ${lunes} en este registro`);
+      return;
+    }
+    setPostSaveOpen(false);
+    addEmptyWeek(lunes);
+    toast.success(`Nueva semana ${lunes} agregada — sube la foto o captura manualmente`);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
+  };
+
+  // "Cerrar" en el diálogo post-guardado = volver al tablero inicial.
+  const handleCerrarPostSave = () => {
+    setPostSaveOpen(false);
+    navigate({ to: "/" });
   };
 
   const handleDiscard = () => {
