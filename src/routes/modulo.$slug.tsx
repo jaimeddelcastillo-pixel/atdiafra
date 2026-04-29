@@ -23,6 +23,7 @@ import {
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
   upsertRegistro, listRegistros, deleteRegistro,
+  esSemanaVacia, lecturasCapturadas, lecturasEsperadas,
 } from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
