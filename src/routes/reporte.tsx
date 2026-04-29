@@ -364,7 +364,11 @@ function ReportePage() {
                       const esTHR = r.modulo === "temphr";
                       return (
                         <tr key={r.id} className="border-t border-border align-top">
-                          <td className="px-3 py-2 font-medium text-foreground">{r.nombre}</td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-foreground">{r.nombre}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">{rangoFechasRegistro(r)}</div>
+                            <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5">{r.id.slice(0, 8)}…</div>
+                          </td>
                           <td className="px-3 py-2 text-muted-foreground">{r.modulo}</td>
                           <td className="px-3 py-2 text-muted-foreground">{r.iso ?? "—"}</td>
                           <td className="px-3 py-2 text-center tabular-nums">{r.semanas.length}</td>
