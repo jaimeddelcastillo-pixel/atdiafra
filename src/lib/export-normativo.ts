@@ -16,8 +16,23 @@ import {
   type EstadisticaSerie,
 } from "./normativo";
 import { generarChartsRegistro } from "./chart-renderer";
+import diafraLogo from "@/assets/diafra-logo.jpg";
 
 type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
+
+// ===== Identidad documental DIAFRA (formato controlado) =====
+const DOC_CODIGO = "FOR-VAL-16";
+const DOC_VERSION = "(01)";
+const DOC_DEPARTAMENTO = "FORMATO — DEPARTAMENTO: VALIDACIÓN Y MONITOREO AMBIENTAL";
+const DOC_TITULO = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
+const DOC_FOOTER =
+  "Documento confidencial propiedad de DIAFRA, queda prohibido su uso, divulgación y/o reproducción total o parcial sin previa autorización.";
+const DOC_NORMA = "Conforme a NOM-241-SSA1-2025 · ISO 14644 · FEUM 13ª Ed.";
+
+// Márgenes reservados para encabezado y pie en cada página
+const HEADER_H = 70;   // alto del encabezado
+const FOOTER_H = 28;   // alto del pie
+const TOP_Y = HEADER_H + 14; // y inicial seguro de contenido
 
 function fechaArchivo() {
   return new Date().toISOString().slice(0, 10);
@@ -25,6 +40,78 @@ function fechaArchivo() {
 
 function num(v: number | null | undefined, d = 2) {
   return v != null && Number.isFinite(v) ? v.toFixed(d) : "—";
+}
+
+/** Dibuja encabezado corporativo (logo · título · código) y pie en cada página. */
+function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const total = doc.getNumberOfPages();
+
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+
+    // ===== ENCABEZADO =====
+    // Marco general
+    doc.setDrawColor(180).setLineWidth(0.5);
+    doc.rect(20, 20, pageW - 40, HEADER_H - 20);
+
+    // Columnas: logo (110) | título (centro) | código (140)
+    const xLogo = 20;
+    const wLogo = 110;
+    const xCodigo = pageW - 20 - 140;
+    const wCodigo = 140;
+
+    // Líneas verticales separadoras
+    doc.line(xLogo + wLogo, 20, xLogo + wLogo, HEADER_H);
+    doc.line(xCodigo, 20, xCodigo, HEADER_H);
+
+    // Logo
+    try {
+      doc.addImage(diafraLogo, "JPEG", xLogo + 10, 26, wLogo - 20, HEADER_H - 32);
+    } catch {
+      doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(30, 64, 175);
+      doc.text("DIAFRA", xLogo + wLogo / 2, 45, { align: "center" });
+      doc.setFontSize(7).setFont("helvetica", "italic").setTextColor(100);
+      doc.text("S.A. DE C.V.", xLogo + wLogo / 2, 55, { align: "center" });
+      doc.setTextColor(0);
+    }
+
+    // Título central
+    const xTit = xLogo + wLogo;
+    const wTit = xCodigo - xTit;
+    doc.setTextColor(0);
+    doc.setFontSize(12).setFont("helvetica", "bold");
+    doc.text("DIAFRA", xTit + wTit / 2, 34, { align: "center" });
+    doc.setFontSize(8).setFont("helvetica", "italic");
+    doc.text(DOC_DEPARTAMENTO, xTit + wTit / 2, 46, { align: "center" });
+    doc.setFontSize(10).setFont("helvetica", "bold");
+    doc.text(DOC_TITULO, xTit + wTit / 2, 60, { align: "center" });
+
+    // Código (derecha)
+    doc.setFontSize(9).setFont("helvetica", "bold");
+    doc.text("CÓDIGO", xCodigo + wCodigo / 2, 32, { align: "center" });
+    doc.setFontSize(9).setFont("helvetica", "normal");
+    doc.text(`${DOC_CODIGO} ${DOC_VERSION}`, xCodigo + wCodigo / 2, 46, { align: "center" });
+    doc.setFontSize(8);
+    doc.text(`Página ${i} de ${total}`, xCodigo + wCodigo / 2, 60, { align: "center" });
+
+    // ===== PIE =====
+    doc.setDrawColor(200).setLineWidth(0.3);
+    doc.line(20, pageH - FOOTER_H, pageW - 20, pageH - FOOTER_H);
+
+    doc.setFontSize(7).setFont("helvetica", "normal").setTextColor(80);
+    doc.text(DOC_FOOTER, pageW / 2, pageH - 16, { align: "center" });
+    doc.setFontSize(7).setTextColor(120);
+    doc.text(`${DOC_NORMA} · Periodo: ${periodo}`, 22, pageH - 6);
+    doc.text(
+      `Generado: ${new Date().toLocaleString("es-MX")}`,
+      pageW - 22,
+      pageH - 6,
+      { align: "right" },
+    );
+    doc.setTextColor(0);
+  }
 }
 
 export function exportarNormativoExcel(
