@@ -306,6 +306,64 @@ function NormativoPage() {
           </CardContent>
         </Card>
 
+        {/* Selección manual de registros */}
+        <Card className="mt-4">
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={seleccionManual}
+                  onChange={(e) => {
+                    setSeleccionManual(e.target.checked);
+                    if (e.target.checked && seleccionados.size === 0) {
+                      setSeleccionados(new Set(filtrados.map((r) => r.id)));
+                    }
+                  }}
+                />
+                Selección manual de registros
+                <span className="text-xs text-muted-foreground">
+                  ({seleccionManual ? `${seleccionados.size} de ${filtrados.length}` : `todos: ${filtrados.length}`})
+                </span>
+              </label>
+              {seleccionManual && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSeleccionados(new Set(filtrados.map((r) => r.id)))}>
+                    Todos
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSeleccionados(new Set())}>
+                    Ninguno
+                  </Button>
+                </div>
+              )}
+            </div>
+            {seleccionManual && (
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border p-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                {filtrados.length === 0 ? (
+                  <p className="text-xs text-muted-foreground col-span-full">Ningún registro coincide con los filtros.</p>
+                ) : (
+                  filtrados.map((r) => (
+                    <label key={r.id} className="inline-flex items-center gap-2 text-xs text-foreground hover:bg-muted/50 rounded px-1 py-0.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.has(r.id)}
+                        onChange={(e) => {
+                          const next = new Set(seleccionados);
+                          if (e.target.checked) next.add(r.id);
+                          else next.delete(r.id);
+                          setSeleccionados(next);
+                        }}
+                      />
+                      <span className="truncate">{r.nombre}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{r.modulo}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* KPIs */}
         <div className="mt-4 grid gap-3 sm:grid-cols-4">
           <KPI label="Registros analizados" value={kpis.total} />
