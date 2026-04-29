@@ -4,6 +4,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   MINIMO_NORMATIVO,
+  N_MINIMO_CPK,
   etiquetaGrupo,
   claveGrupo,
   semanasDelPeriodo,
@@ -64,9 +65,10 @@ export function exportarNormativoExcel(
         Max: s.max ?? "",
         P5: s.p5 != null ? Number(s.p5.toFixed(3)) : "",
         P95: s.p95 != null ? Number(s.p95.toFixed(3)) : "",
-        Cp: s.cp != null ? Number(s.cp.toFixed(3)) : "",
-        Cpk: s.cpk != null ? Number(s.cpk.toFixed(3)) : "",
-        Ppk: s.ppk != null ? Number(s.ppk.toFixed(3)) : "",
+        Cp: s.cpkInsuficiente ? "n insuf." : s.cp != null ? Number(s.cp.toFixed(3)) : "",
+        Cpk: s.cpkInsuficiente ? "n insuf." : s.cpk != null ? Number(s.cpk.toFixed(3)) : "",
+        Ppk: s.cpkInsuficiente ? "n insuf." : s.ppk != null ? Number(s.ppk.toFixed(3)) : "",
+        "n suficiente para Cpk": s.cpkInsuficiente ? `NO (n=${s.n}, mínimo ${N_MINIMO_CPK})` : "SÍ",
         "% dentro spec": s.pctDentroSpec != null ? Number(s.pctDentroSpec.toFixed(2)) : "",
         LIE: s.lie ?? "",
         LSE: s.lse ?? "",
@@ -212,20 +214,24 @@ export function exportarNormativoPDF(
     return [22, 163, 74];
   };
 
-  const tieneDesgloseMensual = (a: AnalisisRegistro) => a.desgloseMensual.length >= 2;
 
-  const filaSerie = (s: EstadisticaSerie): string[] => [
-    `${s.serie} ${s.unidad}`.trim(),
-    String(s.n),
-    num(s.media),
-    num(s.sd),
-    `${num(s.min)} / ${num(s.max)}`,
-    `${num(s.p5)} / ${num(s.p95)}`,
-    `${num(s.cp)} / ${num(s.cpk)} / ${num(s.ppk)}`,
-    s.pctDentroSpec != null ? `${s.pctDentroSpec.toFixed(1)}%` : "—",
-    `${s.lie ?? "—"} / ${s.lse ?? "—"}`,
-    s.fueraSpec.total === 0 ? "0" : `${s.fueraSpec.total} (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓)`,
-  ];
+  const filaSerie = (s: EstadisticaSerie): string[] => {
+    const cpkTxt = s.cpkInsuficiente
+      ? `n insuf. (${s.n}<${N_MINIMO_CPK})`
+      : `${num(s.cp)} / ${num(s.cpk)} / ${num(s.ppk)}`;
+    return [
+      `${s.serie} ${s.unidad}`.trim(),
+      String(s.n),
+      num(s.media),
+      num(s.sd),
+      `${num(s.min)} / ${num(s.max)}`,
+      `${num(s.p5)} / ${num(s.p95)}`,
+      cpkTxt,
+      s.pctDentroSpec != null ? `${s.pctDentroSpec.toFixed(1)}%` : "—",
+      `${s.lie ?? "—"} / ${s.lse ?? "—"}`,
+      s.fueraSpec.total === 0 ? "0" : `${s.fueraSpec.total} (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓)`,
+    ];
+  };
 
   const headStats = [
     ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
@@ -233,17 +239,18 @@ export function exportarNormativoPDF(
 
   for (const g of Array.from(grupos.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta))) {
     for (const a of g.items) {
+      // Una página por instrumento/registro (consolidado del período completo)
       doc.addPage();
       doc.setFontSize(13).setFont("helvetica", "bold");
       doc.text(`${g.etiqueta} · ${a.registro.nombre}`, 40, 40);
       doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
       doc.text(
-        `${a.rango.etiqueta} · ${a.totalLecturas} lecturas (${a.porcentajeMinimo}% del mínimo) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
+        `${a.rango.etiqueta} · ${a.totalLecturas} lecturas consolidadas (${a.porcentajeMinimo}% del mínimo ${MINIMO_NORMATIVO}) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
         40, 56,
       );
       doc.setTextColor(0);
 
-      // Tabla de stats del periodo total
+      // Tabla de stats consolidados del período completo
       autoTable(doc, {
         startY: 70,
         head: headStats,
@@ -253,13 +260,18 @@ export function exportarNormativoPDF(
         styles: { fontSize: 8, cellPadding: 3 },
         didParseCell: (data) => {
           if (data.section === "body" && data.column.index === 6) {
-            // Cp / Cpk / Ppk → colorear por Cpk (segundo valor)
             const s = a.series[data.row.index];
-            const c = colorCpk(s.cpk);
-            if (c) {
-              data.cell.styles.fillColor = c;
-              data.cell.styles.textColor = 255;
-              data.cell.styles.fontStyle = "bold";
+            if (s.cpkInsuficiente) {
+              data.cell.styles.fillColor = [226, 232, 240];
+              data.cell.styles.textColor = [71, 85, 105];
+              data.cell.styles.fontStyle = "italic";
+            } else {
+              const c = colorCpk(s.cpk);
+              if (c) {
+                data.cell.styles.fillColor = c;
+                data.cell.styles.textColor = 255;
+                data.cell.styles.fontStyle = "bold";
+              }
             }
           }
           if (data.section === "body" && data.column.index === 9) {
@@ -279,31 +291,16 @@ export function exportarNormativoPDF(
         },
       });
 
-      // Desglose mensual (si hay 2+ meses, e.g. trimestre/anual/custom largo)
-      if (tieneDesgloseMensual(a)) {
-        let yMes = (doc as any).lastAutoTable.finalY + 18;
-        if (yMes > pageH - 120) { doc.addPage(); yMes = 50; }
-        doc.setFontSize(11).setFont("helvetica", "bold");
-        doc.text("Desglose mensual", 40, yMes);
-        const filasMes: string[][] = [];
-        for (const m of a.desgloseMensual) {
-          for (let i = 0; i < m.series.length; i++) {
-            const s = m.series[i];
-            filasMes.push([
-              i === 0 ? m.etiqueta : "",
-              i === 0 ? String(m.totalLecturas) : "",
-              ...filaSerie(s),
-            ]);
-          }
-        }
-        autoTable(doc, {
-          startY: yMes + 8,
-          head: [["Mes", "Lect.", ...headStats[0]]],
-          body: filasMes,
-          theme: "grid",
-          headStyles: { fillColor: [71, 85, 105], textColor: 255, fontSize: 7 },
-          styles: { fontSize: 7, cellPadding: 2 },
-        });
+      // Nota cuando hay series con n insuficiente
+      const seriesInsuf = a.series.filter((s) => s.cpkInsuficiente);
+      if (seriesInsuf.length > 0) {
+        const yNota = (doc as any).lastAutoTable.finalY + 10;
+        doc.setFontSize(8).setFont("helvetica", "italic").setTextColor(120);
+        doc.text(
+          `Nota: Cp/Cpk no se reportan cuando n < ${N_MINIMO_CPK} lecturas consolidadas (no son estadísticamente confiables).`,
+          40, yNota,
+        );
+        doc.setTextColor(0).setFont("helvetica", "normal");
       }
 
       // Gráficas: una por fila (apiladas), ancho completo, según la plataforma
