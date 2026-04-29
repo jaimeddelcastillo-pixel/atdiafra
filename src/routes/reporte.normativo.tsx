@@ -444,6 +444,19 @@ function NormativoPage() {
                             <td className="px-2 py-2 text-center text-[11px] text-muted-foreground">
                               {s.lie ?? "—"} / {s.lse ?? "—"}
                             </td>
+                            <td className="px-2 py-2 text-center tabular-nums">
+                              {s.cpkInsuficiente ? (
+                                <span className="text-[10px] italic text-muted-foreground" title={`n=${s.n} < 30 lecturas, Cpk no es estadísticamente confiable`}>
+                                  n insuf.
+                                </span>
+                              ) : s.cpk != null ? (
+                                <span className={s.cpk < 1 ? "text-destructive font-medium" : s.cpk < 1.33 ? "text-warning font-medium" : "text-success font-medium"}>
+                                  {s.cpk.toFixed(2)}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
                             <td className="px-2 py-2 text-center">
                               {s.fueraSpec.total === 0 ? (
                                 <span className="text-success">0</span>
