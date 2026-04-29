@@ -211,8 +211,13 @@ function ReportePage() {
       return;
     }
     try {
-      if (tipo === "excel") exportarReporteExcel(registrosParaExportar, periodo, periodoEtiqueta);
-      else exportarReportePDF(registrosParaExportar, periodo, periodoEtiqueta);
+      const analisis = registrosParaExportar.map((r) => analizarRegistro(r, periodo));
+      const cat = {
+        areas: new Map(areas.map((a) => [a.id, `${a.codigo} · ${a.nombre}`])),
+        hvac: hvacMap,
+      };
+      if (tipo === "excel") exportarNormativoExcel(analisis, "area", cat);
+      else exportarNormativoPDF(analisis, "area", cat, { incluirGraficas: true });
       toast.success(`${tipo === "excel" ? "Excel" : "PDF"} generado (${registrosParaExportar.length} registros)`);
     } catch (e: any) {
       toast.error("No se pudo exportar: " + e.message);
