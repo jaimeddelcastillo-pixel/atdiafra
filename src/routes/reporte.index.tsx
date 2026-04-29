@@ -116,7 +116,7 @@ function ReportePage() {
 
   const periodoEtiqueta = `${format(desde, "dd/MM/yyyy")} – ${format(hasta, "dd/MM/yyyy")}`;
 
-  // Agrupar todo por área
+  // Agrupar todo por área (con filtro de texto)
   const grupoPorArea = useMemo(() => {
     const m = new Map<string, { etiqueta: string; registros: Registro[] }>();
     for (const r of registros) {
@@ -126,10 +126,12 @@ function ReportePage() {
       if (cur) cur.registros.push(r);
       else m.set(k, { etiqueta: et, registros: [r] });
     }
+    const q = filtroArea.trim().toLowerCase();
     return Array.from(m.entries())
       .map(([k, v]) => ({ key: k, ...v }))
+      .filter((g) => !q || g.etiqueta.toLowerCase().includes(q))
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
-  }, [registros, areasMap]);
+  }, [registros, areasMap, filtroArea]);
 
   // Para el área seleccionada, agrupar por instrumento
   const instrumentosDelArea = useMemo(() => {
