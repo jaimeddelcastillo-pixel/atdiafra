@@ -302,6 +302,7 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
           </thead>
           <tbody>
             {renderNAControl()}
+            {renderShiftControls()}
             {renderRow("T", "°C", limits.tempMin, limits.tempMax)}
             {renderRow("HR", "%HR", limits.hrMin, limits.hrMax)}
           </tbody>
