@@ -58,11 +58,20 @@ function ReportePage() {
   useEffect(() => { reload(); }, []);
 
   const filtrados = useMemo(() => {
-    return registros.filter((r) => {
-      if (filtroModulo && r.modulo !== filtroModulo) return false;
-      if (busca && !r.nombre.toLowerCase().includes(busca.toLowerCase())) return false;
-      return true;
-    });
+    return registros
+      .filter((r) => {
+        if (filtroModulo && r.modulo !== filtroModulo) return false;
+        if (busca && !r.nombre.toLowerCase().includes(busca.toLowerCase())) return false;
+        return true;
+      })
+      .slice()
+      .sort((a, b) => {
+        // Orden por la semana más reciente capturada (desc); si no hay semanas, por created_at desc.
+        const ultA = a.semanas.length ? a.semanas.map((s) => s.semana_inicio).sort().slice(-1)[0] : a.created_at.slice(0, 10);
+        const ultB = b.semanas.length ? b.semanas.map((s) => s.semana_inicio).sort().slice(-1)[0] : b.created_at.slice(0, 10);
+        if (ultA !== ultB) return ultB.localeCompare(ultA);
+        return a.nombre.localeCompare(b.nombre);
+      });
   }, [registros, filtroModulo, busca]);
 
   const handleDelete = async (id: string) => {
