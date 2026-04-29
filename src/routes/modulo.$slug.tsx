@@ -671,18 +671,40 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Registro guardado ✓</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Quieres capturar otra semana del mismo registro
-              <span className="font-medium text-foreground"> ({draft.nombre})</span>?
-              <br /><br />
-              <span className="text-xs">
-                <b>Continuar</b>: añade una nueva semana en blanco y sigues capturando aquí mismo.<br />
-                <b>Cerrar</b>: te quedas en la semana actual sin agregar nada.
-              </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <div>
+                  ¿Quieres capturar otra semana del mismo registro
+                  <span className="font-medium text-foreground"> ({draft.nombre})</span>?
+                </div>
+                <div className="text-xs space-y-1">
+                  <div><b>Continuar con otra semana</b>: elige la fecha y se añade una semana nueva en blanco para seguir capturando aquí.</div>
+                  <div><b>Cerrar</b>: regresa al tablero principal.</div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground block mb-1">
+                    Fecha de la nueva semana (cualquier día — se ajusta al lunes)
+                  </label>
+                  <input
+                    type="date"
+                    value={nuevaSemanaFecha}
+                    onChange={(e) => setNuevaSemanaFecha(e.target.value)}
+                    className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                  {nuevaSemanaFecha && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Lunes resultante:{" "}
+                      <span className="font-mono text-foreground">
+                        {lunesDe(new Date(nuevaSemanaFecha + "T00:00:00"))}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPostSaveOpen(false)}>Cerrar</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleCerrarPostSave}>Cerrar (volver al tablero)</AlertDialogCancel>
             <AlertDialogAction onClick={handleNuevoRegistro}>
               Continuar con otra semana
             </AlertDialogAction>
