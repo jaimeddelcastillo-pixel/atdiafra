@@ -533,6 +533,8 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
         </div>
       )}
 
+      <PresionAnalysis semanas={draft.semanas} limiteMinPa={limiteMinPa} />
+
       <AlertDialog open={postSaveOpen} onOpenChange={setPostSaveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
