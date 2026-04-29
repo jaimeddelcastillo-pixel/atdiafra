@@ -27,7 +27,7 @@ import {
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
   upsertRegistro, listRegistros, deleteRegistro,
-  esSemanaVacia, lecturasCapturadas, lecturasEsperadas,
+  esSemanaVacia, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro,
 } from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
