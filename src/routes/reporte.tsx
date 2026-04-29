@@ -300,7 +300,9 @@ function ReportePage() {
                         <tr key={registro.id} className="border-t border-border">
                           <td className="px-3 py-2">
                             <div className="font-medium text-foreground">{registro.nombre}</div>
-                            <div className="text-muted-foreground text-[11px]">{registro.modulo} · {registro.iso ?? "—"}</div>
+                            <div className="text-muted-foreground text-[11px]">
+                              {registro.modulo} · {registro.iso ?? "—"} · <span className="text-foreground">{rangoFechasRegistro(registro)}</span>
+                            </div>
                           </td>
                           <td className="px-3 py-2 text-center tabular-nums">{totalSemanas}</td>
                           <td className="px-3 py-2 text-center tabular-nums">{presentes}</td>
