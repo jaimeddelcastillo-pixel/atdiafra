@@ -194,65 +194,78 @@ function TempHRModule() {
         {/* Selector / creación de registro */}
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1 rounded-xl border border-border bg-card p-4 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Registros</h3>
-              {registros.length === 0 && <p className="text-xs text-muted-foreground">Sin registros aún. Crea uno nuevo abajo.</p>}
-              <ul className="space-y-1">
-                {registros.map((r) => (
-                  <li key={r.id}>
-                    <button
-                      onClick={() => setActiveId(r.id)}
-                      className={`w-full text-left rounded-md px-3 py-2 text-xs ${activeId === r.id ? "bg-primary/10 text-foreground border border-primary/30" : "hover:bg-muted"}`}>
-                      <div className="font-medium">{r.nombre}</div>
-                      <div className="text-muted-foreground mt-0.5">
-                        {r.iso} · {r.semanas.length} semana(s)
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="border-t border-border pt-4 space-y-3">
-              <h3 className="text-sm font-semibold">Nuevo registro</h3>
-              <div className="space-y-2">
-                <AreaSelector
-                  value={draft.area_id}
-                  areas={areas}
-                  onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
-                  onCatalogChanged={setAreas}
-                  defaultIso={draft.iso}
-                />
-                <InstrumentoSelector
-                  tipo="termohigrometro"
-                  tipoLabel="termohigrómetro"
-                  parametroDefault="Temperatura/HR"
-                  value={draft.instrumento_id}
-                  instrumentos={termohigrometros}
-                  onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
-                  onCatalogChanged={setTermohigrometros}
-                  placeholderCodigo="INS-CMB-20"
-                />
-                {draft.area_id && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
-                  </p>
-                )}
+            {active ? (
+              <div>
+                <h3 className="text-sm font-semibold mb-2">Registro activo</h3>
+                <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs">
+                  <div className="font-medium text-foreground">{active.nombre}</div>
+                  <div className="text-muted-foreground mt-0.5">
+                    {active.iso} · {active.semanas.length} semana(s)
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full mt-3"
+                  onClick={() => setActiveId(null)}>
+                  Crear otro registro
+                </Button>
+                <Link
+                  to="/reporte"
+                  className="block text-center text-xs text-muted-foreground hover:text-primary mt-2">
+                  Ver todos los registros en Reportes →
+                </Link>
               </div>
-              <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
-              {areas.length === 0 && (
-                <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
-              )}
-              {termohigrometros.length === 0 && (
-                <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
-              )}
-            </div>
+            ) : (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold">Nuevo registro</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    El listado completo vive en{" "}
+                    <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <AreaSelector
+                    value={draft.area_id}
+                    areas={areas}
+                    onChange={(id, a) => setDraft({ ...draft, area_id: id, iso: (a?.iso ?? draft.iso) as IsoClase })}
+                    onCatalogChanged={setAreas}
+                    defaultIso={draft.iso}
+                  />
+                  <InstrumentoSelector
+                    tipo="termohigrometro"
+                    tipoLabel="termohigrómetro"
+                    parametroDefault="Temperatura/HR"
+                    value={draft.instrumento_id}
+                    instrumentos={termohigrometros}
+                    onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
+                    onCatalogChanged={setTermohigrometros}
+                    placeholderCodigo="INS-CMB-20"
+                  />
+                  {draft.area_id && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Clasificación del área: <span className="font-medium text-foreground">{draft.iso}</span>
+                    </p>
+                  )}
+                </div>
+                <Button onClick={createRegistro} className="w-full gap-1"><Plus className="h-4 w-4" /> Crear registro</Button>
+                {areas.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay áreas aún. Usa "Nueva área" para agregar la primera.</p>
+                )}
+                {termohigrometros.length === 0 && (
+                  <p className="text-xs text-muted-foreground">No hay termohigrómetros aún. Usa "Nuevo INS" para agregar el primero.</p>
+                )}
+              </>
+            )}
           </div>
 
           <div className="lg:col-span-2">
             {!active ? (
               <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
-                Selecciona un registro de la lista o crea uno nuevo para empezar a capturar.
+                Crea un registro nuevo o ábrelo desde{" "}
+                <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>{" "}
+                para empezar a capturar.
               </div>
             ) : (
               <RegistroEditor
