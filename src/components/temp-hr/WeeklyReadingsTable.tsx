@@ -23,12 +23,16 @@ interface NumCellProps {
 }
 
 /** Celda numérica con buffer local: el commit ocurre al perder foco o presionar Enter, no en cada keystroke.
- *  Esto permite escribir números de 2+ dígitos sin que dispare validaciones intermedias. */
+ *  Esto permite escribir números de 2+ dígitos sin que dispare validaciones intermedias.
+ *  No se resincroniza con el valor externo mientras el input tiene foco (evita perder lo tecleado). */
 function NumCell({ value, onCommit, className, title }: NumCellProps) {
   const [draft, setDraft] = useState<string>(value == null ? "" : String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusedRef = useRef(false);
 
-  // Sincronizar si el valor externo cambia (ej. extracción IA recarga la semana)
+  // Sincronizar si el valor externo cambia (ej. extracción IA recarga la semana) — solo si no estamos editando.
   useEffect(() => {
+    if (focusedRef.current) return;
     setDraft(value == null ? "" : String(value));
   }, [value]);
 
@@ -41,11 +45,13 @@ function NumCell({ value, onCommit, className, title }: NumCellProps) {
 
   return (
     <input
+      ref={inputRef}
       type="text"
       inputMode="decimal"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => { focusedRef.current = false; commit(); }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           (e.target as HTMLInputElement).blur();
