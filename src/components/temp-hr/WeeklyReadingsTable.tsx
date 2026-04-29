@@ -1,7 +1,7 @@
 // Tabla 7 días × 3 turnos para T y HR pareados, una semana
 import { Semana, DIAS, TURNOS, PuntoLectura } from "@/lib/semanas";
 import { ISO_TEMP_HR, IsoClase } from "@/lib/catalogos";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   semana: Semana;
@@ -23,12 +23,16 @@ interface NumCellProps {
 }
 
 /** Celda numérica con buffer local: el commit ocurre al perder foco o presionar Enter, no en cada keystroke.
- *  Esto permite escribir números de 2+ dígitos sin que dispare validaciones intermedias. */
+ *  Esto permite escribir números de 2+ dígitos sin que dispare validaciones intermedias.
+ *  No se resincroniza con el valor externo mientras el input tiene foco (evita perder lo tecleado). */
 function NumCell({ value, onCommit, className, title }: NumCellProps) {
   const [draft, setDraft] = useState<string>(value == null ? "" : String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+  const focusedRef = useRef(false);
 
-  // Sincronizar si el valor externo cambia (ej. extracción IA recarga la semana)
+  // Sincronizar si el valor externo cambia (ej. extracción IA recarga la semana) — solo si no estamos editando.
   useEffect(() => {
+    if (focusedRef.current) return;
     setDraft(value == null ? "" : String(value));
   }, [value]);
 
@@ -41,11 +45,13 @@ function NumCell({ value, onCommit, className, title }: NumCellProps) {
 
   return (
     <input
+      ref={inputRef}
       type="text"
       inputMode="decimal"
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => { focusedRef.current = false; commit(); }}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
           (e.target as HTMLInputElement).blur();
@@ -81,9 +87,13 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
     const prev = (semana[arrName] ?? [])[idx];
     if (!prev) return;
 
-    // Si la lectura vino de la IA y la semana aún no está guardada, sólo es una corrección de extracción → sin motivo.
-    // Sólo pedimos motivo cuando: (a) la semana ya está guardada en BD, (b) había un valor previo, (c) cambia.
-    const requiereMotivo = yaGuardada && prev.valor != null && prev.valor !== value;
+    // No pedir motivo cuando: la semana es nueva, no hay valor previo, o la IA marcó la celda como dudosa.
+    // Sólo pedir motivo cuando hay un valor previo "estable" (ya guardado y no dudoso) que cambia.
+    const requiereMotivo =
+      yaGuardada &&
+      prev.valor != null &&
+      prev.valor !== value &&
+      !prev._dudoso;
 
     if (requiereMotivo) {
       setPendingEdit({ which, idx, value, prevValor: prev.valor });
@@ -116,6 +126,40 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
       const i = cellIdx(di, ti);
       if (tArr[i]) tArr[i] = { ...tArr[i], _na: na, valor: na ? null : tArr[i].valor };
       if (hrArr[i]) hrArr[i] = { ...hrArr[i], _na: na, valor: na ? null : hrArr[i].valor };
+    }
+    onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
+  };
+
+  /** Mueve los 3 turnos (T y HR) de un día al día contiguo (←/→). El día origen queda con valor:null pero NO se marca NA.
+   *  Útil cuando la IA recorrió valores por un festivo: corres todo un día hacia su columna correcta. */
+  const shiftDay = (fromDi: number, dir: -1 | 1) => {
+    const toDi = fromDi + dir;
+    if (toDi < 0 || toDi >= DIAS.length) return;
+    const tArr = semana.lecturas.slice();
+    const hrArr = (semana.lecturas_hr ?? []).slice();
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const iFrom = cellIdx(fromDi, ti);
+      const iTo = cellIdx(toDi, ti);
+      if (tArr[iFrom] && tArr[iTo]) {
+        tArr[iTo] = { ...tArr[iTo], valor: tArr[iFrom].valor, _dudoso: false, _edited: true, _motivo: tArr[iTo]._motivo ?? "Recorrido manual" };
+        tArr[iFrom] = { ...tArr[iFrom], valor: null, _dudoso: false };
+      }
+      if (hrArr[iFrom] && hrArr[iTo]) {
+        hrArr[iTo] = { ...hrArr[iTo], valor: hrArr[iFrom].valor, _dudoso: false, _edited: true, _motivo: hrArr[iTo]._motivo ?? "Recorrido manual" };
+        hrArr[iFrom] = { ...hrArr[iFrom], valor: null, _dudoso: false };
+      }
+    }
+    onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
+  };
+
+  /** Limpia los valores (T y HR) de un día sin marcarlo NA — útil para borrar columna que la IA llenó por error. */
+  const clearDay = (di: number) => {
+    const tArr = semana.lecturas.slice();
+    const hrArr = (semana.lecturas_hr ?? []).slice();
+    for (let ti = 0; ti < TURNOS.length; ti++) {
+      const i = cellIdx(di, ti);
+      if (tArr[i]) tArr[i] = { ...tArr[i], valor: null, _dudoso: false };
+      if (hrArr[i]) hrArr[i] = { ...hrArr[i], valor: null, _dudoso: false };
     }
     onChange({ ...semana, lecturas: tArr, lecturas_hr: semana.lecturas_hr ? hrArr : semana.lecturas_hr });
   };
@@ -192,6 +236,53 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
     </tr>
   );
 
+  // Fila de controles para corregir recorridos por festivo: ← mueve los 3 turnos al día anterior, → al siguiente, ✕ limpia.
+  const renderShiftControls = () => (
+    <tr className="border-t border-border bg-muted/5">
+      <td className="px-3 py-1 text-[10px] text-muted-foreground" title="Mover toda la columna al día anterior/siguiente o limpiarla. Útil cuando la IA recorrió valores por un festivo.">
+        Mover día
+      </td>
+      {DIAS.map((dia, di) => {
+        const naActivo = !!semana.lecturas[cellIdx(di, 0)]?._na;
+        if (naActivo) {
+          return <td key={dia} className="px-1 py-1 text-center text-[10px] text-muted-foreground">—</td>;
+        }
+        return (
+          <td key={dia} className="px-1 py-1">
+            <div className="flex items-center justify-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => shiftDay(di, -1)}
+                disabled={di === 0}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-muted disabled:opacity-30"
+                title={`Mover valores de ${dia} a ${DIAS[di - 1] ?? ""}`}
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                onClick={() => clearDay(di)}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-destructive/10 hover:text-destructive"
+                title={`Limpiar valores de ${dia}`}
+              >
+                ✕
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftDay(di, 1)}
+                disabled={di === DIAS.length - 1}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-muted disabled:opacity-30"
+                title={`Mover valores de ${dia} a ${DIAS[di + 1] ?? ""}`}
+              >
+                →
+              </button>
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-muted/30">
@@ -217,6 +308,7 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
           </thead>
           <tbody>
             {renderNAControl()}
+            {renderShiftControls()}
             {renderRow("T", "°C", limits.tempMin, limits.tempMax)}
             {renderRow("HR", "%HR", limits.hrMin, limits.hrMax)}
           </tbody>
