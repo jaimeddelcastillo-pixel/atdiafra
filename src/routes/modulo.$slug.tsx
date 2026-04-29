@@ -370,8 +370,16 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
     } else {
-      semanas = [...draft.semanas, s];
+      // Detectar semanas vacías de OTRA fecha que probablemente se crearon por accidente
+      // (e.g. el blank "hoy" creado al abrir el editor). Las eliminamos automáticamente
+      // para no dejar semanas huérfanas en blanco.
+      const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, true));
+      const removidas = draft.semanas.length - limpias.length;
+      semanas = [...limpias, s];
       setActiveWeekId(s.id);
+      if (removidas > 0) {
+        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos para evitar duplicados.`);
+      }
     }
     const next = { ...draft, semanas };
     setDraft(next);
