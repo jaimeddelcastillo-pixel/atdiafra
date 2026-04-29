@@ -2,10 +2,11 @@
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Plus, Save, Trash } from "lucide-react";
+import { ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,9 +22,13 @@ import {
   upsertRegistro, listRegistros, deleteRegistro,
   esSemanaVacia, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro,
 } from "@/lib/semanas";
+import { analizarRegistro, type Periodo } from "@/lib/normativo";
+import { exportarNormativoPDF } from "@/lib/export-normativo";
 
 import { ParCuartosSelector } from "./ParCuartosSelector";
 import { WeeklyReadingsTablePresion } from "./WeeklyReadingsTablePresion";
+import { ImageImporterPresion } from "./ImageImporterPresion";
+import { PresionAnalysis } from "./PresionAnalysis";
 
 export function PresionesModule() {
   const [pares, setPares] = useState<ParCuartos[]>([]);
