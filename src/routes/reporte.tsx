@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText } from "lucide-react";
+import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText, Merge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, type Registro, type Modulo } from "@/lib/semanas";
+import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro, detectarDuplicados, fusionarRegistros, type Registro, type Modulo } from "@/lib/semanas";
 import { MODULOS } from "@/lib/diafra-data";
 import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
 
@@ -82,6 +82,29 @@ function ReportePage() {
       toast.success("Registro eliminado");
     } catch (e: any) {
       toast.error("No se pudo eliminar: " + e.message);
+    }
+  };
+
+  // ===== Detección de duplicados (mismo módulo + área + instrumento) =====
+  const duplicados = useMemo(() => detectarDuplicados(registros), [registros]);
+
+  const handleFusionarGrupo = async (grupo: Registro[]) => {
+    const principal = [...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+    const semanasTotales = grupo.reduce((acc, r) => acc + r.semanas.length, 0);
+    if (!confirm(
+      `Fusionar ${grupo.length} registros con la misma área+instrumento en uno solo.\n\n` +
+      `Se conservará: "${principal.nombre}" (creado ${principal.created_at.slice(0, 10)})\n` +
+      `Se moverán todas las semanas (${semanasTotales} en total) a ese registro.\n` +
+      `Los otros ${grupo.length - 1} registro(s) se eliminarán.\n\n` +
+      `Esta acción NO se puede deshacer. ¿Continuar?`
+    )) return;
+    const t = toast.loading("Fusionando registros…");
+    try {
+      const res = await fusionarRegistros(grupo);
+      await reload();
+      toast.success(`Fusión completada: +${res.semanas} semanas movidas, ${res.eliminados.length} registro(s) eliminados`, { id: t });
+    } catch (e: any) {
+      toast.error("No se pudo fusionar: " + e.message, { id: t });
     }
   };
 
@@ -203,6 +226,43 @@ function ReportePage() {
           </div>
         </div>
 
+        {/* Duplicados detectados */}
+        {duplicados.length > 0 && (
+          <section className="mt-6 rounded-xl border border-warning/40 bg-warning/5 p-4">
+            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Merge className="h-4 w-4 text-warning" />
+              Registros duplicados detectados ({duplicados.length} grupo{duplicados.length === 1 ? "" : "s"})
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Estos registros comparten la misma área e instrumento. Fusionarlos consolida todas sus semanas en uno solo (se conserva el más antiguo).
+            </p>
+            <div className="mt-3 space-y-2">
+              {duplicados.map((grupo, i) => (
+                <div key={i} className="rounded-md border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-foreground">{grupo[0].nombre}</div>
+                      <ul className="mt-1 space-y-0.5">
+                        {[...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((r, idx) => (
+                          <li key={r.id} className="text-[11px] text-muted-foreground">
+                            {idx === 0 && <span className="text-success font-medium">[se conserva] </span>}
+                            <span className="font-mono">{r.id.slice(0, 8)}…</span> · {rangoFechasRegistro(r)} · creado {r.created_at.slice(0, 10)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {canDelete && (
+                      <Button size="sm" variant="outline" onClick={() => handleFusionarGrupo(grupo)} className="gap-1">
+                        <Merge className="h-3.5 w-3.5" /> Fusionar en uno
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Cumplimiento */}
         <section className="mt-6">
           <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
@@ -240,7 +300,9 @@ function ReportePage() {
                         <tr key={registro.id} className="border-t border-border">
                           <td className="px-3 py-2">
                             <div className="font-medium text-foreground">{registro.nombre}</div>
-                            <div className="text-muted-foreground text-[11px]">{registro.modulo} · {registro.iso ?? "—"}</div>
+                            <div className="text-muted-foreground text-[11px]">
+                              {registro.modulo} · {registro.iso ?? "—"} · <span className="text-foreground">{rangoFechasRegistro(registro)}</span>
+                            </div>
                           </td>
                           <td className="px-3 py-2 text-center tabular-nums">{totalSemanas}</td>
                           <td className="px-3 py-2 text-center tabular-nums">{presentes}</td>
@@ -302,7 +364,11 @@ function ReportePage() {
                       const esTHR = r.modulo === "temphr";
                       return (
                         <tr key={r.id} className="border-t border-border align-top">
-                          <td className="px-3 py-2 font-medium text-foreground">{r.nombre}</td>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-foreground">{r.nombre}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">{rangoFechasRegistro(r)}</div>
+                            <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5">{r.id.slice(0, 8)}…</div>
+                          </td>
                           <td className="px-3 py-2 text-muted-foreground">{r.modulo}</td>
                           <td className="px-3 py-2 text-muted-foreground">{r.iso ?? "—"}</td>
                           <td className="px-3 py-2 text-center tabular-nums">{r.semanas.length}</td>
@@ -333,14 +399,22 @@ function ReportePage() {
                           <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex gap-1">
+                              <Link
+                                to="/reporte/$id"
+                                params={{ id: r.id }}
+                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                              >
+                                <Eye className="h-3 w-3" /> Abrir
+                              </Link>
                               {editable && (
                                 <Link
                                   to="/modulo/$slug"
                                   params={{ slug: moduloSlug(r.modulo) }}
                                   search={{ registroId: r.id }}
                                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                                  title="Editar en módulo"
                                 >
-                                  <Eye className="h-3 w-3" /> Abrir
+                                  ✎
                                 </Link>
                               )}
                               {canDelete && (

@@ -285,6 +285,77 @@ export function esSemanaVacia(semana: Semana, esTHR: boolean): boolean {
   return lecturasCapturadas(semana, esTHR) === 0 && !semana.observaciones?.trim();
 }
 
+/** Etiqueta descriptiva del rango de fechas cubierto por las semanas de un registro.
+ * Ejemplos:
+ *   "ene–mar 2025 · 12 semanas"
+ *   "feb 2024 – ene 2025 · 28 semanas"
+ *   "sin semanas"
+ */
+export function rangoFechasRegistro(r: Registro): string {
+  if (!r.semanas.length) return "sin semanas";
+  const ordenadas = r.semanas.map((s) => s.semana_inicio).sort();
+  const primero = new Date(ordenadas[0] + "T00:00:00");
+  const ultimo = new Date(ordenadas[ordenadas.length - 1] + "T00:00:00");
+  const fmtMes = (d: Date) => d.toLocaleDateString("es-MX", { month: "short" }).replace(".", "");
+  const mismoAnio = primero.getFullYear() === ultimo.getFullYear();
+  const mismoMes = mismoAnio && primero.getMonth() === ultimo.getMonth();
+  const rango = mismoMes
+    ? `${fmtMes(primero)} ${primero.getFullYear()}`
+    : mismoAnio
+      ? `${fmtMes(primero)}–${fmtMes(ultimo)} ${primero.getFullYear()}`
+      : `${fmtMes(primero)} ${primero.getFullYear()} – ${fmtMes(ultimo)} ${ultimo.getFullYear()}`;
+  return `${rango} · ${r.semanas.length} semana${r.semanas.length === 1 ? "" : "s"}`;
+}
+
+/** Nombre del registro + rango de fechas para distinguir duplicados visualmente. */
+export function nombreRegistroConFechas(r: Registro): string {
+  return `${r.nombre} (${rangoFechasRegistro(r)})`;
+}
+
+/** Detecta grupos de registros con el mismo módulo + área + instrumento (potenciales duplicados). */
+export function detectarDuplicados(registros: Registro[]): Registro[][] {
+  const grupos = new Map<string, Registro[]>();
+  for (const r of registros) {
+    const key = [
+      r.modulo,
+      r.area_id ?? r.codigo_area_libre ?? "",
+      r.instrumento_id ?? "",
+      r.par_cuartos_id ?? "",
+      r.hvac_id ?? "",
+    ].join("|");
+    const arr = grupos.get(key) ?? [];
+    arr.push(r);
+    grupos.set(key, arr);
+  }
+  return Array.from(grupos.values()).filter((g) => g.length > 1);
+}
+
+/** Fusiona varios registros en uno solo: conserva el más antiguo y mueve todas las semanas (sin duplicar lunes). */
+export async function fusionarRegistros(grupo: Registro[]): Promise<{ conservado: string; eliminados: string[]; semanas: number }> {
+  if (grupo.length < 2) throw new Error("Se requieren al menos 2 registros para fusionar");
+  const ordenado = [...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const principal = ordenado[0];
+  const otros = ordenado.slice(1);
+  const lunesYaPresentes = new Set(principal.semanas.map((s) => s.semana_inicio));
+  const semanasNuevas: Semana[] = [];
+  for (const r of otros) {
+    for (const s of r.semanas) {
+      if (lunesYaPresentes.has(s.semana_inicio)) continue;
+      semanasNuevas.push({ ...s, id: crypto.randomUUID() });
+      lunesYaPresentes.add(s.semana_inicio);
+    }
+  }
+  const fusionado: Registro = {
+    ...principal,
+    semanas: [...principal.semanas, ...semanasNuevas],
+  };
+  await upsertRegistro(fusionado);
+  for (const r of otros) {
+    await deleteRegistro(r.id);
+  }
+  return { conservado: principal.id, eliminados: otros.map((r) => r.id), semanas: semanasNuevas.length };
+}
+
 export async function deleteRegistro(id: string): Promise<void> {
   const { error } = await supabase.from("registros").delete().eq("id", id);
   if (error) throw error;
