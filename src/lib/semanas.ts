@@ -280,6 +280,11 @@ export function esSemanaCompleta(semana: Semana, esTHR: boolean): boolean {
   return lecturasCapturadas(semana, esTHR) >= esp;
 }
 
+/** Una semana se considera "vacía" si no tiene ninguna lectura con valor ni observaciones. Útil para detectar semanas creadas por accidente. */
+export function esSemanaVacia(semana: Semana, esTHR: boolean): boolean {
+  return lecturasCapturadas(semana, esTHR) === 0 && !semana.observaciones?.trim();
+}
+
 export async function deleteRegistro(id: string): Promise<void> {
   const { error } = await supabase.from("registros").delete().eq("id", id);
   if (error) throw error;

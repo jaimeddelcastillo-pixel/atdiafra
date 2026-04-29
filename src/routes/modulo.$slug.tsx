@@ -23,6 +23,7 @@ import {
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
   upsertRegistro, listRegistros, deleteRegistro,
+  esSemanaVacia, lecturasCapturadas, lecturasEsperadas,
 } from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
@@ -369,8 +370,16 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
     } else {
-      semanas = [...draft.semanas, s];
+      // Detectar semanas vacías de OTRA fecha que probablemente se crearon por accidente
+      // (e.g. el blank "hoy" creado al abrir el editor). Las eliminamos automáticamente
+      // para no dejar semanas huérfanas en blanco.
+      const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, true));
+      const removidas = draft.semanas.length - limpias.length;
+      semanas = [...limpias, s];
       setActiveWeekId(s.id);
+      if (removidas > 0) {
+        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos para evitar duplicados.`);
+      }
     }
     const next = { ...draft, semanas };
     setDraft(next);
@@ -386,11 +395,18 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
 
   const deleteWeek = (id: string) => {
-    if (!confirm("¿Eliminar esta semana? (se guarda al instante)")) return;
+    const target = draft.semanas.find((x) => x.id === id);
+    if (!target) return;
+    const cap = lecturasCapturadas(target, true);
+    const esp = lecturasEsperadas(target, true);
+    const detalle = cap === 0
+      ? "Esta semana está VACÍA (0 lecturas)."
+      : `Esta semana tiene ${cap}/${esp} lecturas capturadas.`;
+    if (!confirm(`¿Eliminar la semana del ${target.semana_inicio}?\n\n${detalle}\n\nSe guarda al instante y no se puede deshacer.`)) return;
     const next = { ...draft, semanas: draft.semanas.filter((x) => x.id !== id) };
     setDraft(next);
-    if (activeWeekId === id) setActiveWeekId(null);
-    onPersist(next).then(() => { setDirty(false); toast.success("Semana eliminada"); }).catch(() => {});
+    if (activeWeekId === id) setActiveWeekId(next.semanas[0]?.id ?? null);
+    onPersist(next).then(() => { setDirty(false); toast.success(`Semana ${target.semana_inicio} eliminada`); }).catch(() => {});
   };
 
   const handleSave = async () => {
@@ -522,12 +538,42 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
             {draft.semanas
               .slice()
               .sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio))
-              .map((s) => (
-                <button key={s.id} onClick={() => setActiveWeekId(s.id)}
-                  className={`text-xs rounded-md px-2.5 py-1 border ${activeWeekId === s.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted"}`}>
-                  {s.semana_inicio}
-                </button>
-              ))}
+              .map((s) => {
+                const cap = lecturasCapturadas(s, true);
+                const esp = lecturasEsperadas(s, true);
+                const vacia = cap === 0;
+                const completa = esp > 0 && cap >= esp;
+                const isActive = activeWeekId === s.id;
+                return (
+                  <div key={s.id} className={`inline-flex items-stretch rounded-md border overflow-hidden ${isActive ? "border-primary" : "border-border"}`}>
+                    <button
+                      onClick={() => setActiveWeekId(s.id)}
+                      title={`Semana del ${s.semana_inicio} — ${cap}/${esp} lecturas`}
+                      className={`text-xs px-2.5 py-1 flex items-center gap-1.5 ${isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+                      <span>{s.semana_inicio}</span>
+                      <span className={`text-[10px] px-1 rounded ${
+                        isActive
+                          ? "bg-primary-foreground/20"
+                          : vacia
+                            ? "bg-warning/20 text-warning"
+                            : completa
+                              ? "bg-success/20 text-success"
+                              : "bg-muted text-muted-foreground"
+                      }`}>
+                        {vacia ? "vacía" : completa ? "✓" : `${cap}/${esp}`}
+                      </span>
+                    </button>
+                    {canDelete && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); deleteWeek(s.id); }}
+                        title={`Eliminar semana del ${s.semana_inicio}`}
+                        className={`px-1.5 text-xs border-l ${isActive ? "border-primary-foreground/30 text-primary-foreground hover:bg-destructive" : "border-border text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"}`}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>
