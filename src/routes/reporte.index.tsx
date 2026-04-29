@@ -330,7 +330,17 @@ function ReportePage() {
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="single" selected={hasta} onSelect={(d) => d && setHasta(d)} initialFocus className={cn("p-3 pointer-events-auto")} />
+                <Calendar
+                  mode="single"
+                  selected={hasta}
+                  onSelect={(d) => d && setHasta(d)}
+                  initialFocus
+                  captionLayout="dropdown"
+                  defaultMonth={hasta}
+                  startMonth={new Date(2000, 0)}
+                  endMonth={new Date(new Date().getFullYear() + 1, 11)}
+                  className={cn("p-3 pointer-events-auto")}
+                />
               </PopoverContent>
             </Popover>
           </div>
