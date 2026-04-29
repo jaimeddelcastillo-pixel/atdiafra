@@ -426,8 +426,8 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
     }
   };
 
-  // "Nuevo registro" tras guardar = nueva semana en blanco para la misma área/instrumento,
-  // lista para subir otra foto. No crea otro Registro de catálogo.
+  // "Continuar con otra semana" tras guardar = nueva semana en blanco en el mismo
+  // registro (misma área/instrumento), lista para subir foto o capturar manualmente.
   const handleNuevoRegistro = () => {
     setPostSaveOpen(false);
     // Buscar el siguiente lunes que no exista aún en este registro
@@ -441,11 +441,8 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       intentos++;
     }
     addEmptyWeek(candidato);
-    toast.success(`Lista nueva semana ${candidato} — sube la foto o captura manualmente`);
-    // Scroll al importador
-    setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }, 100);
+    toast.success(`Nueva semana ${candidato} agregada — sube la foto o captura manualmente`);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
   };
 
   const handleDiscard = () => {
@@ -645,6 +642,29 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       )}
 
       <TempHRAnalysis semanas={draft.semanas} iso={iso} />
+
+      <AlertDialog open={postSaveOpen} onOpenChange={setPostSaveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Registro guardado ✓</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Quieres capturar otra semana del mismo registro
+              <span className="font-medium text-foreground"> ({draft.nombre})</span>?
+              <br /><br />
+              <span className="text-xs">
+                <b>Continuar</b>: añade una nueva semana en blanco y sigues capturando aquí mismo.<br />
+                <b>Cerrar</b>: te quedas en la semana actual sin agregar nada.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPostSaveOpen(false)}>Cerrar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleNuevoRegistro}>
+              Continuar con otra semana
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
