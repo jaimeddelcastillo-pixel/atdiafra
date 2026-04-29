@@ -1,7 +1,7 @@
 // Tabla 7 días × 3 turnos para T y HR pareados, una semana
 import { Semana, DIAS, TURNOS, PuntoLectura } from "@/lib/semanas";
 import { ISO_TEMP_HR, IsoClase } from "@/lib/catalogos";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Props {
   semana: Semana;
