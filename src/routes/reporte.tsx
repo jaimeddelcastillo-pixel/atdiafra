@@ -85,6 +85,29 @@ function ReportePage() {
     }
   };
 
+  // ===== Detección de duplicados (mismo módulo + área + instrumento) =====
+  const duplicados = useMemo(() => detectarDuplicados(registros), [registros]);
+
+  const handleFusionarGrupo = async (grupo: Registro[]) => {
+    const principal = [...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+    const semanasTotales = grupo.reduce((acc, r) => acc + r.semanas.length, 0);
+    if (!confirm(
+      `Fusionar ${grupo.length} registros con la misma área+instrumento en uno solo.\n\n` +
+      `Se conservará: "${principal.nombre}" (creado ${principal.created_at.slice(0, 10)})\n` +
+      `Se moverán todas las semanas (${semanasTotales} en total) a ese registro.\n` +
+      `Los otros ${grupo.length - 1} registro(s) se eliminarán.\n\n` +
+      `Esta acción NO se puede deshacer. ¿Continuar?`
+    )) return;
+    const t = toast.loading("Fusionando registros…");
+    try {
+      const res = await fusionarRegistros(grupo);
+      await reload();
+      toast.success(`Fusión completada: +${res.semanas} semanas movidas, ${res.eliminados.length} registro(s) eliminados`, { id: t });
+    } catch (e: any) {
+      toast.error("No se pudo fusionar: " + e.message, { id: t });
+    }
+  };
+
   // ===== Cumplimiento =====
   const cumplimiento = useMemo(() => {
     const anio = parseInt(filtroAnio, 10);
