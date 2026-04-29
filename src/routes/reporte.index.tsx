@@ -245,14 +245,17 @@ function ReportePage() {
       return;
     }
     try {
-      const analisis = registrosParaExportar.map((r) => analizarRegistro(r, periodo));
+      // Consolida múltiples registros del mismo instrumento en uno solo
+      // (1 página por instrumento, no 1 por semana/importación)
+      const consolidados = consolidarPorInstrumento(registrosParaExportar);
+      const analisis = consolidados.map((r) => analizarRegistro(r, periodo));
       const cat = {
         areas: new Map(areas.map((a) => [a.id, `${a.codigo} · ${a.nombre}`])),
         hvac: hvacMap,
       };
       if (tipo === "excel") exportarNormativoExcel(analisis, "area", cat);
       else exportarNormativoPDF(analisis, "area", cat, { incluirGraficas: true });
-      toast.success(`${tipo === "excel" ? "Excel" : "PDF"} generado (${registrosParaExportar.length} registros)`);
+      toast.success(`${tipo === "excel" ? "Excel" : "PDF"} generado (${consolidados.length} instrumento(s) de ${registrosParaExportar.length} registros)`);
     } catch (e: any) {
       toast.error("No se pudo exportar: " + e.message);
     }
