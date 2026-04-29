@@ -62,6 +62,12 @@ export function exportarNormativoExcel(
         "Desv. estándar": s.sd != null ? Number(s.sd.toFixed(3)) : "",
         Min: s.min ?? "",
         Max: s.max ?? "",
+        P5: s.p5 != null ? Number(s.p5.toFixed(3)) : "",
+        P95: s.p95 != null ? Number(s.p95.toFixed(3)) : "",
+        Cp: s.cp != null ? Number(s.cp.toFixed(3)) : "",
+        Cpk: s.cpk != null ? Number(s.cpk.toFixed(3)) : "",
+        Ppk: s.ppk != null ? Number(s.ppk.toFixed(3)) : "",
+        "% dentro spec": s.pctDentroSpec != null ? Number(s.pctDentroSpec.toFixed(2)) : "",
         LIE: s.lie ?? "",
         LSE: s.lse ?? "",
         "Fuera spec (altos)": s.fueraSpec.altos,
@@ -71,6 +77,16 @@ export function exportarNormativoExcel(
     }
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stats), "Estadísticas");
+
+  // Hoja 3: No conformidades
+  const nc = detectarNoConformidades(analisis).map((n) => ({
+    Severidad: n.severidad.toUpperCase(),
+    Registro: n.registroNombre,
+    Serie: n.serie,
+    Tipo: n.tipo,
+    Detalle: n.detalle,
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]), "No conformidades");
 
   XLSX.writeFile(wb, `normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.xlsx`);
 }
