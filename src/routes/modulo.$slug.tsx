@@ -281,6 +281,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [draft, setDraft] = useState<Registro>(registro);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [postSaveOpen, setPostSaveOpen] = useState(false);
 
   // Export PDF normativo (rango personalizado por registro)
   const today = new Date().toISOString().slice(0, 10);
