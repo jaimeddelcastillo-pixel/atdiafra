@@ -374,8 +374,9 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
     setActiveWeekId(s.id);
   };
 
-  // Importación por imagen: persiste de inmediato (con cualquier cambio sucio pendiente del draft)
-  const handleExtracted = async (s: Semana) => {
+  // Importación por imagen: SOLO actualiza el draft local. NO persiste.
+  // El usuario debe revisar y dar "Guardar" para que se mande a la nube.
+  const handleExtracted = (s: Semana) => {
     const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
     let semanas: Semana[];
     if (existing) {
@@ -390,26 +391,18 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
     } else {
-      // Detectar semanas vacías de OTRA fecha que probablemente se crearon por accidente
-      // (e.g. el blank "hoy" creado al abrir el editor). Las eliminamos automáticamente
-      // para no dejar semanas huérfanas en blanco.
+      // Descartar semanas vacías de OTRA fecha (e.g. blank "hoy" creado al abrir el editor).
       const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, true));
       const removidas = draft.semanas.length - limpias.length;
       semanas = [...limpias, s];
       setActiveWeekId(s.id);
       if (removidas > 0) {
-        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos para evitar duplicados.`);
+        toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos.`);
       }
     }
-    const next = { ...draft, semanas };
-    setDraft(next);
-    try {
-      await onPersist(next);
-      setDirty(false);
-      toast.success("Imagen importada y guardada en la nube");
-    } catch {
-      setDirty(true);
-    }
+    setDraft({ ...draft, semanas });
+    setDirty(true);
+    toast.success("Imagen importada — revisa y presiona Guardar");
   };
 
   const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
