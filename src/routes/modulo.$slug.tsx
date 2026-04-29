@@ -277,6 +277,36 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Export PDF normativo (rango personalizado por registro)
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [exportDesde, setExportDesde] = useState<string>(yearStart);
+  const [exportHasta, setExportHasta] = useState<string>(today);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!exportDesde || !exportHasta || exportDesde > exportHasta) {
+      toast.error("Rango de fechas inválido");
+      return;
+    }
+    setExportingPDF(true);
+    const t = toast.loading("Generando PDF normativo…");
+    try {
+      const periodo: Periodo = { tipo: "custom", desde: exportDesde, hasta: exportHasta };
+      const analisis = [analizarRegistro(draft, periodo)];
+      // Sin catálogos: agrupar por "registro" usa el nombre del registro
+      await new Promise((r) => setTimeout(r, 50));
+      exportarNormativoPDF(analisis, "registro", { areas: new Map(), hvac: new Map() }, { incluirGraficas: true });
+      toast.success("PDF generado", { id: t });
+      setExportOpen(false);
+    } catch (e: any) {
+      toast.error("No se pudo exportar: " + e.message, { id: t });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   // Si entra otro registro (cambio de activeId), reset
   useEffect(() => {
     setDraft(registro);
