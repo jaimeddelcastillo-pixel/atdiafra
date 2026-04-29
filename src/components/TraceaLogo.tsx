@@ -13,7 +13,7 @@ export function TraceaLogo({ size = 36, className }: TraceaLogoProps) {
       className={className}
       aria-label="TRACEA"
     >
-      <rect x="2" y="2" width="20" height="20" rx="4" fill="#042C53" />
+      <rect x="2" y="2" width="20" height="20" rx="4" fill="#185FA5" />
       <rect x="26" y="2" width="20" height="20" rx="4" fill="#185FA5" />
       <rect x="2" y="26" width="20" height="20" rx="4" fill="#185FA5" />
       <rect x="26" y="26" width="20" height="20" rx="4" fill="#8587E8" />
