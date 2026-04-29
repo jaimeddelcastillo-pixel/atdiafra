@@ -81,9 +81,13 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
     const prev = (semana[arrName] ?? [])[idx];
     if (!prev) return;
 
-    // Si la lectura vino de la IA y la semana aún no está guardada, sólo es una corrección de extracción → sin motivo.
-    // Sólo pedimos motivo cuando: (a) la semana ya está guardada en BD, (b) había un valor previo, (c) cambia.
-    const requiereMotivo = yaGuardada && prev.valor != null && prev.valor !== value;
+    // No pedir motivo cuando: la semana es nueva, no hay valor previo, o la IA marcó la celda como dudosa.
+    // Sólo pedir motivo cuando hay un valor previo "estable" (ya guardado y no dudoso) que cambia.
+    const requiereMotivo =
+      yaGuardada &&
+      prev.valor != null &&
+      prev.valor !== value &&
+      !prev._dudoso;
 
     if (requiereMotivo) {
       setPendingEdit({ which, idx, value, prevValor: prev.valor });
