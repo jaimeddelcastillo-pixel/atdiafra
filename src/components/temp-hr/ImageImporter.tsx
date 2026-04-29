@@ -183,11 +183,30 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       if (lecturasHR.length) aplicarLecturas(s, "lecturas_hr", lecturasHR);
 
       onExtracted(s);
+
+      // Log de uso (tokens y costo) que devuelve la edge function
+      if (data?.uso) {
+        console.log("[extract-bitacora] uso:", data.uso);
+      }
+
       const partes = [
         lecturasT.length ? `T: ${lecturasT.filter(x => x.valor != null).length} valores` : null,
         lecturasHR.length ? `HR: ${lecturasHR.filter(x => x.valor != null).length} valores` : null,
       ].filter(Boolean).join(" · ");
-      toast.success(`Semana extraída (${partes}). Revisa y edita antes de guardar.`);
+
+      // Contar dudosos para avisar al operador
+      const dudososT = (s.lecturas ?? []).filter(p => p._dudoso).length;
+      const dudososHR = (s.lecturas_hr ?? []).filter(p => p._dudoso).length;
+      const totalDudosos = dudososT + dudososHR;
+
+      if (data?.requiere_revision || totalDudosos > 0) {
+        toast.warning(
+          `Semana extraída con ${totalDudosos} lectura(s) dudosa(s). Revisa las celdas resaltadas en amarillo antes de guardar.`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(`Semana extraída (${partes}). Revisa y edita antes de guardar.`);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error desconocido";
       setError(msg);
