@@ -5,6 +5,7 @@ import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
 import { MODULOS } from "@/lib/diafra-data";
 
+import { PresionesModule } from "@/components/presiones/PresionesModule";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { AreaSelector } from "@/components/AreaSelector";
@@ -71,21 +72,27 @@ function ModuloPage() {
   const modulo = MODULOS.find((m) => m.slug === slug);
   if (!modulo) throw notFound();
 
-  if (modulo.id !== "temp_hr") {
+  if (modulo.id === "temp_hr") return <TempHRModule />;
+  if (modulo.id === "presiones") {
     return (
-      <div className="min-h-screen bg-background">
+      <>
         <AppHeader />
-        <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-          <Link to="/" className="inline-flex items-center gap-1 text-primary hover:underline mb-6">
-            <ChevronLeft className="h-4 w-4" /> Volver al tablero
-          </Link>
-          <h1 className="text-2xl font-semibold text-foreground">{modulo.nombre}</h1>
-          <p className="mt-2 text-muted-foreground">Este módulo estará disponible próximamente.</p>
-        </div>
-      </div>
+        <PresionesModule />
+      </>
     );
   }
-  return <TempHRModule />;
+  return (
+    <div className="min-h-screen bg-background">
+      <AppHeader />
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <Link to="/" className="inline-flex items-center gap-1 text-primary hover:underline mb-6">
+          <ChevronLeft className="h-4 w-4" /> Volver al tablero
+        </Link>
+        <h1 className="text-2xl font-semibold text-foreground">{modulo.nombre}</h1>
+        <p className="mt-2 text-muted-foreground">Este módulo estará disponible próximamente.</p>
+      </div>
+    </div>
+  );
 }
 
 
