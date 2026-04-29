@@ -114,7 +114,7 @@ function AuthPage() {
                 <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email-in">Correo</Label>
-                    <Input id="email-in" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email-in" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ function AuthPage() {
                 <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email-up">Correo</Label>
-                    <Input id="email-up" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email-up" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pwd-up">Contraseña</Label>
