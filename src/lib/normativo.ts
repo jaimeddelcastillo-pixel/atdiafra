@@ -159,9 +159,24 @@ export type EstadisticaSerie = {
   n: number;
   media: number | null;
   sd: number | null;
+  sdMuestral: number | null;
   min: number | null;
   max: number | null;
+  p5: number | null;
+  p95: number | null;
+  cp: number | null;
+  cpk: number | null;
+  ppk: number | null;
+  pctDentroSpec: number | null;
   fueraSpec: { altos: number; bajos: number; total: number };
+};
+
+export type DesgloseMensual = {
+  anio: number;
+  mes: number; // 1-12
+  etiqueta: string;
+  totalLecturas: number;
+  series: EstadisticaSerie[];
 };
 
 export type AnalisisRegistro = {
@@ -173,55 +188,74 @@ export type AnalisisRegistro = {
   diasHabiles: number;
   totalLecturas: number;
   cumpleMinimo: boolean;
-  porcentajeMinimo: number; // total / 90 * 100 (cap 100)
+  porcentajeMinimo: number;
   series: EstadisticaSerie[];
+  desgloseMensual: DesgloseMensual[];
 };
 
-export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new Date()): AnalisisRegistro {
-  const rango = rangoPeriodo(periodo);
-  const semanas = semanasDelPeriodo(registro, periodo);
-  const esTHR = registro.modulo === "temphr";
+const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
+function construirSerie(
+  nombre: "Temperatura" | "Humedad" | "Valor",
+  unidad: string,
+  values: number[],
+  lse: number | null | undefined,
+  lie: number | null | undefined,
+): EstadisticaSerie {
+  const s = statsBasicas(values);
+  const cap = indicesCapacidad(s.media, s.sdMuestral, lse, lie);
+  return {
+    serie: nombre,
+    unidad,
+    lse: lse ?? null,
+    lie: lie ?? null,
+    ...s,
+    cp: cap.cp,
+    cpk: cap.cpk,
+    ppk: cap.ppk,
+    pctDentroSpec: porcentajeDentroSpec(values, lse, lie),
+    fueraSpec: fueraDeSpec(values, lse, lie),
+  };
+}
+
+function seriesDeRegistro(registro: Registro, semanas: Semana[]): { series: EstadisticaSerie[]; total: number } {
+  const esTHR = registro.modulo === "temphr";
   const valoresT: number[] = [];
   const valoresHR: number[] = [];
   for (const s of semanas) {
     valoresT.push(...lecturasValidas(s.lecturas));
     if (esTHR) valoresHR.push(...lecturasValidas(s.lecturas_hr));
   }
-
   const series: EstadisticaSerie[] = [];
   if (esTHR) {
-    const sT = statsBasicas(valoresT);
-    series.push({
-      serie: "Temperatura",
-      unidad: "°C",
-      lse: registro.lse_t ?? null,
-      lie: registro.lie_t ?? null,
-      ...sT,
-      fueraSpec: fueraDeSpec(valoresT, registro.lse_t, registro.lie_t),
-    });
-    const sH = statsBasicas(valoresHR);
-    series.push({
-      serie: "Humedad",
-      unidad: "%HR",
-      lse: registro.lse_hr ?? null,
-      lie: registro.lie_hr ?? null,
-      ...sH,
-      fueraSpec: fueraDeSpec(valoresHR, registro.lse_hr, registro.lie_hr),
-    });
+    series.push(construirSerie("Temperatura", "°C", valoresT, registro.lse_t, registro.lie_t));
+    series.push(construirSerie("Humedad", "%HR", valoresHR, registro.lse_hr, registro.lie_hr));
   } else {
-    const s = statsBasicas(valoresT);
-    series.push({
-      serie: "Valor",
-      unidad: "",
-      lse: registro.lse ?? null,
-      lie: registro.lie ?? null,
-      ...s,
-      fueraSpec: fueraDeSpec(valoresT, registro.lse, registro.lie),
-    });
+    series.push(construirSerie("Valor", "", valoresT, registro.lse, registro.lie));
   }
+  return { series, total: valoresT.length + valoresHR.length };
+}
 
-  const totalLecturas = valoresT.length + valoresHR.length;
+export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new Date()): AnalisisRegistro {
+  const rango = rangoPeriodo(periodo);
+  const semanas = semanasDelPeriodo(registro, periodo);
+  const { series, total: totalLecturas } = seriesDeRegistro(registro, semanas);
+
+  const grupos = new Map<string, Semana[]>();
+  for (const s of semanas) {
+    const k = s.semana_inicio.slice(0, 7);
+    const arr = grupos.get(k);
+    if (arr) arr.push(s);
+    else grupos.set(k, [s]);
+  }
+  const desgloseMensual: DesgloseMensual[] = Array.from(grupos.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, sems]) => {
+      const [anio, mes] = k.split("-").map(Number);
+      const r = seriesDeRegistro(registro, sems);
+      return { anio, mes, etiqueta: `${MESES_CORTOS[mes - 1]} ${anio}`, totalLecturas: r.total, series: r.series };
+    });
+
   const diasHabiles = diasHabilesEntre(rango.desde, rango.hasta, hoy);
   const diasTranscurridos = Math.max(
     0,
@@ -242,8 +276,63 @@ export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new
     cumpleMinimo: totalLecturas >= MINIMO_NORMATIVO,
     porcentajeMinimo: Math.min(100, Math.round((totalLecturas / MINIMO_NORMATIVO) * 100)),
     series,
+    desgloseMensual,
   };
 }
+
+// ===== Poka-yoke / no conformidades =====
+export const CPK_WARN = 1.33;
+export const CPK_FAIL = 1.0;
+export const PCT_SPEC_FAIL = 95;
+
+export type Severidad = "alta" | "media";
+export type NoConformidad = {
+  registroNombre: string;
+  registroId: string;
+  serie: string;
+  tipo: "fuera_spec" | "cpk_bajo" | "pct_bajo" | "sin_minimo";
+  severidad: Severidad;
+  detalle: string;
+};
+
+export function detectarNoConformidades(analisis: AnalisisRegistro[]): NoConformidad[] {
+  const out: NoConformidad[] = [];
+  for (const a of analisis) {
+    if (!a.cumpleMinimo) {
+      out.push({
+        registroNombre: a.registro.nombre, registroId: a.registro.id, serie: "—",
+        tipo: "sin_minimo", severidad: "alta",
+        detalle: `${a.totalLecturas}/${MINIMO_NORMATIVO} lecturas (${a.porcentajeMinimo}%)`,
+      });
+    }
+    for (const s of a.series) {
+      if (s.fueraSpec.total > 0) {
+        out.push({
+          registroNombre: a.registro.nombre, registroId: a.registro.id,
+          serie: `${s.serie} ${s.unidad}`, tipo: "fuera_spec", severidad: "alta",
+          detalle: `${s.fueraSpec.total} lecturas fuera (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓) · LIE ${s.lie ?? "—"} / LSE ${s.lse ?? "—"}`,
+        });
+      }
+      if (s.pctDentroSpec != null && s.pctDentroSpec < PCT_SPEC_FAIL) {
+        out.push({
+          registroNombre: a.registro.nombre, registroId: a.registro.id,
+          serie: `${s.serie} ${s.unidad}`, tipo: "pct_bajo", severidad: "alta",
+          detalle: `Solo ${s.pctDentroSpec.toFixed(1)}% dentro de spec (mínimo ${PCT_SPEC_FAIL}%)`,
+        });
+      }
+      if (s.cpk != null && s.cpk < CPK_WARN) {
+        out.push({
+          registroNombre: a.registro.nombre, registroId: a.registro.id,
+          serie: `${s.serie} ${s.unidad}`, tipo: "cpk_bajo",
+          severidad: s.cpk < CPK_FAIL ? "alta" : "media",
+          detalle: `Cpk ${s.cpk.toFixed(2)} (${s.cpk < CPK_FAIL ? "crítico < 1.00" : "bajo < 1.33"})`,
+        });
+      }
+    }
+  }
+  return out;
+}
+
 
 // ===== Agrupación =====
 export type AgruparPor = "registro" | "area" | "hvac" | "modulo";
