@@ -11,8 +11,9 @@ interface Props {
   onExtracted: (s: Semana) => void;
 }
 
-/** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 1800px) para encajar en el límite de 5MB de Anthropic. */
-async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+/** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 2800px) para encajar en el límite de 5MB de Anthropic. */
+// 2800px mejora precisión en dígitos manuscritos pequeños
+async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
@@ -35,11 +36,11 @@ async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000)
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
 
-  let quality = 0.85;
+  let quality = 0.75;
   let out = canvas.toDataURL("image/jpeg", quality);
   // Iterar bajando calidad hasta entrar en targetBytes
   for (let i = 0; i < 6 && approxBytes(out) > targetBytes; i++) {
-    quality -= 0.12;
+    quality -= 0.1;
     if (quality < 0.35) quality = 0.35;
     out = canvas.toDataURL("image/jpeg", quality);
   }
