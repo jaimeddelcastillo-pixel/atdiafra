@@ -55,6 +55,7 @@ function approxBytes(dataUrl: string): number {
 
 interface IALectura {
   dia?: string; turno?: string; valor?: number | string | null; hora?: string | null; quien?: string | null;
+  confianza?: number | null;
 }
 interface IAResponse {
   mes?: string; anio?: string; instrumento?: string; area?: string;
