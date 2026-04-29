@@ -76,8 +76,13 @@ function NormativoPage() {
   useEffect(() => { reload(); }, []);
 
   const periodo: Periodo = useMemo(
-    () => tipo === "anual" ? { tipo: "anual", anio } : { tipo: "trimestre", anio, q: trimestre },
-    [tipo, anio, trimestre],
+    () =>
+      tipo === "anual"
+        ? { tipo: "anual", anio }
+        : tipo === "custom"
+          ? { tipo: "custom", desde, hasta }
+          : { tipo: "trimestre", anio, q: trimestre },
+    [tipo, anio, trimestre, desde, hasta],
   );
 
   const filtrados = useMemo(() => {
@@ -89,9 +94,14 @@ function NormativoPage() {
     });
   }, [registros, modulo, filtroArea, filtroHvac]);
 
+  const filtradosFinal = useMemo(
+    () => (seleccionManual ? filtrados.filter((r) => seleccionados.has(r.id)) : filtrados),
+    [filtrados, seleccionados, seleccionManual],
+  );
+
   const analisis = useMemo<AnalisisRegistro[]>(
-    () => filtrados.map((r) => analizarRegistro(r, periodo)),
-    [filtrados, periodo],
+    () => filtradosFinal.map((r) => analizarRegistro(r, periodo)),
+    [filtradosFinal, periodo],
   );
 
   // Agrupación visual
