@@ -2,10 +2,11 @@
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Plus, Save, Trash } from "lucide-react";
+import { ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -21,9 +22,13 @@ import {
   upsertRegistro, listRegistros, deleteRegistro,
   esSemanaVacia, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro,
 } from "@/lib/semanas";
+import { analizarRegistro, type Periodo } from "@/lib/normativo";
+import { exportarNormativoPDF } from "@/lib/export-normativo";
 
 import { ParCuartosSelector } from "./ParCuartosSelector";
 import { WeeklyReadingsTablePresion } from "./WeeklyReadingsTablePresion";
+import { ImageImporterPresion } from "./ImageImporterPresion";
+import { PresionAnalysis } from "./PresionAnalysis";
 
 export function PresionesModule() {
   const [pares, setPares] = useState<ParCuartos[]>([]);
@@ -213,6 +218,34 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
   const [postSaveOpen, setPostSaveOpen] = useState(false);
   const [nuevaSemanaFecha, setNuevaSemanaFecha] = useState<string>("");
 
+  // Export PDF normativo
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [exportDesde, setExportDesde] = useState<string>(yearStart);
+  const [exportHasta, setExportHasta] = useState<string>(today);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!exportDesde || !exportHasta || exportDesde > exportHasta) {
+      toast.error("Rango de fechas inválido"); return;
+    }
+    setExportingPDF(true);
+    const t = toast.loading("Generando PDF normativo…");
+    try {
+      const periodo: Periodo = { tipo: "custom", desde: exportDesde, hasta: exportHasta };
+      const analisis = [analizarRegistro(draft, periodo)];
+      await new Promise((r) => setTimeout(r, 50));
+      exportarNormativoPDF(analisis, "registro", { areas: new Map(), hvac: new Map() }, { incluirGraficas: true });
+      toast.success("PDF generado", { id: t });
+      setExportOpen(false);
+    } catch (e: any) {
+      toast.error("No se pudo exportar: " + e.message, { id: t });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   useEffect(() => { setDraft(registro); setDirty(false); }, [registro.id]);
   useEffect(() => { if (!dirty) setDraft(registro); }, [registro]);
 
@@ -254,6 +287,32 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
 
   const updateWeek = (s: Semana) =>
     mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
+
+  // Importación por imagen: SOLO actualiza el draft local. NO persiste hasta "Guardar".
+  const handleExtracted = (s: Semana) => {
+    const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
+    let semanas: Semana[];
+    if (existing) {
+      const merged: Semana = {
+        ...existing,
+        lecturas: s.lecturas.some((p) => p.valor != null) ? s.lecturas : existing.lecturas,
+        observaciones: [existing.observaciones, s.observaciones].filter(Boolean).join("\n"),
+        source: "imagen",
+        saved_at: new Date().toISOString(),
+      };
+      semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
+      setActiveWeekId(existing.id);
+    } else {
+      const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, false));
+      const removidas = draft.semanas.length - limpias.length;
+      semanas = [...limpias, s];
+      setActiveWeekId(s.id);
+      if (removidas > 0) toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos.`);
+    }
+    setDraft({ ...draft, semanas });
+    setDirty(true);
+    toast.success("Imagen importada — revisa y presiona Guardar");
+  };
 
   const deleteWeek = (id: string) => {
     const target = draft.semanas.find((x) => x.id === id);
@@ -321,6 +380,36 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Popover open={exportOpen} onOpenChange={setExportOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1">
+                <FileText className="h-4 w-4" /> Exportar PDF
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold">PDF normativo</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">Solo este registro, en el rango que elijas.</p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Desde</label>
+                  <input type="date" value={exportDesde} max={exportHasta}
+                    onChange={(e) => setExportDesde(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Hasta</label>
+                  <input type="date" value={exportHasta} min={exportDesde}
+                    onChange={(e) => setExportHasta(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9" />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleExportPDF} disabled={exportingPDF} className="w-full gap-1">
+                <FileText className="h-4 w-4" /> {exportingPDF ? "Generando…" : "Generar PDF"}
+              </Button>
+            </PopoverContent>
+          </Popover>
           {canWriteRecords && (
             <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
               <Plus className="h-4 w-4" /> Nueva semana actual
@@ -344,6 +433,19 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
           )}
         </div>
       </div>
+
+      <ImageImporterPresion
+        context={{
+          codigoArea: par
+            ? `${draft.nombre}` : "",
+          nombreArea: draft.nombre,
+          instrumento: draft.instrumento_id ?? "",
+          iso: draft.iso ?? "",
+          limiteMinPa,
+        }}
+        semanaInicio={activeWeek?.semana_inicio ?? lunesDe(new Date())}
+        onExtracted={handleExtracted}
+      />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -430,6 +532,8 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
           </Button>
         </div>
       )}
+
+      <PresionAnalysis semanas={draft.semanas} limiteMinPa={limiteMinPa} />
 
       <AlertDialog open={postSaveOpen} onOpenChange={setPostSaveOpen}>
         <AlertDialogContent>
