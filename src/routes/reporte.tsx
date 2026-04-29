@@ -399,14 +399,22 @@ function ReportePage() {
                           <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
                           <td className="px-3 py-2 text-right">
                             <div className="inline-flex gap-1">
+                              <Link
+                                to="/reporte/$id"
+                                params={{ id: r.id }}
+                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                              >
+                                <Eye className="h-3 w-3" /> Abrir
+                              </Link>
                               {editable && (
                                 <Link
                                   to="/modulo/$slug"
                                   params={{ slug: moduloSlug(r.modulo) }}
                                   search={{ registroId: r.id }}
                                   className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                                  title="Editar en módulo"
                                 >
-                                  <Eye className="h-3 w-3" /> Abrir
+                                  ✎
                                 </Link>
                               )}
                               {canDelete && (
