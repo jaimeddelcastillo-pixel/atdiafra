@@ -1,78 +1,175 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+import { format } from "date-fns";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { useAuth } from "@/lib/auth-context";
-import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText, Merge } from "lucide-react";
+import { ChevronLeft, Trash, Eye, RefreshCw, FileSpreadsheet, FileText, Merge, ChevronRight, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { listRegistros, deleteRegistro, lunesDe, esSemanaCompleta, lecturasCapturadas, lecturasEsperadas, rangoFechasRegistro, detectarDuplicados, fusionarRegistros, type Registro, type Modulo } from "@/lib/semanas";
+import {
+  listRegistros, deleteRegistro, rangoFechasRegistro,
+  detectarDuplicados, fusionarRegistros, type Registro,
+} from "@/lib/semanas";
+import { listAreas, listInstrumentos, type AreaClasificada, type Instrumento } from "@/lib/catalogos";
 import { MODULOS } from "@/lib/diafra-data";
 import { exportarReporteExcel, exportarReportePDF } from "@/lib/export-utils";
+import { MINIMO_NORMATIVO, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
 
 export const Route = createFileRoute("/reporte/")({
   head: () => ({
     meta: [
       { title: "Reporte consolidado — DIAFRA" },
-      { name: "description", content: "Vista global de registros, edición, borrado y cumplimiento semanal." },
+      { name: "description", content: "Exploración por área e instrumento, exportación con estadísticas y gráficas." },
     ],
   }),
   component: () => <AuthGuard><ReportePage /></AuthGuard>,
 });
 
-const MODULOS_VALIDOS: { id: Modulo; label: string }[] = [
-  { id: "temphr", label: "Temperatura y HR" },
-  { id: "filtros", label: "Filtros" },
-  { id: "presiones", label: "Presiones" },
-  { id: "agua", label: "Agua purificada" },
-];
-
-function moduloSlug(m: Modulo): string {
-  const map: Record<Modulo, string> = {
+function moduloSlug(m: string): string {
+  const map: Record<string, string> = {
     temphr: "temperatura-humedad",
     filtros: "filtros",
     presiones: "presiones",
     agua: "agua-purificada",
   };
-  return map[m];
+  return map[m] ?? m;
+}
+
+function etiquetaArea(r: Registro, areasMap: Map<string, AreaClasificada>): string {
+  if (r.area_id) {
+    const a = areasMap.get(r.area_id);
+    return a ? `${a.codigo} · ${a.nombre}` : "Área desconocida";
+  }
+  return r.nombre_area_libre || r.codigo_area_libre || "Sin área";
+}
+
+function claveArea(r: Registro): string {
+  return r.area_id ?? `libre:${r.codigo_area_libre ?? r.nombre_area_libre ?? "sin-area"}`;
+}
+
+function etiquetaInstrumento(r: Registro, instrMap: Map<string, Instrumento>): string {
+  if (r.instrumento_id) {
+    const i = instrMap.get(r.instrumento_id);
+    return i ? `${i.codigo} · ${i.parametro}` : "Instrumento desconocido";
+  }
+  if (r.par_cuartos_id) return `Par cuartos`;
+  if (r.hvac_id) return r.etapa ? `HVAC · ${r.etapa}` : "HVAC";
+  return r.modulo;
+}
+
+function claveInstrumento(r: Registro): string {
+  if (r.instrumento_id) return `i:${r.instrumento_id}`;
+  if (r.par_cuartos_id) return `p:${r.par_cuartos_id}`;
+  if (r.hvac_id) return `h:${r.hvac_id}:${r.etapa ?? ""}`;
+  return `m:${r.modulo}`;
 }
 
 function ReportePage() {
   const { canDelete } = useAuth();
   const [registros, setRegistros] = useState<Registro[]>([]);
+  const [areas, setAreas] = useState<AreaClasificada[]>([]);
+  const [instrumentos, setInstrumentos] = useState<Instrumento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtroModulo, setFiltroModulo] = useState<Modulo | "">("");
-  const [filtroAnio, setFiltroAnio] = useState<string>(String(new Date().getFullYear()));
-  const [busca, setBusca] = useState("");
+
+  // Drill-down: área seleccionada → instrumento seleccionado
+  const [areaSel, setAreaSel] = useState<string | null>(null);
+  const [instrSel, setInstrSel] = useState<string | null>(null);
+
+  // Periodo desde / hasta (default: últimos 90 días)
+  const hoy = new Date();
+  const hace90 = new Date(); hace90.setDate(hoy.getDate() - 90);
+  const [desde, setDesde] = useState<Date>(hace90);
+  const [hasta, setHasta] = useState<Date>(hoy);
 
   const reload = async () => {
     setLoading(true);
     try {
-      setRegistros(await listRegistros());
+      const [regs, ar, ins] = await Promise.all([listRegistros(), listAreas(), listInstrumentos()]);
+      setRegistros(regs); setAreas(ar); setInstrumentos(ins);
     } catch (e: any) {
-      toast.error("No se pudieron cargar registros: " + e.message);
+      toast.error("No se pudieron cargar datos: " + e.message);
     } finally {
       setLoading(false);
     }
   };
   useEffect(() => { reload(); }, []);
 
-  const filtrados = useMemo(() => {
-    return registros
-      .filter((r) => {
-        if (filtroModulo && r.modulo !== filtroModulo) return false;
-        if (busca && !r.nombre.toLowerCase().includes(busca.toLowerCase())) return false;
-        return true;
-      })
-      .slice()
-      .sort((a, b) => {
-        // Orden por la semana más reciente capturada (desc); si no hay semanas, por created_at desc.
-        const ultA = a.semanas.length ? a.semanas.map((s) => s.semana_inicio).sort().slice(-1)[0] : a.created_at.slice(0, 10);
-        const ultB = b.semanas.length ? b.semanas.map((s) => s.semana_inicio).sort().slice(-1)[0] : b.created_at.slice(0, 10);
-        if (ultA !== ultB) return ultB.localeCompare(ultA);
-        return a.nombre.localeCompare(b.nombre);
-      });
-  }, [registros, filtroModulo, busca]);
+  const areasMap = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
+  const instrMap = useMemo(() => new Map(instrumentos.map((i) => [i.id, i])), [instrumentos]);
+
+  const periodo: Periodo = useMemo(() => ({
+    tipo: "custom",
+    desde: format(desde, "yyyy-MM-dd"),
+    hasta: format(hasta, "yyyy-MM-dd"),
+  }), [desde, hasta]);
+
+  const periodoEtiqueta = `${format(desde, "dd/MM/yyyy")} – ${format(hasta, "dd/MM/yyyy")}`;
+
+  // Agrupar todo por área
+  const grupoPorArea = useMemo(() => {
+    const m = new Map<string, { etiqueta: string; registros: Registro[] }>();
+    for (const r of registros) {
+      const k = claveArea(r);
+      const et = etiquetaArea(r, areasMap);
+      const cur = m.get(k);
+      if (cur) cur.registros.push(r);
+      else m.set(k, { etiqueta: et, registros: [r] });
+    }
+    return Array.from(m.entries())
+      .map(([k, v]) => ({ key: k, ...v }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
+  }, [registros, areasMap]);
+
+  // Para el área seleccionada, agrupar por instrumento
+  const instrumentosDelArea = useMemo(() => {
+    if (!areaSel) return [];
+    const grp = grupoPorArea.find((g) => g.key === areaSel);
+    if (!grp) return [];
+    const m = new Map<string, { etiqueta: string; registros: Registro[] }>();
+    for (const r of grp.registros) {
+      const k = claveInstrumento(r);
+      const et = etiquetaInstrumento(r, instrMap);
+      const cur = m.get(k);
+      if (cur) cur.registros.push(r);
+      else m.set(k, { etiqueta: et, registros: [r] });
+    }
+    return Array.from(m.entries())
+      .map(([k, v]) => ({ key: k, ...v }))
+      .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
+  }, [areaSel, grupoPorArea, instrMap]);
+
+  // Registros del instrumento seleccionado
+  const registrosDelInstrumento = useMemo(() => {
+    if (!instrSel) return [];
+    const grp = instrumentosDelArea.find((g) => g.key === instrSel);
+    return grp ? grp.registros : [];
+  }, [instrSel, instrumentosDelArea]);
+
+  // Conteo de lecturas en el periodo (para badge "≥90")
+  const lecturasPeriodo = (r: Registro): number => {
+    const sems = semanasDelPeriodo(r, periodo);
+    const esTHR = r.modulo === "temphr";
+    let n = 0;
+    for (const s of sems) {
+      n += (s.lecturas ?? []).filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor)).length;
+      if (esTHR) n += (s.lecturas_hr ?? []).filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor)).length;
+    }
+    return n;
+  };
+
+  // Selección efectiva para exportar: si hay drill-down, usa eso; si no, todos.
+  const registrosParaExportar: Registro[] = useMemo(() => {
+    if (instrSel) return registrosDelInstrumento;
+    if (areaSel) {
+      const grp = grupoPorArea.find((g) => g.key === areaSel);
+      return grp ? grp.registros : [];
+    }
+    return registros;
+  }, [areaSel, instrSel, grupoPorArea, registrosDelInstrumento, registros]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
@@ -80,59 +177,36 @@ function ReportePage() {
       await deleteRegistro(id);
       await reload();
       toast.success("Registro eliminado");
-    } catch (e: any) {
-      toast.error("No se pudo eliminar: " + e.message);
-    }
+    } catch (e: any) { toast.error("No se pudo eliminar: " + e.message); }
   };
 
-  // ===== Detección de duplicados (mismo módulo + área + instrumento) =====
   const duplicados = useMemo(() => detectarDuplicados(registros), [registros]);
 
   const handleFusionarGrupo = async (grupo: Registro[]) => {
     const principal = [...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
     const semanasTotales = grupo.reduce((acc, r) => acc + r.semanas.length, 0);
-    if (!confirm(
-      `Fusionar ${grupo.length} registros con la misma área+instrumento en uno solo.\n\n` +
-      `Se conservará: "${principal.nombre}" (creado ${principal.created_at.slice(0, 10)})\n` +
-      `Se moverán todas las semanas (${semanasTotales} en total) a ese registro.\n` +
-      `Los otros ${grupo.length - 1} registro(s) se eliminarán.\n\n` +
-      `Esta acción NO se puede deshacer. ¿Continuar?`
-    )) return;
-    const t = toast.loading("Fusionando registros…");
+    if (!confirm(`Fusionar ${grupo.length} registros en uno solo.\n\nSe conserva: "${principal.nombre}".\nSe moverán ${semanasTotales} semanas. Los otros ${grupo.length - 1} se eliminarán.\n\n¿Continuar?`)) return;
+    const t = toast.loading("Fusionando…");
     try {
       const res = await fusionarRegistros(grupo);
       await reload();
-      toast.success(`Fusión completada: +${res.semanas} semanas movidas, ${res.eliminados.length} registro(s) eliminados`, { id: t });
-    } catch (e: any) {
-      toast.error("No se pudo fusionar: " + e.message, { id: t });
-    }
+      toast.success(`Fusión OK: +${res.semanas} semanas, ${res.eliminados.length} eliminados`, { id: t });
+    } catch (e: any) { toast.error("No se pudo fusionar: " + e.message, { id: t }); }
   };
 
-  // ===== Cumplimiento =====
-  const cumplimiento = useMemo(() => {
-    const anio = parseInt(filtroAnio, 10);
-    if (!Number.isFinite(anio)) return [];
-    // Generar lunes desde el 1 enero hasta hoy (o fin de año si no es vigente)
-    const inicio = new Date(anio, 0, 1);
-    const hoy = new Date();
-    const fin = anio === hoy.getFullYear() ? hoy : new Date(anio, 11, 31);
-    const lunes: string[] = [];
-    let cursor = new Date(lunesDe(inicio) + "T00:00:00");
-    while (cursor <= fin) {
-      lunes.push(cursor.toISOString().slice(0, 10));
-      cursor.setDate(cursor.getDate() + 7);
+  const onExport = (tipo: "excel" | "pdf") => {
+    if (registrosParaExportar.length === 0) {
+      toast.error("No hay registros para exportar en la selección actual");
+      return;
     }
-    return registros
-      .filter((r) => !filtroModulo || r.modulo === filtroModulo)
-      .map((r) => {
-        const esTHR = r.modulo === "temphr";
-        const semanasAnio = r.semanas.filter((s) => s.semana_inicio.startsWith(String(anio)));
-        const presentes = new Set(semanasAnio.map((s) => s.semana_inicio));
-        const completas = semanasAnio.filter((s) => esSemanaCompleta(s, esTHR)).length;
-        const faltantes = lunes.filter((l) => !presentes.has(l));
-        return { registro: r, totalSemanas: lunes.length, presentes: presentes.size, completas, faltantes };
-      });
-  }, [registros, filtroAnio, filtroModulo]);
+    try {
+      if (tipo === "excel") exportarReporteExcel(registrosParaExportar, periodo, periodoEtiqueta);
+      else exportarReportePDF(registrosParaExportar, periodo, periodoEtiqueta);
+      toast.success(`${tipo === "excel" ? "Excel" : "PDF"} generado (${registrosParaExportar.length} registros)`);
+    } catch (e: any) {
+      toast.error("No se pudo exportar: " + e.message);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,300 +217,321 @@ function ReportePage() {
             <ChevronLeft className="h-4 w-4" /> Tablero
           </Link>
           <Link to="/reporte/normativo" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
-            Reporte normativo (≥90 lecturas) →
+            Reporte normativo (≥{MINIMO_NORMATIVO} lecturas) →
           </Link>
         </div>
+
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Reporte consolidado</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Todos los registros de todos los módulos. Edita, borra o revisa el cumplimiento semanal.
+              Navega <span className="font-medium text-foreground">Área → Instrumento → Registro</span>. Define un periodo y exporta con estadísticas.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" onClick={reload} className="gap-1">
               <RefreshCw className="h-4 w-4" /> Actualizar
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                try {
-                  exportarReporteExcel(registros, cumplimiento, filtroAnio);
-                  toast.success("Excel generado");
-                } catch (e: any) {
-                  toast.error("No se pudo exportar: " + e.message);
-                }
-              }}
-              disabled={loading || registros.length === 0}
-              className="gap-1"
-            >
+            <Button size="sm" variant="outline" onClick={() => onExport("excel")} disabled={loading} className="gap-1">
               <FileSpreadsheet className="h-4 w-4" /> Excel
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                try {
-                  exportarReportePDF(registros, cumplimiento, filtroAnio);
-                  toast.success("PDF generado");
-                } catch (e: any) {
-                  toast.error("No se pudo exportar: " + e.message);
-                }
-              }}
-              disabled={loading || registros.length === 0}
-              className="gap-1"
-            >
+            <Button size="sm" variant="outline" onClick={() => onExport("pdf")} disabled={loading} className="gap-1">
               <FileText className="h-4 w-4" /> PDF
             </Button>
           </div>
         </div>
 
-        {/* Filtros */}
+        {/* Periodo */}
         <div className="mt-6 rounded-xl border border-border bg-card p-4 flex flex-wrap items-end gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Módulo</label>
-            <select
-              value={filtroModulo}
-              onChange={(e) => setFiltroModulo(e.target.value as Modulo | "")}
-              className="mt-1 block rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="">Todos</option>
-              {MODULOS_VALIDOS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-            </select>
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Desde</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !desde && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {desde ? format(desde, "dd/MM/yyyy") : "—"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={desde} onSelect={(d) => d && setDesde(d)} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Año (cumplimiento)</label>
-            <input
-              type="number"
-              value={filtroAnio}
-              onChange={(e) => setFiltroAnio(e.target.value)}
-              className="mt-1 block w-24 rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            />
+            <label className="text-xs font-medium text-muted-foreground block mb-1">Hasta</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !hasta && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {hasta ? format(hasta, "dd/MM/yyyy") : "—"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={hasta} onSelect={(d) => d && setHasta(d)} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
           </div>
-          <div className="flex-1 min-w-[180px]">
-            <label className="text-xs font-medium text-muted-foreground">Buscar</label>
-            <input
-              type="text"
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              placeholder="Por nombre, área o instrumento…"
-              className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            />
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant="ghost" onClick={() => { const a = new Date(); const b = new Date(); b.setDate(a.getDate() - 90); setDesde(b); setHasta(a); }}>
+              Últimos 90 días
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { const y = new Date().getFullYear(); setDesde(new Date(y, 0, 1)); setHasta(new Date()); }}>
+              Año actual
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { const a = new Date(); const m = a.getMonth(); const q = Math.floor(m / 3); setDesde(new Date(a.getFullYear(), q * 3, 1)); setHasta(new Date(a.getFullYear(), q * 3 + 3, 0)); }}>
+              Trimestre actual
+            </Button>
+          </div>
+          <div className="ml-auto text-xs text-muted-foreground">
+            Exportar usará la selección actual: <span className="font-medium text-foreground">{registrosParaExportar.length}</span> registro(s) · mínimo recomendado <span className="font-medium text-foreground">≥{MINIMO_NORMATIVO}</span> lecturas
           </div>
         </div>
 
-        {/* Duplicados detectados */}
-        {duplicados.length > 0 && (
-          <section className="mt-6 rounded-xl border border-warning/40 bg-warning/5 p-4">
-            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-              <Merge className="h-4 w-4 text-warning" />
-              Registros duplicados detectados ({duplicados.length} grupo{duplicados.length === 1 ? "" : "s"})
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Estos registros comparten la misma área e instrumento. Fusionarlos consolida todas sus semanas en uno solo (se conserva el más antiguo).
-            </p>
-            <div className="mt-3 space-y-2">
-              {duplicados.map((grupo, i) => (
-                <div key={i} className="rounded-md border border-border bg-card p-3">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium text-foreground">{grupo[0].nombre}</div>
-                      <ul className="mt-1 space-y-0.5">
-                        {[...grupo].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((r, idx) => (
-                          <li key={r.id} className="text-[11px] text-muted-foreground">
-                            {idx === 0 && <span className="text-success font-medium">[se conserva] </span>}
-                            <span className="font-mono">{r.id.slice(0, 8)}…</span> · {rangoFechasRegistro(r)} · creado {r.created_at.slice(0, 10)}
-                          </li>
-                        ))}
-                      </ul>
+        {/* Breadcrumb drill-down */}
+        <div className="mt-6 flex items-center flex-wrap gap-1 text-sm">
+          <button
+            onClick={() => { setAreaSel(null); setInstrSel(null); }}
+            className={cn("px-2 py-1 rounded hover:bg-muted", !areaSel && "font-semibold text-foreground")}
+          >
+            Todas las áreas ({grupoPorArea.length})
+          </button>
+          {areaSel && (
+            <>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              <button
+                onClick={() => setInstrSel(null)}
+                className={cn("px-2 py-1 rounded hover:bg-muted", !instrSel && "font-semibold text-foreground")}
+              >
+                {grupoPorArea.find((g) => g.key === areaSel)?.etiqueta ?? "—"} ({instrumentosDelArea.length} inst.)
+              </button>
+            </>
+          )}
+          {instrSel && (
+            <>
+              <ChevronRight className="h-3 w-3 text-muted-foreground" />
+              <span className="px-2 py-1 font-semibold text-foreground">
+                {instrumentosDelArea.find((g) => g.key === instrSel)?.etiqueta ?? "—"} ({registrosDelInstrumento.length} reg.)
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Duplicados (colapsable / pequeño) */}
+        {duplicados.length > 0 && !areaSel && (
+          <section className="mt-4 rounded-xl border border-warning/40 bg-warning/5 p-3">
+            <details>
+              <summary className="cursor-pointer text-sm font-medium flex items-center gap-2">
+                <Merge className="h-4 w-4 text-warning" />
+                {duplicados.length} grupo(s) de registros duplicados detectados
+              </summary>
+              <div className="mt-3 space-y-2">
+                {duplicados.map((grupo, i) => (
+                  <div key={i} className="rounded-md border border-border bg-card p-3 flex items-start justify-between gap-3 flex-wrap">
+                    <div className="text-xs text-muted-foreground">
+                      <div className="font-medium text-foreground text-sm">{grupo[0].nombre}</div>
+                      {grupo.length} registros con semanas que se solapan
                     </div>
                     {canDelete && (
                       <Button size="sm" variant="outline" onClick={() => handleFusionarGrupo(grupo)} className="gap-1">
-                        <Merge className="h-3.5 w-3.5" /> Fusionar en uno
+                        <Merge className="h-3.5 w-3.5" /> Fusionar
                       </Button>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </details>
           </section>
         )}
 
-        {/* Cumplimiento */}
+        {/* Tabla principal: cambia según drill-down */}
         <section className="mt-6">
-          <h2 className="text-lg font-semibold text-foreground mb-1">Cumplimiento {filtroAnio}</h2>
-          <p className="text-xs text-muted-foreground mb-3">
-            El año se determina por el <span className="font-medium text-foreground">lunes</span> de cada semana, no por la fecha de captura. Una semana es <span className="font-medium text-foreground">completa</span> cuando todas sus lecturas no marcadas como NA tienen valor (semana inglesa: Sáb/Dom NA por defecto).
-          </p>
           {loading ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
-          ) : cumplimiento.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin registros para evaluar.</p>
+          ) : !areaSel ? (
+            <TablaAreas
+              grupos={grupoPorArea}
+              onSelect={(k) => setAreaSel(k)}
+              lecturasPeriodo={lecturasPeriodo}
+            />
+          ) : !instrSel ? (
+            <TablaInstrumentos
+              grupos={instrumentosDelArea}
+              onSelect={(k) => setInstrSel(k)}
+              lecturasPeriodo={lecturasPeriodo}
+            />
           ) : (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Registro</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground" title={`Lunes esperados desde 01-ene-${filtroAnio} a la fecha`}>Semanas esperadas</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Capturadas</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Completas</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Faltantes</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Semanas capturadas (lunes)</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Lunes faltantes</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cumplimiento.map(({ registro, totalSemanas, presentes, completas, faltantes }) => {
-                      const pct = totalSemanas > 0 ? Math.round((completas / totalSemanas) * 100) : 0;
-                      const color = pct >= 90 ? "text-success" : pct >= 60 ? "text-warning" : "text-destructive";
-                      const semanasAnio = registro.semanas
-                        .filter((s) => s.semana_inicio.startsWith(filtroAnio))
-                        .map((s) => s.semana_inicio)
-                        .sort();
-                      return (
-                        <tr key={registro.id} className="border-t border-border">
-                          <td className="px-3 py-2">
-                            <div className="font-medium text-foreground">{registro.nombre}</div>
-                            <div className="text-muted-foreground text-[11px]">
-                              {registro.modulo} · {registro.iso ?? "—"} · <span className="text-foreground">{rangoFechasRegistro(registro)}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-center tabular-nums">{totalSemanas}</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{presentes}</td>
-                          <td className={`px-3 py-2 text-center tabular-nums font-semibold ${color}`}>{completas} ({pct}%)</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{faltantes.length}</td>
-                          <td className="px-3 py-2 text-[11px] text-muted-foreground">
-                            {semanasAnio.length > 0 ? semanasAnio.join(", ") : "—"}
-                          </td>
-                          <td className="px-3 py-2 text-[11px] text-muted-foreground">
-                            {faltantes.length === 0 ? (
-                              <span className="text-success">Ninguno ✓</span>
-                            ) : (
-                              <details>
-                                <summary className="cursor-pointer hover:text-foreground">Ver {faltantes.length} faltante(s)</summary>
-                                <div className="mt-1 max-h-40 overflow-y-auto leading-5">
-                                  {faltantes.join(", ")}
-                                </div>
-                              </details>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Lista detallada */}
-        <section className="mt-8">
-          <h2 className="text-lg font-semibold text-foreground mb-3">Registros ({filtrados.length})</h2>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Cargando…</p>
-          ) : filtrados.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No hay registros con esos filtros.</p>
-          ) : (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/40">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nombre</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Módulo</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">ISO</th>
-                      <th className="px-3 py-2 text-center font-medium text-muted-foreground">Semanas</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Detalle de semanas (lunes · lecturas · estado)</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground">Creado</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtrados.map((r) => {
-                      const moduloDef = MODULOS.find((m) => moduloSlug(r.modulo) === m.slug);
-                      const editable = moduloDef?.enabled;
-                      
-                      const semanasOrden = [...r.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
-                      const esTHR = r.modulo === "temphr";
-                      return (
-                        <tr key={r.id} className="border-t border-border align-top">
-                          <td className="px-3 py-2">
-                            <div className="font-medium text-foreground">{r.nombre}</div>
-                            <div className="text-[11px] text-muted-foreground mt-0.5">{rangoFechasRegistro(r)}</div>
-                            <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5">{r.id.slice(0, 8)}…</div>
-                          </td>
-                          <td className="px-3 py-2 text-muted-foreground">{r.modulo}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{r.iso ?? "—"}</td>
-                          <td className="px-3 py-2 text-center tabular-nums">{r.semanas.length}</td>
-                          <td className="px-3 py-2 text-[11px]">
-                            {semanasOrden.length === 0 ? (
-                              <span className="text-muted-foreground">Sin semanas</span>
-                            ) : (
-                              <div className="flex flex-col gap-0.5">
-                                {semanasOrden.map((s) => {
-                                  const cap = lecturasCapturadas(s, esTHR);
-                                  const esp = lecturasEsperadas(s, esTHR);
-                                  const completa = esSemanaCompleta(s, esTHR);
-                                  return (
-                                    <div key={s.id} className="flex items-center gap-2">
-                                      <span className="font-mono text-foreground">{s.semana_inicio}</span>
-                                      <span className="text-muted-foreground">
-                                        {cap}/{esp}
-                                      </span>
-                                      <span className={completa ? "text-success" : cap > 0 ? "text-warning" : "text-destructive"}>
-                                        {completa ? "✓ completa" : cap > 0 ? "parcial" : "vacía"}
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{r.created_at.slice(0, 10)}</td>
-                          <td className="px-3 py-2 text-right">
-                            <div className="inline-flex gap-1">
-                              <Link
-                                to="/reporte/$id"
-                                params={{ id: r.id }}
-                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
-                              >
-                                <Eye className="h-3 w-3" /> Abrir
-                              </Link>
-                              {editable && (
-                                <Link
-                                  to="/modulo/$slug"
-                                  params={{ slug: moduloSlug(r.modulo) }}
-                                  search={{ registroId: r.id }}
-                                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
-                                  title="Editar en módulo"
-                                >
-                                  ✎
-                                </Link>
-                              )}
-                              {canDelete && (
-                                <button
-                                  onClick={() => handleDelete(r.id)}
-                                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
-                                >
-                                  <Trash className="h-3 w-3" /> Borrar
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <TablaRegistros
+              registros={registrosDelInstrumento}
+              lecturasPeriodo={lecturasPeriodo}
+              onDelete={canDelete ? handleDelete : undefined}
+            />
           )}
         </section>
       </main>
+    </div>
+  );
+}
+
+// ===== Sub-tablas =====
+
+function TablaAreas({
+  grupos, onSelect, lecturasPeriodo,
+}: {
+  grupos: { key: string; etiqueta: string; registros: Registro[] }[];
+  onSelect: (k: string) => void;
+  lecturasPeriodo: (r: Registro) => number;
+}) {
+  if (grupos.length === 0) return <p className="text-sm text-muted-foreground">Sin registros.</p>;
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Área</th>
+            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Instrumentos</th>
+            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Registros</th>
+            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Lecturas en periodo</th>
+            <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map((g) => {
+            const instrumentosCount = new Set(g.registros.map((r) => claveInstrumento(r))).size;
+            const lecturas = g.registros.reduce((s, r) => s + lecturasPeriodo(r), 0);
+            return (
+              <tr key={g.key} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(g.key)}>
+                <td className="px-3 py-3 font-medium text-foreground">{g.etiqueta}</td>
+                <td className="px-3 py-3 text-center tabular-nums">{instrumentosCount}</td>
+                <td className="px-3 py-3 text-center tabular-nums">{g.registros.length}</td>
+                <td className={cn("px-3 py-3 text-center tabular-nums font-semibold", lecturas >= MINIMO_NORMATIVO ? "text-success" : "text-warning")}>
+                  {lecturas}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <ChevronRight className="h-4 w-4 inline text-muted-foreground" />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TablaInstrumentos({
+  grupos, onSelect, lecturasPeriodo,
+}: {
+  grupos: { key: string; etiqueta: string; registros: Registro[] }[];
+  onSelect: (k: string) => void;
+  lecturasPeriodo: (r: Registro) => number;
+}) {
+  if (grupos.length === 0) return <p className="text-sm text-muted-foreground">Sin instrumentos.</p>;
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/40 text-xs">
+          <tr>
+            <th className="px-3 py-2 text-left font-medium text-muted-foreground">Instrumento</th>
+            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Registros</th>
+            <th className="px-3 py-2 text-center font-medium text-muted-foreground">Lecturas en periodo</th>
+            <th className="px-3 py-2 text-right font-medium text-muted-foreground"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map((g) => {
+            const lecturas = g.registros.reduce((s, r) => s + lecturasPeriodo(r), 0);
+            return (
+              <tr key={g.key} className="border-t border-border hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(g.key)}>
+                <td className="px-3 py-3 font-medium text-foreground">{g.etiqueta}</td>
+                <td className="px-3 py-3 text-center tabular-nums">{g.registros.length}</td>
+                <td className={cn("px-3 py-3 text-center tabular-nums font-semibold", lecturas >= MINIMO_NORMATIVO ? "text-success" : "text-warning")}>
+                  {lecturas}
+                </td>
+                <td className="px-3 py-3 text-right">
+                  <ChevronRight className="h-4 w-4 inline text-muted-foreground" />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TablaRegistros({
+  registros, lecturasPeriodo, onDelete,
+}: {
+  registros: Registro[];
+  lecturasPeriodo: (r: Registro) => number;
+  onDelete?: (id: string) => void;
+}) {
+  if (registros.length === 0) return <p className="text-sm text-muted-foreground">Sin registros.</p>;
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-xs">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Registro</th>
+              <th className="px-3 py-2 text-left font-medium text-muted-foreground">Rango</th>
+              <th className="px-3 py-2 text-center font-medium text-muted-foreground">Semanas (totales)</th>
+              <th className="px-3 py-2 text-center font-medium text-muted-foreground">Lecturas en periodo</th>
+              <th className="px-3 py-2 text-right font-medium text-muted-foreground">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {registros.map((r) => {
+              const moduloDef = MODULOS.find((m) => moduloSlug(r.modulo) === m.slug);
+              const editable = moduloDef?.enabled;
+              const lecturas = lecturasPeriodo(r);
+              return (
+                <tr key={r.id} className="border-t border-border align-top">
+                  <td className="px-3 py-2">
+                    <div className="font-medium text-foreground">{r.nombre}</div>
+                    <div className="text-[11px] text-muted-foreground">{r.modulo} · {r.iso ?? "—"}</div>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{rangoFechasRegistro(r)}</td>
+                  <td className="px-3 py-2 text-center tabular-nums">{r.semanas.length}</td>
+                  <td className={cn("px-3 py-2 text-center tabular-nums font-semibold", lecturas >= MINIMO_NORMATIVO ? "text-success" : "text-warning")}>
+                    {lecturas}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <div className="inline-flex gap-1">
+                      <Link
+                        to="/reporte/$id"
+                        params={{ id: r.id }}
+                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                      >
+                        <Eye className="h-3 w-3" /> Detalle
+                      </Link>
+                      {editable && (
+                        <Link
+                          to="/modulo/$slug"
+                          params={{ slug: moduloSlug(r.modulo) }}
+                          search={{ registroId: r.id }}
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted"
+                          title="Editar en módulo"
+                        >
+                          ✎
+                        </Link>
+                      )}
+                      {onDelete && (
+                        <button
+                          onClick={() => onDelete(r.id)}
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/5"
+                        >
+                          <Trash className="h-3 w-3" /> Borrar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
