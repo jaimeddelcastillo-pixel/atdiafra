@@ -67,21 +67,21 @@
 
 :root {
   --radius: 0.5rem;
-  /* DIAFRA palette: blue #1a56db, teal #0d9488, neutral grays */
-  --background: oklch(0.985 0.003 250);
+  /* TRACEA palette: Navy #042C53, Cobalt #185FA5, Celeste #8587E8, Gris #F5F5F5 */
+  --background: oklch(0.96 0 0);              /* #F5F5F5 page bg */
   --foreground: oklch(0.22 0.04 260);
-  --card: oklch(1 0 0);
+  --card: oklch(1 0 0);                       /* #FFFFFF */
   --card-foreground: oklch(0.22 0.04 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.04 260);
-  --primary: oklch(0.51 0.21 264);            /* #1a56db blue */
-  --primary-foreground: oklch(0.99 0.005 250);
-  --secondary: oklch(0.66 0.115 190);         /* #0d9488 teal */
-  --secondary-foreground: oklch(0.99 0.005 250);
-  --muted: oklch(0.965 0.008 250);
+  --primary: oklch(0.49 0.15 257);            /* #185FA5 Cobalt */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.27 0.09 258);          /* #042C53 Navy */
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.5 0.025 260);
-  --accent: oklch(0.94 0.04 200);             /* soft teal accent */
-  --accent-foreground: oklch(0.25 0.05 230);
+  --accent: oklch(0.68 0.13 285);             /* #8587E8 Celeste */
+  --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.6 0.23 27);
   --destructive-foreground: oklch(0.99 0.005 250);
   --success: oklch(0.62 0.16 150);
@@ -90,10 +90,10 @@
   --warning-foreground: oklch(0.22 0.04 260);
   --border: oklch(0.9 0.012 250);
   --input: oklch(0.9 0.012 250);
-  --ring: oklch(0.51 0.21 264);
-  --chart-1: oklch(0.51 0.21 264);            /* primary blue */
-  --chart-2: oklch(0.66 0.115 190);           /* teal */
-  --chart-3: oklch(0.62 0.16 150);            /* green */
+  --ring: oklch(0.49 0.15 257);
+  --chart-1: oklch(0.49 0.15 257);            /* Cobalt */
+  --chart-2: oklch(0.27 0.09 258);            /* Navy */
+  --chart-3: oklch(0.68 0.13 285);            /* Celeste */
   --chart-4: oklch(0.78 0.16 75);             /* amber */
   --chart-5: oklch(0.6 0.23 27);              /* red */
   --sidebar: oklch(0.984 0.003 247.858);

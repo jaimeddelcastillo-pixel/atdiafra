@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ShieldCheck } from "lucide-react";
+import { TraceaLogo } from "@/components/TraceaLogo";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -67,13 +67,13 @@ function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md rounded-xl shadow-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-gradient-to-br from-primary to-secondary text-primary-foreground mb-2">
-            <ShieldCheck className="h-6 w-6" />
+          <div className="mx-auto mb-3 flex items-center justify-center">
+            <TraceaLogo size={64} />
           </div>
-          <CardTitle>Sistema de Análisis de Tendencias</CardTitle>
-          <CardDescription>DIAFRA · Acceso restringido</CardDescription>
+          <CardTitle className="text-3xl font-bold text-secondary">TRACEA</CardTitle>
+          <CardDescription className="text-primary text-sm">Análisis de Tendencias · NOM-241</CardDescription>
         </CardHeader>
         <CardContent>
           {showForgot ? (
@@ -114,7 +114,7 @@ function AuthPage() {
                 <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email-in">Correo</Label>
-                    <Input id="email-in" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email-in" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ function AuthPage() {
                 <form onSubmit={handleSignUp} className="space-y-4 mt-4">
                   <div className="space-y-2">
                     <Label htmlFor="email-up">Correo</Label>
-                    <Input id="email-up" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <Input id="email-up" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pwd-up">Contraseña</Label>
