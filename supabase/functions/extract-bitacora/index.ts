@@ -24,11 +24,12 @@ Debes extraer AMBAS variables al mismo tiempo:
 Lee también: HORA DE LECTURA, ANTEFIRMA DE QUIEN REGISTRA, código de instrumento, área, mes, año y observaciones.
 
 Responde SOLO en JSON sin texto adicional, sin markdown, con esta forma exacta:
-{"mes":"","anio":"","instrumento":"","area":"","lecturas_t":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"lecturas_hr":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}
+{"mes":"","anio":"","instrumento":"","area":"","lecturas_t":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"lecturas_hr":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}
 
 Incluye las 21 combinaciones por cada variable (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
 La hora y quien registra es la MISMA para T y HR del mismo turno (cópiala en ambos arreglos).
-Si una celda está vacía, tachada, marcada N/A o ilegible escribe valor:null.`;
+Si una celda está vacía, tachada, marcada N/A o ilegible escribe valor:null y confianza:0.
+El campo "confianza" es un número 0–1 que refleja qué tan seguro estás de la lectura del dígito (1 = muy claro, 0.5 = dudoso, 0 = no leíble). NO inventes valores: si no estás seguro, baja la confianza.`;
   }
   if (module === "presiones") {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIONES DIFERENCIALES de DIAFRA S.A. de C.V. (formato FOR-MAN-07-01).
