@@ -10,8 +10,8 @@ import { Activity, FlaskConical, Library, ChevronRight } from "lucide-react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Sistema de Análisis de Tendencias — DIAFRA S.A. de C.V." },
-      { name: "description", content: "Tablero de validación: análisis de CQA's conforme a NOM-241-SSA1-2025, ISO 14644 y FEUM 13ª Edición." },
+      { title: "TRACEA — Análisis de Tendencias" },
+      { name: "description", content: "Módulo de Análisis de Tendencias NOM-241 | TRACEA Suite" },
     ],
   }),
   component: () => <AuthGuard><Index /></AuthGuard>,
@@ -30,24 +30,27 @@ function Index() {
 
         {/* Hero / contexto */}
         <section className="mb-10">
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-secondary/5 p-6 sm:p-8">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-primary/5 via-card to-accent/10 p-6 sm:p-8">
             <div className="flex items-start gap-4">
               <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
                 <FlaskConical className="h-6 w-6" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-                  Tablero de validación
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+                  TRACEA
                 </h1>
-                <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-3xl">
-                  Registra, digitaliza desde imagen, analiza estadísticamente y visualiza tendencias de los
-                  parámetros críticos de calidad de áreas clasificadas y sistemas auxiliares.
+                <p className="mt-1 text-sm sm:text-base font-medium text-primary">
+                  Análisis de Tendencias · Módulo 2 de TRACEA Suite
+                </p>
+                <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-3xl">
+                  Registra, digitaliza desde imagen, analiza estadísticamente y visualiza tendencias
+                  de los parámetros críticos de calidad conforme a NOM-241-SSA1.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Link
                     to="/modulo/$slug"
                     params={{ slug: "temperatura-humedad" }}
-                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-secondary transition-colors"
                   >
                     <Activity className="h-4 w-4" /> Abrir Temperatura y HR
                   </Link>
@@ -124,7 +127,7 @@ function Index() {
         </section>
 
         <footer className="mt-12 pt-6 border-t border-border text-xs text-muted-foreground">
-          DIAFRA S.A. de C.V. — Departamento de Validación. Herramienta interna conforme a FOR-VAL-16.
+          © 2026 TRACEA. Todos los derechos reservados. · <a href="https://tracea.site" className="hover:text-primary">tracea.site</a> · soporte@tracea.com.mx
         </footer>
       </main>
     </div>
