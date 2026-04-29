@@ -395,11 +395,18 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
 
   const deleteWeek = (id: string) => {
-    if (!confirm("¿Eliminar esta semana? (se guarda al instante)")) return;
+    const target = draft.semanas.find((x) => x.id === id);
+    if (!target) return;
+    const cap = lecturasCapturadas(target, true);
+    const esp = lecturasEsperadas(target, true);
+    const detalle = cap === 0
+      ? "Esta semana está VACÍA (0 lecturas)."
+      : `Esta semana tiene ${cap}/${esp} lecturas capturadas.`;
+    if (!confirm(`¿Eliminar la semana del ${target.semana_inicio}?\n\n${detalle}\n\nSe guarda al instante y no se puede deshacer.`)) return;
     const next = { ...draft, semanas: draft.semanas.filter((x) => x.id !== id) };
     setDraft(next);
-    if (activeWeekId === id) setActiveWeekId(null);
-    onPersist(next).then(() => { setDirty(false); toast.success("Semana eliminada"); }).catch(() => {});
+    if (activeWeekId === id) setActiveWeekId(next.semanas[0]?.id ?? null);
+    onPersist(next).then(() => { setDirty(false); toast.success(`Semana ${target.semana_inicio} eliminada`); }).catch(() => {});
   };
 
   const handleSave = async () => {
