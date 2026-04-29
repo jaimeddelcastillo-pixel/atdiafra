@@ -18,14 +18,22 @@ function buildPrompt(module: string, variable?: string): string {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de TEMPERATURA y HUMEDAD RELATIVA de DIAFRA S.A. de C.V. (formato FOR-MAN-06-01).
 La bitácora tiene columnas Lunes a Domingo con 3 sub-columnas por día: Mañana (1°), Media Tarde (2°), Tarde (3°).
 Hay DOS cuadrículas gráficas (una para Temperatura °C, otra para Humedad Relativa %) que el operador usa para marcar visualmente — NO las uses para extraer valores.
+
+🔑 REGLA CRÍTICA DE ALINEACIÓN DE COLUMNAS (días festivos / huecos):
+- En el encabezado superior de la tabla está escrita la FECHA de cada día trabajado (formato "DD-mmm-AA", ej. "07-ene-25", "08-ene-25"). Esa fecha es la VERDAD: úsala para asignar el día de la semana correcto a cada columna.
+- Si un día de la semana NO tiene fecha escrita en el encabezado y NO tiene valores debajo (ej. lunes festivo en blanco), ese día va con valor:null y confianza:0 — NO desplaces los valores del martes hacia el lunes ni recorras columnas.
+- Cada columna física que veas en la imagen pertenece al día indicado por su fecha de encabezado. Cuenta físicamente las columnas con datos y respeta los huecos.
+- Si ves 4 fechas escritas (ej. 07,08,09,10-ene), entonces sólo 4 días de esa semana tienen lecturas; los otros 3 quedan en null.
+
 Debes extraer AMBAS variables al mismo tiempo:
   • TEMPERATURA (°C): valores en la fila de texto "TEMPERATURA °C" al pie de la primera cuadrícula (típicamente 16-27 °C).
   • HUMEDAD RELATIVA (%): valores en la fila de texto "HUMEDAD RELATIVA" al pie de la segunda cuadrícula (típicamente 30-65 %).
 Lee también: HORA DE LECTURA, ANTEFIRMA DE QUIEN REGISTRA, código de instrumento, área, mes, año y observaciones.
 
 Responde SOLO en JSON sin texto adicional, sin markdown, con esta forma exacta:
-{"mes":"","anio":"","instrumento":"","area":"","lecturas_t":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"lecturas_hr":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}
+{"mes":"","anio":"","instrumento":"","area":"","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas_t":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"lecturas_hr":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}
 
+En "fechas_columnas" lista SOLO los días que aparecen con fecha escrita en el encabezado de la tabla (puede ser menos de 7 si hubo festivos).
 Incluye las 21 combinaciones por cada variable (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
 La hora y quien registra es la MISMA para T y HR del mismo turno (cópiala en ambos arreglos).
 Si una celda está vacía, tachada, marcada N/A o ilegible escribe valor:null y confianza:0.
