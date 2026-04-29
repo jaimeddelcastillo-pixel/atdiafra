@@ -4,11 +4,20 @@ import type { Registro, Semana, PuntoLectura } from "./semanas";
 export const MINIMO_NORMATIVO = 90;
 
 export type Trimestre = 1 | 2 | 3 | 4;
-export type Periodo = { tipo: "trimestre"; anio: number; q: Trimestre } | { tipo: "anual"; anio: number };
+export type Periodo =
+  | { tipo: "trimestre"; anio: number; q: Trimestre }
+  | { tipo: "anual"; anio: number }
+  | { tipo: "custom"; desde: string; hasta: string };
 
 export function trimestreDeFecha(iso: string): Trimestre {
   const m = parseInt(iso.slice(5, 7), 10);
   return (Math.ceil(m / 3) as Trimestre);
+}
+
+function fmtFechaCorta(iso: string): string {
+  // iso = YYYY-MM-DD
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
 }
 
 export function rangoPeriodo(p: Periodo): { desde: string; hasta: string; etiqueta: string } {
@@ -17,6 +26,13 @@ export function rangoPeriodo(p: Periodo): { desde: string; hasta: string; etique
       desde: `${p.anio}-01-01`,
       hasta: `${p.anio}-12-31`,
       etiqueta: `Anual ${p.anio}`,
+    };
+  }
+  if (p.tipo === "custom") {
+    return {
+      desde: p.desde,
+      hasta: p.hasta,
+      etiqueta: `${fmtFechaCorta(p.desde)} – ${fmtFechaCorta(p.hasta)}`,
     };
   }
   const startMonth = (p.q - 1) * 3 + 1;

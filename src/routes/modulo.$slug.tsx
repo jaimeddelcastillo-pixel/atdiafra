@@ -10,8 +10,11 @@ import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { AreaSelector } from "@/components/AreaSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
 import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
-import { ChevronLeft, Save, Trash, Plus } from "lucide-react";
+import { ChevronLeft, Save, Trash, Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { analizarRegistro, type Periodo } from "@/lib/normativo";
+import { exportarNormativoPDF } from "@/lib/export-normativo";
 import { toast } from "sonner";
 import {
   Instrumento, IsoClase, ISO_TEMP_HR, AreaClasificada,
@@ -274,6 +277,36 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Export PDF normativo (rango personalizado por registro)
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [exportDesde, setExportDesde] = useState<string>(yearStart);
+  const [exportHasta, setExportHasta] = useState<string>(today);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!exportDesde || !exportHasta || exportDesde > exportHasta) {
+      toast.error("Rango de fechas inválido");
+      return;
+    }
+    setExportingPDF(true);
+    const t = toast.loading("Generando PDF normativo…");
+    try {
+      const periodo: Periodo = { tipo: "custom", desde: exportDesde, hasta: exportHasta };
+      const analisis = [analizarRegistro(draft, periodo)];
+      // Sin catálogos: agrupar por "registro" usa el nombre del registro
+      await new Promise((r) => setTimeout(r, 50));
+      exportarNormativoPDF(analisis, "registro", { areas: new Map(), hvac: new Map() }, { incluirGraficas: true });
+      toast.success("PDF generado", { id: t });
+      setExportOpen(false);
+    } catch (e: any) {
+      toast.error("No se pudo exportar: " + e.message, { id: t });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   // Si entra otro registro (cambio de activeId), reset
   useEffect(() => {
     setDraft(registro);
@@ -389,6 +422,46 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Popover open={exportOpen} onOpenChange={setExportOpen}>
+            <PopoverTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1">
+                <FileText className="h-4 w-4" /> Exportar PDF
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 space-y-3">
+              <div>
+                <h4 className="text-sm font-semibold">PDF normativo</h4>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Solo este registro, en el rango que elijas.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Desde</label>
+                  <input
+                    type="date"
+                    value={exportDesde}
+                    max={exportHasta}
+                    onChange={(e) => setExportDesde(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Hasta</label>
+                  <input
+                    type="date"
+                    value={exportHasta}
+                    min={exportDesde}
+                    onChange={(e) => setExportHasta(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+              </div>
+              <Button size="sm" onClick={handleExportPDF} disabled={exportingPDF} className="w-full gap-1">
+                <FileText className="h-4 w-4" /> {exportingPDF ? "Generando…" : "Generar PDF"}
+              </Button>
+            </PopoverContent>
+          </Popover>
           {canWriteRecords && (
             <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
               <Plus className="h-4 w-4" /> Nueva semana actual

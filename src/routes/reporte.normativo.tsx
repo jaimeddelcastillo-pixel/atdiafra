@@ -44,14 +44,21 @@ function NormativoPage() {
   const [hvacMap, setHvacMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  const [tipo, setTipo] = useState<"trimestre" | "anual">("trimestre");
+  const [tipo, setTipo] = useState<"trimestre" | "anual" | "custom">("trimestre");
   const [anio, setAnio] = useState<number>(new Date().getFullYear());
   const [trimestre, setTrimestre] = useState<Trimestre>(trimestreActual());
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [desde, setDesde] = useState<string>(yearStart);
+  const [hasta, setHasta] = useState<string>(today);
   const [modulo, setModulo] = useState<Modulo | "">("");
   const [agrupar, setAgrupar] = useState<AgruparPor>("registro");
   const [filtroArea, setFiltroArea] = useState<string>("");
   const [filtroHvac, setFiltroHvac] = useState<string>("");
   const [incluirGraficas, setIncluirGraficas] = useState(true);
+  // Selección manual de registros (vacío = incluir todos los filtrados)
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [seleccionManual, setSeleccionManual] = useState(false);
 
   const reload = async () => {
     setLoading(true);
@@ -69,8 +76,13 @@ function NormativoPage() {
   useEffect(() => { reload(); }, []);
 
   const periodo: Periodo = useMemo(
-    () => tipo === "anual" ? { tipo: "anual", anio } : { tipo: "trimestre", anio, q: trimestre },
-    [tipo, anio, trimestre],
+    () =>
+      tipo === "anual"
+        ? { tipo: "anual", anio }
+        : tipo === "custom"
+          ? { tipo: "custom", desde, hasta }
+          : { tipo: "trimestre", anio, q: trimestre },
+    [tipo, anio, trimestre, desde, hasta],
   );
 
   const filtrados = useMemo(() => {
@@ -82,9 +94,14 @@ function NormativoPage() {
     });
   }, [registros, modulo, filtroArea, filtroHvac]);
 
+  const filtradosFinal = useMemo(
+    () => (seleccionManual ? filtrados.filter((r) => seleccionados.has(r.id)) : filtrados),
+    [filtrados, seleccionados, seleccionManual],
+  );
+
   const analisis = useMemo<AnalisisRegistro[]>(
-    () => filtrados.map((r) => analizarRegistro(r, periodo)),
-    [filtrados, periodo],
+    () => filtradosFinal.map((r) => analizarRegistro(r, periodo)),
+    [filtradosFinal, periodo],
   );
 
   // Agrupación visual
@@ -183,23 +200,26 @@ function NormativoPage() {
           <CardContent className="pt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Periodo</label>
-              <Select value={tipo} onValueChange={(v) => setTipo(v as "trimestre" | "anual")}>
+              <Select value={tipo} onValueChange={(v) => setTipo(v as "trimestre" | "anual" | "custom")}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="trimestre">Trimestral</SelectItem>
                   <SelectItem value="anual">Anual</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Año</label>
-              <input
-                type="number"
-                value={anio}
-                onChange={(e) => setAnio(parseInt(e.target.value, 10) || new Date().getFullYear())}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
-              />
-            </div>
+            {tipo !== "custom" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Año</label>
+                <input
+                  type="number"
+                  value={anio}
+                  onChange={(e) => setAnio(parseInt(e.target.value, 10) || new Date().getFullYear())}
+                  className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                />
+              </div>
+            )}
             {tipo === "trimestre" && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Trimestre</label>
@@ -210,6 +230,30 @@ function NormativoPage() {
                   </SelectContent>
                 </Select>
               </div>
+            )}
+            {tipo === "custom" && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Desde</label>
+                  <input
+                    type="date"
+                    value={desde}
+                    max={hasta}
+                    onChange={(e) => setDesde(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Hasta</label>
+                  <input
+                    type="date"
+                    value={hasta}
+                    min={desde}
+                    onChange={(e) => setHasta(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+                  />
+                </div>
+              </>
             )}
             <div>
               <label className="text-xs font-medium text-muted-foreground">Módulo</label>
@@ -259,6 +303,64 @@ function NormativoPage() {
                 ))}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Selección manual de registros */}
+        <Card className="mt-4">
+          <CardContent className="pt-6 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={seleccionManual}
+                  onChange={(e) => {
+                    setSeleccionManual(e.target.checked);
+                    if (e.target.checked && seleccionados.size === 0) {
+                      setSeleccionados(new Set(filtrados.map((r) => r.id)));
+                    }
+                  }}
+                />
+                Selección manual de registros
+                <span className="text-xs text-muted-foreground">
+                  ({seleccionManual ? `${seleccionados.size} de ${filtrados.length}` : `todos: ${filtrados.length}`})
+                </span>
+              </label>
+              {seleccionManual && (
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => setSeleccionados(new Set(filtrados.map((r) => r.id)))}>
+                    Todos
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setSeleccionados(new Set())}>
+                    Ninguno
+                  </Button>
+                </div>
+              )}
+            </div>
+            {seleccionManual && (
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border p-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
+                {filtrados.length === 0 ? (
+                  <p className="text-xs text-muted-foreground col-span-full">Ningún registro coincide con los filtros.</p>
+                ) : (
+                  filtrados.map((r) => (
+                    <label key={r.id} className="inline-flex items-center gap-2 text-xs text-foreground hover:bg-muted/50 rounded px-1 py-0.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.has(r.id)}
+                        onChange={(e) => {
+                          const next = new Set(seleccionados);
+                          if (e.target.checked) next.add(r.id);
+                          else next.delete(r.id);
+                          setSeleccionados(next);
+                        }}
+                      />
+                      <span className="truncate">{r.nombre}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{r.modulo}</span>
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
