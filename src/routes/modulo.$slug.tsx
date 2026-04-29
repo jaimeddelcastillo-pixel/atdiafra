@@ -288,6 +288,7 @@ function TempHRModule() {
 function RegistroEditor({ registro, onPersist, onDelete }: {
   registro: Registro; onPersist: (r: Registro) => Promise<void>; onDelete: () => void;
 }) {
+  const navigate = useNavigate();
   const { canWriteRecords, canDelete } = useAuth();
   const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
   // Buffer local: cambios no se persisten hasta presionar "Guardar"
@@ -295,6 +296,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
+  const [nuevaSemanaFecha, setNuevaSemanaFecha] = useState<string>("");
 
   // Export PDF normativo (rango personalizado por registro)
   const today = new Date().toISOString().slice(0, 10);
