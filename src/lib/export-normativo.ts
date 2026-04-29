@@ -192,11 +192,14 @@ export function exportarNormativoPDF(
   const pageH = doc.internal.pageSize.getHeight();
   const periodo = analisis[0]?.rango.etiqueta ?? "Periodo";
 
+  // Margen reservado en TODAS las tablas para no chocar con encabezado/pie
+  const tableMargin = { top: TOP_Y, bottom: FOOTER_H + 8, left: 40, right: 40 };
+
   // ===== Portada =====
-  doc.setFontSize(20).setFont("helvetica", "bold");
-  doc.text("Reporte Normativo de Monitoreo Ambiental", pageW / 2, 80, { align: "center" });
-  doc.setFontSize(14).setFont("helvetica", "normal");
-  doc.text(`DIAFRA — ${periodo}`, pageW / 2, 110, { align: "center" });
+  doc.setFontSize(18).setFont("helvetica", "bold");
+  doc.text("Reporte Normativo de Monitoreo Ambiental", pageW / 2, TOP_Y + 30, { align: "center" });
+  doc.setFontSize(13).setFont("helvetica", "normal");
+  doc.text(`DIAFRA — ${periodo}`, pageW / 2, TOP_Y + 56, { align: "center" });
 
   doc.setFontSize(10);
   const total = analisis.length;
@@ -208,7 +211,7 @@ export function exportarNormativoPDF(
   const ncMedias = noConformidades.filter((n) => n.severidad === "media").length;
 
   autoTable(doc, {
-    startY: 160,
+    startY: TOP_Y + 80,
     head: [["Indicador", "Valor"]],
     body: [
       ["Mínimo normativo por registro", `${MINIMO_NORMATIVO} lecturas`],
@@ -222,33 +225,34 @@ export function exportarNormativoPDF(
     theme: "grid",
     headStyles: { fillColor: [30, 64, 175], textColor: 255 },
     styles: { fontSize: 10, cellPadding: 6 },
-    margin: { left: 80, right: 80 },
+    margin: { ...tableMargin, left: 80, right: 80 },
   });
 
   // ===== Hoja de no conformidades =====
   doc.addPage();
-  doc.setFontSize(15).setFont("helvetica", "bold");
-  doc.text("Resumen de no conformidades (Poka-Yoke)", 40, 40);
+  doc.setFontSize(14).setFont("helvetica", "bold");
+  doc.text("Resumen de no conformidades (Poka-Yoke)", 40, TOP_Y + 6);
   doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
   doc.text(
     `Criterios: lecturas fuera de LIE/LSE · % dentro de spec < 95% · Cpk < ${CPK_WARN} (advertencia) · Cpk < ${CPK_FAIL} (crítico) · sin mínimo normativo (${MINIMO_NORMATIVO})`,
-    40, 56,
+    40, TOP_Y + 22,
   );
   doc.setTextColor(0);
 
   if (noConformidades.length === 0) {
     autoTable(doc, {
-      startY: 80,
+      startY: TOP_Y + 40,
       head: [["Estado"]],
       body: [["✓ Sin no conformidades en el periodo analizado"]],
       theme: "grid",
       headStyles: { fillColor: [22, 163, 74], textColor: 255 },
       bodyStyles: { textColor: [22, 101, 52], fontStyle: "bold" },
       styles: { fontSize: 11, cellPadding: 8, halign: "center" },
+      margin: tableMargin,
     });
   } else {
     autoTable(doc, {
-      startY: 80,
+      startY: TOP_Y + 40,
       head: [["Sev.", "Registro", "Serie", "Tipo", "Detalle"]],
       body: noConformidades.map((n) => [
         n.severidad === "alta" ? "ALTA" : "MEDIA",
@@ -260,6 +264,7 @@ export function exportarNormativoPDF(
       theme: "striped",
       headStyles: { fillColor: [30, 64, 175], textColor: 255, fontSize: 9 },
       styles: { fontSize: 9, cellPadding: 4 },
+      margin: tableMargin,
       didParseCell: (data) => {
         if (data.section === "body" && data.column.index === 0) {
           const sev = String(data.cell.raw);
@@ -273,12 +278,6 @@ export function exportarNormativoPDF(
             data.cell.styles.fontStyle = "bold";
           }
         }
-      },
-      didDrawPage: () => {
-        doc.setFontSize(8).setTextColor(120);
-        doc.text(`${periodo} · DIAFRA`, 40, pageH - 20);
-        doc.text(`Página ${doc.getNumberOfPages()}`, pageW - 40, pageH - 20, { align: "right" });
-        doc.setTextColor(0);
       },
     });
   }
@@ -300,7 +299,6 @@ export function exportarNormativoPDF(
     if (cpk < CPK_WARN) return [251, 191, 36];
     return [22, 163, 74];
   };
-
 
   const filaSerie = (s: EstadisticaSerie): string[] => {
     const cpkTxt = s.cpkInsuficiente
@@ -329,22 +327,23 @@ export function exportarNormativoPDF(
       // Una página por instrumento/registro (consolidado del período completo)
       doc.addPage();
       doc.setFontSize(13).setFont("helvetica", "bold");
-      doc.text(`${g.etiqueta} · ${a.registro.nombre}`, 40, 40);
+      doc.text(`${g.etiqueta} · ${a.registro.nombre}`, 40, TOP_Y + 6);
       doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
       doc.text(
         `${a.rango.etiqueta} · ${a.totalLecturas} lecturas consolidadas (${a.porcentajeMinimo}% del mínimo ${MINIMO_NORMATIVO}) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
-        40, 56,
+        40, TOP_Y + 22,
       );
       doc.setTextColor(0);
 
       // Tabla de stats consolidados del período completo
       autoTable(doc, {
-        startY: 70,
+        startY: TOP_Y + 36,
         head: headStats,
         body: a.series.map(filaSerie),
         theme: "striped",
         headStyles: { fillColor: [30, 64, 175], textColor: 255, fontSize: 8 },
         styles: { fontSize: 8, cellPadding: 3 },
+        margin: tableMargin,
         didParseCell: (data) => {
           if (data.section === "body" && data.column.index === 6) {
             const s = a.series[data.row.index];
@@ -370,12 +369,6 @@ export function exportarNormativoPDF(
             }
           }
         },
-        didDrawPage: () => {
-          doc.setFontSize(8).setTextColor(120);
-          doc.text(`${periodo} · DIAFRA`, 40, pageH - 20);
-          doc.text(`Página ${doc.getNumberOfPages()}`, pageW - 40, pageH - 20, { align: "right" });
-          doc.setTextColor(0);
-        },
       });
 
       // Nota cuando hay series con n insuficiente
@@ -390,20 +383,20 @@ export function exportarNormativoPDF(
         doc.setTextColor(0).setFont("helvetica", "normal");
       }
 
-      // Gráficas: una por fila (apiladas), ancho completo, según la plataforma
+      // Gráficas: una por fila (apiladas), ancho completo
       if (incluirGraficas) {
         const margin = 40;
-        const chartW = pageW - margin * 2; // ancho completo
+        const chartW = pageW - margin * 2;
         const chartH = 200;
         const sems = semanasDelPeriodo(a.registro, a.periodo);
         const charts = generarChartsRegistro(a.registro, sems, chartW, chartH);
         let yCursor = (doc as any).lastAutoTable.finalY + 20;
         for (const c of charts) {
-          if (yCursor + chartH > pageH - 30) {
+          if (yCursor + chartH > pageH - FOOTER_H - 8) {
             doc.addPage();
             doc.setFontSize(11).setFont("helvetica", "bold");
-            doc.text(`${a.registro.nombre} — gráficas`, 40, 40);
-            yCursor = 56;
+            doc.text(`${a.registro.nombre} — gráficas`, 40, TOP_Y + 6);
+            yCursor = TOP_Y + 22;
           }
           doc.addImage(c.dataUrl, "PNG", margin, yCursor, chartW, chartH);
           yCursor += chartH + 14;
@@ -411,6 +404,9 @@ export function exportarNormativoPDF(
       }
     }
   }
+
+  // Pintar encabezado y pie en TODAS las páginas al final
+  pintarEncabezadoPie(doc, periodo);
 
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
 }
