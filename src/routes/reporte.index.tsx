@@ -133,7 +133,7 @@ function ReportePage() {
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
   }, [registros, areasMap, filtroArea]);
 
-  // Para el área seleccionada, agrupar por instrumento
+  // Para el área seleccionada, agrupar por instrumento (con filtro de texto)
   const instrumentosDelArea = useMemo(() => {
     if (!areaSel) return [];
     const grp = grupoPorArea.find((g) => g.key === areaSel);
@@ -146,10 +146,12 @@ function ReportePage() {
       if (cur) cur.registros.push(r);
       else m.set(k, { etiqueta: et, registros: [r] });
     }
+    const q = filtroInstr.trim().toLowerCase();
     return Array.from(m.entries())
       .map(([k, v]) => ({ key: k, ...v }))
+      .filter((g) => !q || g.etiqueta.toLowerCase().includes(q))
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
-  }, [areaSel, grupoPorArea, instrMap]);
+  }, [areaSel, grupoPorArea, instrMap, filtroInstr]);
 
   // Registros del instrumento seleccionado
   const registrosDelInstrumento = useMemo(() => {
