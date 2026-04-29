@@ -247,10 +247,18 @@ export async function upsertRegistro(r: Registro): Promise<void> {
 }
 
 // ===== Reglas de completitud =====
-/** Cuenta cuántas lecturas se esperan en una semana, descontando turnos marcados como NA. */
+/** Un punto cuenta como NA si está marcado explícitamente, o si es Sáb/Dom sin valor (semana inglesa por defecto, retro-compatible con datos viejos sin _na). */
+function esPuntoNA(p: PuntoLectura): boolean {
+  if (p._na) return true;
+  const sinValor = p.valor == null || !Number.isFinite(p.valor);
+  if (sinValor && DIAS_NO_LABORABLES_DEFAULT.includes(p.dia)) return true;
+  return false;
+}
+
+/** Cuenta cuántas lecturas se esperan en una semana, descontando turnos marcados como NA (explícito o por semana inglesa). */
 export function lecturasEsperadas(semana: Semana, esTHR: boolean): number {
   const aplica = (arr: PuntoLectura[] | undefined) =>
-    (arr ?? []).filter((p) => !p._na).length;
+    (arr ?? []).filter((p) => !esPuntoNA(p)).length;
   const t = aplica(semana.lecturas);
   const hr = esTHR ? aplica(semana.lecturas_hr) : 0;
   return t + hr;
@@ -259,7 +267,7 @@ export function lecturasEsperadas(semana: Semana, esTHR: boolean): number {
 /** Cuenta cuántas lecturas válidas (con valor) hay, ignorando turnos NA. */
 export function lecturasCapturadas(semana: Semana, esTHR: boolean): number {
   const valid = (arr: PuntoLectura[] | undefined) =>
-    (arr ?? []).filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor)).length;
+    (arr ?? []).filter((p) => !esPuntoNA(p) && p.valor != null && Number.isFinite(p.valor)).length;
   const t = valid(semana.lecturas);
   const hr = esTHR ? valid(semana.lecturas_hr) : 0;
   return t + hr;
