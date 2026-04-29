@@ -407,6 +407,7 @@ function NormativoPage() {
                         <th className="px-2 py-2 text-center font-medium">Min</th>
                         <th className="px-2 py-2 text-center font-medium">Max</th>
                         <th className="px-2 py-2 text-center font-medium">LIE / LSE</th>
+                        <th className="px-2 py-2 text-center font-medium">Cpk</th>
                         <th className="px-2 py-2 text-center font-medium">Fuera spec</th>
                       </tr>
                     </thead>
