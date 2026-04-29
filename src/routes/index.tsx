@@ -5,7 +5,7 @@ import { ModuloCard } from "@/components/ModuloCard";
 import { LocalMigrationCard } from "@/components/LocalMigrationCard";
 import { CumplimientoCard } from "@/components/CumplimientoCard";
 import { MODULOS } from "@/lib/diafra-data";
-import { Activity, FlaskConical, Library, ChevronRight } from "lucide-react";
+import { Activity, FlaskConical, Library, ChevronRight, Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -53,6 +53,13 @@ function Index() {
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow"
                   >
                     <Activity className="h-4 w-4" /> Abrir Temperatura y HR
+                  </Link>
+                  <Link
+                    to="/modulo/$slug"
+                    params={{ slug: "presiones" }}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shadow"
+                  >
+                    <Gauge className="h-4 w-4" /> Abrir Presiones diferenciales
                   </Link>
                 </div>
               </div>
