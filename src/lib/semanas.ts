@@ -18,6 +18,8 @@ export interface PuntoLectura {
   _motivo?: string;
   /** No aplica: día/turno no laborable (semana inglesa: Sáb/Dom por defecto). No cuenta para "completa". */
   _na?: boolean;
+  /** Marcado por la IA como lectura de baja confianza — el operador debe revisarlo antes de guardar. */
+  _dudoso?: boolean;
 }
 
 /** Días considerados no laborables por defecto (semana inglesa). */

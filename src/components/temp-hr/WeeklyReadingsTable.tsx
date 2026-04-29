@@ -82,6 +82,7 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
               const p = arr[i];
               const na = !!p?._na;
               const out = !na && isOut(p?.valor ?? null, min, max);
+              const dudoso = !na && !!p?._dudoso;
               return (
                 <td key={dia} className="px-1 py-1">
                   {na ? (
@@ -91,10 +92,22 @@ export function WeeklyReadingsTable({ semana, iso, onChange }: Props) {
                       type="number"
                       step="0.1"
                       value={p?.valor ?? ""}
-                      onChange={(e) => requestEdit(which, i, e.target.value === "" ? null : parseFloat(e.target.value))}
-                      title={p?._edited ? `Editado · motivo: ${p._motivo ?? ""}` : ""}
+                      onChange={(e) => {
+                        const v = e.target.value === "" ? null : parseFloat(e.target.value);
+                        requestEdit(which, i, v);
+                        // Al editar manualmente, deja de ser "dudoso"
+                        if (p?._dudoso) update(which, i, { _dudoso: false });
+                      }}
+                      title={
+                        p?._edited
+                          ? `Editado · motivo: ${p._motivo ?? ""}`
+                          : dudoso
+                          ? "Lectura dudosa detectada por la IA — verifica contra la bitácora original"
+                          : ""
+                      }
                       className={`w-full rounded border px-1.5 py-1 text-right text-xs tabular-nums ${
                         out ? "border-destructive text-destructive bg-destructive/5" :
+                        dudoso ? "border-yellow-500 bg-yellow-100 dark:bg-yellow-500/20 ring-1 ring-yellow-400" :
                         p?._edited ? "border-warning bg-warning/5" : "border-input bg-background"
                       }`}
                     />

@@ -11,8 +11,9 @@ interface Props {
   onExtracted: (s: Semana) => void;
 }
 
-/** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 1800px) para encajar en el límite de 5MB de Anthropic. */
-async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+/** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 2800px) para encajar en el límite de 5MB de Anthropic. */
+// 2800px mejora precisión en dígitos manuscritos pequeños
+async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
@@ -35,11 +36,11 @@ async function compressImage(file: File, maxDim = 2200, targetBytes = 4_000_000)
   ctx.fillRect(0, 0, w, h);
   ctx.drawImage(img, 0, 0, w, h);
 
-  let quality = 0.85;
+  let quality = 0.75;
   let out = canvas.toDataURL("image/jpeg", quality);
   // Iterar bajando calidad hasta entrar en targetBytes
   for (let i = 0; i < 6 && approxBytes(out) > targetBytes; i++) {
-    quality -= 0.12;
+    quality -= 0.1;
     if (quality < 0.35) quality = 0.35;
     out = canvas.toDataURL("image/jpeg", quality);
   }
@@ -54,6 +55,7 @@ function approxBytes(dataUrl: string): number {
 
 interface IALectura {
   dia?: string; turno?: string; valor?: number | string | null; hora?: string | null; quien?: string | null;
+  confianza?: number | null;
 }
 interface IAResponse {
   mes?: string; anio?: string; instrumento?: string; area?: string;
@@ -100,10 +102,15 @@ function aplicarLecturas(
     const idx = di * 3 + ti;
     const v = r.valor;
     const num = v == null || v === "" ? null : typeof v === "number" ? v : parseFloat(String(v));
+    const valorFinal = Number.isFinite(num as number) ? (num as number) : null;
+    const conf = typeof r.confianza === "number" ? r.confianza : null;
+    // Marcar como dudoso si la IA reportó confianza < 0.7 o si no pudo leer el valor
+    const dudoso = (conf !== null && conf < 0.7) || (valorFinal === null && conf !== 0);
     arr[idx] = {
       dia: d, turno: t,
-      valor: Number.isFinite(num as number) ? (num as number) : null,
+      valor: valorFinal,
       hora: r.hora ?? null, quien: r.quien ?? null,
+      _dudoso: dudoso || undefined,
     };
   }
   (s as Semana)[arrName] = arr;
@@ -176,11 +183,30 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
       if (lecturasHR.length) aplicarLecturas(s, "lecturas_hr", lecturasHR);
 
       onExtracted(s);
+
+      // Log de uso (tokens y costo) que devuelve la edge function
+      if (data?.uso) {
+        console.log("[extract-bitacora] uso:", data.uso);
+      }
+
       const partes = [
         lecturasT.length ? `T: ${lecturasT.filter(x => x.valor != null).length} valores` : null,
         lecturasHR.length ? `HR: ${lecturasHR.filter(x => x.valor != null).length} valores` : null,
       ].filter(Boolean).join(" · ");
-      toast.success(`Semana extraída (${partes}). Revisa y edita antes de guardar.`);
+
+      // Contar dudosos para avisar al operador
+      const dudososT = (s.lecturas ?? []).filter(p => p._dudoso).length;
+      const dudososHR = (s.lecturas_hr ?? []).filter(p => p._dudoso).length;
+      const totalDudosos = dudososT + dudososHR;
+
+      if (data?.requiere_revision || totalDudosos > 0) {
+        toast.warning(
+          `Semana extraída con ${totalDudosos} lectura(s) dudosa(s). Revisa las celdas resaltadas en amarillo antes de guardar.`,
+          { duration: 6000 }
+        );
+      } else {
+        toast.success(`Semana extraída (${partes}). Revisa y edita antes de guardar.`);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error desconocido";
       setError(msg);
