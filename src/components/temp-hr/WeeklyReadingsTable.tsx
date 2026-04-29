@@ -230,6 +230,53 @@ export function WeeklyReadingsTable({ semana, iso, yaGuardada = false, onChange 
     </tr>
   );
 
+  // Fila de controles para corregir recorridos por festivo: ← mueve los 3 turnos al día anterior, → al siguiente, ✕ limpia.
+  const renderShiftControls = () => (
+    <tr className="border-t border-border bg-muted/5">
+      <td className="px-3 py-1 text-[10px] text-muted-foreground" title="Mover toda la columna al día anterior/siguiente o limpiarla. Útil cuando la IA recorrió valores por un festivo.">
+        Mover día
+      </td>
+      {DIAS.map((dia, di) => {
+        const naActivo = !!semana.lecturas[cellIdx(di, 0)]?._na;
+        if (naActivo) {
+          return <td key={dia} className="px-1 py-1 text-center text-[10px] text-muted-foreground">—</td>;
+        }
+        return (
+          <td key={dia} className="px-1 py-1">
+            <div className="flex items-center justify-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => shiftDay(di, -1)}
+                disabled={di === 0}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-muted disabled:opacity-30"
+                title={`Mover valores de ${dia} a ${DIAS[di - 1] ?? ""}`}
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                onClick={() => clearDay(di)}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-destructive/10 hover:text-destructive"
+                title={`Limpiar valores de ${dia}`}
+              >
+                ✕
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftDay(di, 1)}
+                disabled={di === DIAS.length - 1}
+                className="text-[10px] rounded px-1 py-0.5 border border-border bg-background hover:bg-muted disabled:opacity-30"
+                title={`Mover valores de ${dia} a ${DIAS[di + 1] ?? ""}`}
+              >
+                →
+              </button>
+            </div>
+          </td>
+        );
+      })}
+    </tr>
+  );
+
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="px-5 py-3 border-b border-border bg-muted/30">
