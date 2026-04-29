@@ -82,9 +82,9 @@ export const MODULOS: ModuloDef[] = [
     id: "presiones",
     slug: "presiones",
     nombre: "Presiones diferenciales",
-    descripcion: "ΔP entre áreas de distinta clasificación.",
+    descripcion: "ΔP entre pares de cuartos clasificados (Pa) — bitácora semanal Lun–Dom × 3 turnos.",
     icon: "Gauge",
-    enabled: false,
+    enabled: true,
   },
   {
     id: "agua",
