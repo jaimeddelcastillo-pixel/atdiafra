@@ -13,6 +13,10 @@ import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF } from "@/lib/export-normativo";
 import { toast } from "sonner";
@@ -277,6 +281,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
   const [draft, setDraft] = useState<Registro>(registro);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [postSaveOpen, setPostSaveOpen] = useState(false);
 
   // Export PDF normativo (rango personalizado por registro)
   const today = new Date().toISOString().slice(0, 10);
@@ -415,9 +420,32 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       await onPersist(draft);
       setDirty(false);
       toast.success("Cambios guardados");
+      setPostSaveOpen(true);
     } finally {
       setSaving(false);
     }
+  };
+
+  // "Nuevo registro" tras guardar = nueva semana en blanco para la misma área/instrumento,
+  // lista para subir otra foto. No crea otro Registro de catálogo.
+  const handleNuevoRegistro = () => {
+    setPostSaveOpen(false);
+    // Buscar el siguiente lunes que no exista aún en este registro
+    const hoy = new Date();
+    let candidato = lunesDe(hoy);
+    let intentos = 0;
+    while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
+      const d = new Date(candidato + "T00:00:00");
+      d.setDate(d.getDate() + 7);
+      candidato = lunesDe(d);
+      intentos++;
+    }
+    addEmptyWeek(candidato);
+    toast.success(`Lista nueva semana ${candidato} — sube la foto o captura manualmente`);
+    // Scroll al importador
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 100);
   };
 
   const handleDiscard = () => {
