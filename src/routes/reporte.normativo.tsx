@@ -44,14 +44,21 @@ function NormativoPage() {
   const [hvacMap, setHvacMap] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  const [tipo, setTipo] = useState<"trimestre" | "anual">("trimestre");
+  const [tipo, setTipo] = useState<"trimestre" | "anual" | "custom">("trimestre");
   const [anio, setAnio] = useState<number>(new Date().getFullYear());
   const [trimestre, setTrimestre] = useState<Trimestre>(trimestreActual());
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [desde, setDesde] = useState<string>(yearStart);
+  const [hasta, setHasta] = useState<string>(today);
   const [modulo, setModulo] = useState<Modulo | "">("");
   const [agrupar, setAgrupar] = useState<AgruparPor>("registro");
   const [filtroArea, setFiltroArea] = useState<string>("");
   const [filtroHvac, setFiltroHvac] = useState<string>("");
   const [incluirGraficas, setIncluirGraficas] = useState(true);
+  // Selección manual de registros (vacío = incluir todos los filtrados)
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [seleccionManual, setSeleccionManual] = useState(false);
 
   const reload = async () => {
     setLoading(true);
