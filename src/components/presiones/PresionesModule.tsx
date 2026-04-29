@@ -218,6 +218,34 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
   const [postSaveOpen, setPostSaveOpen] = useState(false);
   const [nuevaSemanaFecha, setNuevaSemanaFecha] = useState<string>("");
 
+  // Export PDF normativo
+  const today = new Date().toISOString().slice(0, 10);
+  const yearStart = `${new Date().getFullYear()}-01-01`;
+  const [exportDesde, setExportDesde] = useState<string>(yearStart);
+  const [exportHasta, setExportHasta] = useState<string>(today);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportingPDF, setExportingPDF] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!exportDesde || !exportHasta || exportDesde > exportHasta) {
+      toast.error("Rango de fechas inválido"); return;
+    }
+    setExportingPDF(true);
+    const t = toast.loading("Generando PDF normativo…");
+    try {
+      const periodo: Periodo = { tipo: "custom", desde: exportDesde, hasta: exportHasta };
+      const analisis = [analizarRegistro(draft, periodo)];
+      await new Promise((r) => setTimeout(r, 50));
+      exportarNormativoPDF(analisis, "registro", { areas: new Map(), hvac: new Map() }, { incluirGraficas: true });
+      toast.success("PDF generado", { id: t });
+      setExportOpen(false);
+    } catch (e: any) {
+      toast.error("No se pudo exportar: " + e.message, { id: t });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
   useEffect(() => { setDraft(registro); setDirty(false); }, [registro.id]);
   useEffect(() => { if (!dirty) setDraft(registro); }, [registro]);
 
@@ -259,6 +287,32 @@ function RegistroEditorPresion({ registro, pares, onPersist, onDelete }: {
 
   const updateWeek = (s: Semana) =>
     mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
+
+  // Importación por imagen: SOLO actualiza el draft local. NO persiste hasta "Guardar".
+  const handleExtracted = (s: Semana) => {
+    const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
+    let semanas: Semana[];
+    if (existing) {
+      const merged: Semana = {
+        ...existing,
+        lecturas: s.lecturas.some((p) => p.valor != null) ? s.lecturas : existing.lecturas,
+        observaciones: [existing.observaciones, s.observaciones].filter(Boolean).join("\n"),
+        source: "imagen",
+        saved_at: new Date().toISOString(),
+      };
+      semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
+      setActiveWeekId(existing.id);
+    } else {
+      const limpias = draft.semanas.filter((x) => !esSemanaVacia(x, false));
+      const removidas = draft.semanas.length - limpias.length;
+      semanas = [...limpias, s];
+      setActiveWeekId(s.id);
+      if (removidas > 0) toast.info(`Se descartó ${removidas} semana(s) vacía(s) sin datos.`);
+    }
+    setDraft({ ...draft, semanas });
+    setDirty(true);
+    toast.success("Imagen importada — revisa y presiona Guardar");
+  };
 
   const deleteWeek = (id: string) => {
     const target = draft.semanas.find((x) => x.id === id);
