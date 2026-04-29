@@ -23,6 +23,9 @@ import {
 } from "@/lib/semanas";
 
 export const Route = createFileRoute("/modulo/$slug")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    registroId: typeof search.registroId === "string" ? search.registroId : undefined,
+  }),
   head: ({ params }) => {
     const m = MODULOS.find((x) => x.slug === params.slug);
     return {
@@ -97,7 +100,14 @@ function TempHRModule() {
   const reload = () => listRegistros("temphr").then(setRegistros).catch((e) => toast.error("No se pudieron cargar registros: " + e.message));
   useEffect(() => { reload(); }, []);
 
+  const { registroId: registroIdFromUrl } = Route.useSearch();
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Preseleccionar al cargar la lista si viene ?registroId= en la URL
+  useEffect(() => {
+    if (registroIdFromUrl && registros.some((r) => r.id === registroIdFromUrl)) {
+      setActiveId(registroIdFromUrl);
+    }
+  }, [registroIdFromUrl, registros]);
   const active = useMemo(() => registros.find((r) => r.id === activeId) ?? null, [registros, activeId]);
 
   // Estado del formulario nuevo registro
