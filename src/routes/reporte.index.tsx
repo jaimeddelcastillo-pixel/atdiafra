@@ -332,6 +332,31 @@ function ReportePage() {
           )}
         </div>
 
+        {/* Filtros de búsqueda contextuales */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {!areaSel && (
+            <Input
+              placeholder="Filtrar áreas por código o nombre…"
+              value={filtroArea}
+              onChange={(e) => setFiltroArea(e.target.value)}
+              className="max-w-xs h-9"
+            />
+          )}
+          {areaSel && !instrSel && (
+            <Input
+              placeholder="Filtrar instrumentos por código o parámetro…"
+              value={filtroInstr}
+              onChange={(e) => setFiltroInstr(e.target.value)}
+              className="max-w-xs h-9"
+            />
+          )}
+          {(filtroArea || filtroInstr) && (
+            <Button size="sm" variant="ghost" onClick={() => { setFiltroArea(""); setFiltroInstr(""); }}>
+              Limpiar filtro
+            </Button>
+          )}
+        </div>
+
         {/* Duplicados (colapsable / pequeño) */}
         {duplicados.length > 0 && !areaSel && (
           <section className="mt-4 rounded-xl border border-warning/40 bg-warning/5 p-3">
