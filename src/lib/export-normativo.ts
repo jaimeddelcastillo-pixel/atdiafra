@@ -7,8 +7,12 @@ import {
   etiquetaGrupo,
   claveGrupo,
   semanasDelPeriodo,
+  detectarNoConformidades,
+  CPK_WARN,
+  CPK_FAIL,
   type AnalisisRegistro,
   type AgruparPor,
+  type EstadisticaSerie,
 } from "./normativo";
 import { generarChartsRegistro } from "./chart-renderer";
 
