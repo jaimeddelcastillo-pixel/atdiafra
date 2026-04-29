@@ -534,7 +534,12 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
 
       {activeWeek && (
         <>
-          <WeeklyReadingsTable semana={activeWeek} iso={iso} onChange={updateWeek} />
+          <WeeklyReadingsTable
+            semana={activeWeek}
+            iso={iso}
+            yaGuardada={registro.semanas.some((s) => s.id === activeWeek.id)}
+            onChange={updateWeek}
+          />
           <div className="rounded-xl border border-border bg-card p-4">
             <label className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Save className="h-4 w-4 text-muted-foreground" /> Observaciones de la semana
