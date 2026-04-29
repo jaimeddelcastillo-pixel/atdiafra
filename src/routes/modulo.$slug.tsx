@@ -13,6 +13,10 @@ import { TempHRAnalysis } from "@/components/temp-hr/TempHRAnalysis";
 import { ChevronLeft, Save, Trash, Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF } from "@/lib/export-normativo";
 import { toast } from "sonner";
