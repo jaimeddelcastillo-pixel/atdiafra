@@ -73,13 +73,13 @@ function ConfiguracionPage() {
             <TabsTrigger value="hvac">Sistemas HVAC</TabsTrigger>
             <TabsTrigger value="areas">Áreas</TabsTrigger>
             <TabsTrigger value="instr">Instrumentos</TabsTrigger>
-            <TabsTrigger value="pares">Pares de cuartos</TabsTrigger>
+            <TabsTrigger value="pares">Objetivos de presión</TabsTrigger>
           </TabsList>
 
           <TabsContent value="hvac" className="mt-6"><HVACTab /></TabsContent>
           <TabsContent value="areas" className="mt-6"><AreasTab /></TabsContent>
           <TabsContent value="instr" className="mt-6"><InstrumentosTab /></TabsContent>
-          <TabsContent value="pares" className="mt-6"><ParesTab /></TabsContent>
+          <TabsContent value="pares" className="mt-6"><ObjetivosTab /></TabsContent>
         </Tabs>
       </main>
     </div>
