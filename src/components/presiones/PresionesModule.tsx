@@ -170,23 +170,23 @@ export function PresionesModule() {
                 <div>
                   <h3 className="text-sm font-semibold">Nuevo registro</h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Elige el tipo de objetivo (par, equipo o filtro) y luego el ítem. El catálogo se administra en{" "}
+                    Elige Par de cuartos, Instrumento (manómetro) o Filtro HEPA y luego selecciona el ítem. El catálogo se administra en{" "}
                     <Link to="/configuracion" className="text-primary hover:underline">Configuración</Link>.
                   </p>
                 </div>
                 <ObjetivoPresionSelector
-                  value={draftObjId}
+                  value={draftSel}
                   objetivos={objetivos}
                   areas={areas}
                   instrumentos={manometros}
-                  onChange={(id) => setDraftObjId(id)}
+                  onChange={setDraftSel}
                 />
                 <Button onClick={createRegistro} className="w-full gap-1">
                   <Plus className="h-4 w-4" /> Crear registro
                 </Button>
-                {objetivos.length === 0 && (
+                {objetivos.length === 0 && manometros.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No hay objetivos cargados. Ve a Configuración para administrarlos.
+                    No hay objetivos ni instrumentos cargados. Ve a Configuración para administrarlos.
                   </p>
                 )}
               </>
