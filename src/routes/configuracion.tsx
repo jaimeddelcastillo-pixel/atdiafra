@@ -442,8 +442,9 @@ function InstrumentosTab() {
   );
 }
 
-function InstrumentoDialog({ open, onOpenChange, item, areas, onSaved }: {
-  open: boolean; onOpenChange: (b: boolean) => void; item: Instrumento | null; areas: AreaClasificada[]; onSaved: () => void;
+function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados, labelObjetivo, onSaved }: {
+  open: boolean; onOpenChange: (b: boolean) => void; item: Instrumento | null; areas: AreaClasificada[];
+  objetivosAsignados: ObjetivoPresion[]; labelObjetivo: (o: ObjetivoPresion) => string; onSaved: () => void;
 }) {
   const [form, setForm] = useState({
     codigo: "", tipo: "termohigrometro" as Instrumento["tipo"],
