@@ -187,6 +187,8 @@ export type Database = {
           created_at: string
           especificacion: string | null
           id: string
+          lie_pa: number | null
+          lse_pa: number | null
           parametro: string
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at: string
@@ -199,6 +201,8 @@ export type Database = {
           created_at?: string
           especificacion?: string | null
           id?: string
+          lie_pa?: number | null
+          lse_pa?: number | null
           parametro: string
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
@@ -211,6 +215,8 @@ export type Database = {
           created_at?: string
           especificacion?: string | null
           id?: string
+          lie_pa?: number | null
+          lse_pa?: number | null
           parametro?: string
           tipo?: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
@@ -224,6 +230,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      objetivos_presion: {
+        Row: {
+          activo: boolean
+          baseline_pa: number | null
+          baseline_tolerancia_pct: number | null
+          codigo: string
+          created_at: string
+          cuarto_x_id: string | null
+          cuarto_y_id: string | null
+          equipo_codigo: string | null
+          etapa: string | null
+          hvac_id: string | null
+          id: string
+          instrumento_id: string | null
+          iso: string | null
+          lie_pa: number | null
+          limite_normativo_pa: number | null
+          lse_pa: number | null
+          nombre: string
+          par_cuartos_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_objetivo_presion"]
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          baseline_pa?: number | null
+          baseline_tolerancia_pct?: number | null
+          codigo: string
+          created_at?: string
+          cuarto_x_id?: string | null
+          cuarto_y_id?: string | null
+          equipo_codigo?: string | null
+          etapa?: string | null
+          hvac_id?: string | null
+          id?: string
+          instrumento_id?: string | null
+          iso?: string | null
+          lie_pa?: number | null
+          limite_normativo_pa?: number | null
+          lse_pa?: number | null
+          nombre: string
+          par_cuartos_id?: string | null
+          tipo: Database["public"]["Enums"]["tipo_objetivo_presion"]
+          unidad?: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          baseline_pa?: number | null
+          baseline_tolerancia_pct?: number | null
+          codigo?: string
+          created_at?: string
+          cuarto_x_id?: string | null
+          cuarto_y_id?: string | null
+          equipo_codigo?: string | null
+          etapa?: string | null
+          hvac_id?: string | null
+          id?: string
+          instrumento_id?: string | null
+          iso?: string | null
+          lie_pa?: number | null
+          limite_normativo_pa?: number | null
+          lse_pa?: number | null
+          nombre?: string
+          par_cuartos_id?: string | null
+          tipo?: Database["public"]["Enums"]["tipo_objetivo_presion"]
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pares_cuartos: {
         Row: {
@@ -294,6 +372,7 @@ export type Database = {
           lecturas: Json
           lecturas_hr: Json | null
           mes: string
+          objetivo_presion_id: string | null
           observaciones: string
           registro_id: string
           saved_at: string
@@ -309,6 +388,7 @@ export type Database = {
           lecturas?: Json
           lecturas_hr?: Json | null
           mes: string
+          objetivo_presion_id?: string | null
           observaciones?: string
           registro_id: string
           saved_at?: string
@@ -324,6 +404,7 @@ export type Database = {
           lecturas?: Json
           lecturas_hr?: Json | null
           mes?: string
+          objetivo_presion_id?: string | null
           observaciones?: string
           registro_id?: string
           saved_at?: string
@@ -537,6 +618,7 @@ export type Database = {
         | "manometro_diferencial"
         | "otro"
       iso_clase: "ISO-5" | "ISO-7 (Clase C)" | "ISO-8 (Clase D)" | "ISO-9"
+      tipo_objetivo_presion: "par_cuartos" | "equipo" | "filtro_hepa"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -672,6 +754,7 @@ export const Constants = {
         "otro",
       ],
       iso_clase: ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"],
+      tipo_objetivo_presion: ["par_cuartos", "equipo", "filtro_hepa"],
     },
   },
 } as const
