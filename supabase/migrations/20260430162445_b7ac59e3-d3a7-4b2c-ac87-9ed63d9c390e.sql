@@ -1,0 +1,2 @@
+ALTER TYPE iso_clase ADD VALUE IF NOT EXISTS 'ISO-6';
+ALTER TYPE iso_clase ADD VALUE IF NOT EXISTS 'No clasificada';

@@ -556,7 +556,13 @@ export type Database = {
         | "manometro_filtro"
         | "manometro_diferencial"
         | "otro"
-      iso_clase: "ISO-5" | "ISO-7 (Clase C)" | "ISO-8 (Clase D)" | "ISO-9"
+      iso_clase:
+        | "ISO-5"
+        | "ISO-7 (Clase C)"
+        | "ISO-8 (Clase D)"
+        | "ISO-9"
+        | "ISO-6"
+        | "No clasificada"
       tipo_objetivo_presion: "par_cuartos" | "equipo" | "filtro_hepa"
     }
     CompositeTypes: {
@@ -692,7 +698,14 @@ export const Constants = {
         "manometro_diferencial",
         "otro",
       ],
-      iso_clase: ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"],
+      iso_clase: [
+        "ISO-5",
+        "ISO-7 (Clase C)",
+        "ISO-8 (Clase D)",
+        "ISO-9",
+        "ISO-6",
+        "No clasificada",
+      ],
       tipo_objetivo_presion: ["par_cuartos", "equipo", "filtro_hepa"],
     },
   },
