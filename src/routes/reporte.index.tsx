@@ -23,7 +23,7 @@ import { MINIMO_NORMATIVO, analizarRegistro, semanasDelPeriodo, type Periodo } f
 export const Route = createFileRoute("/reporte/")({
   head: () => ({
     meta: [
-      { title: "Reporte consolidado — DIAFRA" },
+      { title: "Reporte consolidado — TRACEA" },
       { name: "description", content: "Exploración por área e instrumento, exportación con estadísticas y gráficas." },
     ],
   }),

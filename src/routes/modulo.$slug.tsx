@@ -39,7 +39,7 @@ export const Route = createFileRoute("/modulo/$slug")({
     const m = MODULOS.find((x) => x.slug === params.slug);
     return {
       meta: [
-        { title: `${m?.nombre ?? "Módulo"} — Análisis de Tendencias DIAFRA` },
+        { title: `${m?.nombre ?? "Módulo"} — Análisis de Tendencias TRACEA` },
         { name: "description", content: m?.descripcion ?? "Módulo de análisis de tendencias." },
       ],
     };

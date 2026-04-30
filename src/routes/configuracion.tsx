@@ -35,7 +35,7 @@ import {
 export const Route = createFileRoute("/configuracion")({
   head: () => ({
     meta: [
-      { title: "Configuración / Catálogos — DIAFRA" },
+      { title: "Configuración / Catálogos — TRACEA" },
       { name: "description", content: "Catálogos de sistemas HVAC, áreas, instrumentos y pares de cuartos." },
     ],
   }),
