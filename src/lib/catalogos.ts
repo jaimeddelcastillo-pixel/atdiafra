@@ -33,16 +33,7 @@ export interface Instrumento {
   activo: boolean;
 }
 
-export interface ParCuartos {
-  id: string;
-  nombre: string;
-  instrumento_id: string | null;
-  cuarto_x_id: string | null;
-  cuarto_y_id: string | null;
-  iso: IsoClase;
-  limite_normativo_pa: number;
-  activo: boolean;
-}
+// La interfaz ParCuartos fue retirada al unificar el catálogo en `objetivos_presion`.
 
 export const ISO_LIMIT_PA: Record<IsoClase, number> = {
   "ISO-5": 15,
