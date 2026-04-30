@@ -20,14 +20,16 @@ import {
 import { ChevronLeft, Plus, Pencil, Power, Settings as SettingsIcon } from "lucide-react";
 import { toast } from "sonner";
 import {
-  AreaClasificada, Instrumento, IsoClase, ParCuartos, SistemaHVAC,
+  AreaClasificada, Instrumento, IsoClase, SistemaHVAC,
   ISO_LIMIT_PA,
-  listAreas, listInstrumentos, listPares, listSistemasHVAC,
-  setAreaActivo, setInstrumentoActivo, setParActivo, setSistemaHVACActivo,
-  upsertArea, upsertInstrumento, upsertPar, upsertSistemaHVAC,
+  listAreas, listInstrumentos, listSistemasHVAC,
+  setAreaActivo, setInstrumentoActivo, setSistemaHVACActivo,
+  upsertArea, upsertInstrumento, upsertSistemaHVAC,
 } from "@/lib/catalogos";
 import {
-  ObjetivoPresion, listObjetivosPresion, TIPO_OBJETIVO_LABEL,
+  ObjetivoPresion, TipoObjetivoPresion, listObjetivosPresion,
+  upsertObjetivoPresion, setObjetivoPresionActivo,
+  TIPO_OBJETIVO_LABEL, describirLimite,
 } from "@/lib/objetivos-presion";
 
 export const Route = createFileRoute("/configuracion")({
