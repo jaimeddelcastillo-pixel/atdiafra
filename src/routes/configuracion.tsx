@@ -21,7 +21,7 @@ import { ChevronLeft, Plus, Pencil, Power, Settings as SettingsIcon } from "luci
 import { toast } from "sonner";
 import {
   AreaClasificada, Instrumento, IsoClase, SistemaHVAC,
-  ISO_LIMIT_PA,
+  ISO_LIMIT_PA, ISO_CLASES,
   listAreas, listInstrumentos, listSistemasHVAC,
   setAreaActivo, setInstrumentoActivo, setSistemaHVACActivo,
   upsertArea, upsertInstrumento, upsertSistemaHVAC,
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/configuracion")({
   component: () => <AuthGuard><ConfiguracionPage /></AuthGuard>,
 });
 
-const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
+const ISO_OPTIONS: IsoClase[] = ISO_CLASES;
 
 function ConfiguracionPage() {
   const { canWriteCatalogs } = useAuth();

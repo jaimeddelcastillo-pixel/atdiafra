@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
-import { AreaClasificada, IsoClase, listAreas, upsertArea } from "@/lib/catalogos";
+import { AreaClasificada, IsoClase, ISO_CLASES, listAreas, upsertArea } from "@/lib/catalogos";
 
 interface Props {
   value: string; // area_id seleccionada
@@ -13,7 +13,7 @@ interface Props {
   defaultIso?: IsoClase;
 }
 
-const ISO_OPTIONS: IsoClase[] = ["ISO-5", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9"];
+const ISO_OPTIONS: IsoClase[] = ISO_CLASES;
 
 export function AreaSelector({ value, areas, onChange, onCatalogChanged, defaultIso = "ISO-8 (Clase D)" }: Props) {
   const [adding, setAdding] = useState(false);
