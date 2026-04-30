@@ -28,7 +28,7 @@ import {
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF } from "@/lib/export-normativo";
 
-import { ObjetivoPresionSelector } from "./ObjetivoPresionSelector";
+import { ObjetivoPresionSelector, type SeleccionPresion } from "./ObjetivoPresionSelector";
 import { WeeklyReadingsTablePresion } from "./WeeklyReadingsTablePresion";
 import { ImageImporterPresion } from "./ImageImporterPresion";
 import { PresionAnalysis } from "./PresionAnalysis";
@@ -60,39 +60,53 @@ export function PresionesModule() {
     [registros, activeId],
   );
 
-  const [draftObjId, setDraftObjId] = useState("");
+  const [draftSel, setDraftSel] = useState<SeleccionPresion | null>(null);
 
   const createRegistro = async () => {
-    if (!draftObjId) {
+    if (!draftSel) {
       toast.error("Selecciona un objetivo de medición");
       return;
     }
-    const obj = objetivos.find((o) => o.id === draftObjId);
-    if (!obj) return;
 
-    // Construir nombre legible según tipo
-    let nombre = obj.nombre;
-    if (obj.tipo === "par_cuartos") {
+    let nombre = "";
+    let par_cuartos_id: string | null = null;
+    let instrumento_id: string | null = null;
+    let iso: string | null = null;
+    let lie: number | null = null;
+    let lse: number | null = null;
+
+    if (draftSel.tipo === "par_cuartos") {
+      const obj = objetivos.find((o) => o.id === draftSel.id);
+      if (!obj) return;
       const xCod = areas.find((a) => a.id === obj.cuarto_x_id)?.codigo ?? "X";
       const yCod = areas.find((a) => a.id === obj.cuarto_y_id)?.codigo ?? "Y";
       const instCod = manometros.find((m) => m.id === obj.instrumento_id)?.codigo ?? "";
       nombre = `${xCod} vs ${yCod}${instCod ? ` · ${instCod}` : ""}`;
-    } else if (obj.tipo === "equipo") {
-      nombre = `${obj.equipo_codigo ?? obj.codigo} — ${obj.nombre}`;
+      par_cuartos_id = obj.id;
+      instrumento_id = obj.instrumento_id ?? null;
+      iso = obj.iso ?? null;
+      lie = obj.limite_normativo_pa;
+      lse = obj.lse_pa;
     } else {
-      nombre = `${obj.codigo} · ${obj.etapa ?? "filtro"}`;
+      // instrumento o filtro_hepa: la fuente de verdad ES el catálogo de instrumentos
+      const inst = manometros.find((m) => m.id === draftSel.id);
+      if (!inst) return;
+      const tag = draftSel.tipo === "filtro_hepa" ? "Filtro HEPA" : "Instrumento";
+      nombre = `${tag} · ${inst.codigo}${inst.especificacion ? ` · ${inst.especificacion.split("|")[0].trim()}` : ""}`;
+      instrumento_id = inst.id;
+      lie = inst.lie_pa;
+      lse = inst.lse_pa;
     }
 
     const r: Registro = {
       id: crypto.randomUUID(),
       modulo: "presiones",
       nombre,
-      // Reusamos par_cuartos_id como FK al objetivo (todos los objetivos tienen uuid propio).
-      par_cuartos_id: obj.id,
-      instrumento_id: obj.instrumento_id ?? null,
-      iso: (obj.iso as any) ?? null,
-      lse: obj.lse_pa,
-      lie: obj.tipo === "par_cuartos" ? obj.limite_normativo_pa : obj.lie_pa,
+      par_cuartos_id,
+      instrumento_id,
+      iso: iso as any,
+      lse,
+      lie,
       semanas: [],
       created_at: new Date().toISOString(),
       activo: true,
@@ -101,7 +115,7 @@ export function PresionesModule() {
       await upsertRegistro(r);
       await reload();
       setActiveId(r.id);
-      setDraftObjId("");
+      setDraftSel(null);
       toast.success("Registro creado");
     } catch (e: any) {
       toast.error("No se pudo crear el registro: " + e.message);
@@ -156,23 +170,23 @@ export function PresionesModule() {
                 <div>
                   <h3 className="text-sm font-semibold">Nuevo registro</h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Elige el tipo de objetivo (par, equipo o filtro) y luego el ítem. El catálogo se administra en{" "}
+                    Elige Par de cuartos, Instrumento (manómetro) o Filtro HEPA y luego selecciona el ítem. El catálogo se administra en{" "}
                     <Link to="/configuracion" className="text-primary hover:underline">Configuración</Link>.
                   </p>
                 </div>
                 <ObjetivoPresionSelector
-                  value={draftObjId}
+                  value={draftSel}
                   objetivos={objetivos}
                   areas={areas}
                   instrumentos={manometros}
-                  onChange={(id) => setDraftObjId(id)}
+                  onChange={setDraftSel}
                 />
                 <Button onClick={createRegistro} className="w-full gap-1">
                   <Plus className="h-4 w-4" /> Crear registro
                 </Button>
-                {objetivos.length === 0 && (
+                {objetivos.length === 0 && manometros.length === 0 && (
                   <p className="text-xs text-muted-foreground">
-                    No hay objetivos cargados. Ve a Configuración para administrarlos.
+                    No hay objetivos ni instrumentos cargados. Ve a Configuración para administrarlos.
                   </p>
                 )}
               </>

@@ -33,6 +33,12 @@ export interface Instrumento {
   parametro: string;
   especificacion: string | null;
   activo: boolean;
+  /** Límites para manómetros (Pa). Se definen una sola vez en el catálogo. */
+  lie_pa: number | null;
+  lse_pa: number | null;
+  /** Solo para manómetros de filtro HEPA: baseline + tolerancia para alarma de tendencia. */
+  baseline_pa: number | null;
+  baseline_tolerancia_pct: number | null;
 }
 
 // La interfaz ParCuartos fue retirada al unificar el catálogo en `objetivos_presion`.

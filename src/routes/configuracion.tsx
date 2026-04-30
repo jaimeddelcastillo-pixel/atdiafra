@@ -353,9 +353,7 @@ function InstrumentosTab() {
   const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
 
   const labelObjetivo = (o: ObjetivoPresion): string => {
-    if (o.tipo === "par_cuartos") return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)}`;
-    if (o.tipo === "equipo") return `${o.equipo_codigo ?? o.codigo} — ${o.nombre}`;
-    return `${o.codigo}${o.etapa ? ` · ${o.etapa}` : ""}`;
+    return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)}`;
   };
 
   const objetivosDe = (i: Instrumento) => objetivos.filter((o) => o.instrumento_id === i.id);
@@ -451,14 +449,24 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
   const [form, setForm] = useState({
     codigo: "", tipo: "termohigrometro" as Instrumento["tipo"],
     area_id: "", area_libre: "", parametro: "", especificacion: "",
+    lie_pa: "" as string | number,
+    lse_pa: "" as string | number,
+    baseline_pa: "" as string | number,
+    baseline_tolerancia_pct: 25 as string | number,
   });
   useEffect(() => {
     setForm({
       codigo: item?.codigo ?? "", tipo: item?.tipo ?? "termohigrometro",
       area_id: item?.area_id ?? "", area_libre: item?.area_libre ?? "",
       parametro: item?.parametro ?? "", especificacion: item?.especificacion ?? "",
+      lie_pa: item?.lie_pa ?? "",
+      lse_pa: item?.lse_pa ?? "",
+      baseline_pa: item?.baseline_pa ?? "",
+      baseline_tolerancia_pct: item?.baseline_tolerancia_pct ?? 25,
     });
   }, [item, open]);
+
+  const num = (v: string | number) => v === "" ? null : Number(v);
 
   const save = async () => {
     if (!form.codigo.trim()) { toast.error("Código requerido"); return; }
@@ -467,16 +475,22 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         id: item?.id, codigo: form.codigo.trim(), tipo: form.tipo,
         area_id: form.area_id || null, area_libre: form.area_libre.trim() || null,
         parametro: form.parametro.trim(), especificacion: form.especificacion.trim() || null,
+        lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
+        baseline_pa: num(form.baseline_pa),
+        baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
       });
       toast.success("Guardado"); onSaved();
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const esManometro = form.tipo === "manometro_diferencial" || form.tipo === "manometro_filtro";
+  const esFiltroHEPA = form.tipo === "manometro_filtro";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} instrumento</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto">
           <Field label="Código"><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="INS-CMB-20" /></Field>
           <Field label="Tipo">
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Instrumento["tipo"] })}>
@@ -497,32 +511,63 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
             <Input value={form.area_libre} onChange={(e) => setForm({ ...form, area_libre: e.target.value })} placeholder="EQU-CMB-08 etapa 35% / Sistema agua / etc." />
           </Field>
           <Field label="Parámetro que mide"><Input value={form.parametro} onChange={(e) => setForm({ ...form, parametro: e.target.value })} placeholder="T °C y HR %" /></Field>
-          <Field label="Especificación"><Input value={form.especificacion} onChange={(e) => setForm({ ...form, especificacion: e.target.value })} placeholder="18–25°C / ≥10 Pa" /></Field>
+          <Field label="Especificación"><Input value={form.especificacion} onChange={(e) => setForm({ ...form, especificacion: e.target.value })} placeholder="Marca / modelo / ubicación" /></Field>
+
+          {esManometro && (
+            <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Límites de monitoreo (Pa) — se usan para alarmas de cumplimiento normativo.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="LIE ΔP (Pa)">
+                  <Input type="number" value={form.lie_pa}
+                    onChange={(e) => setForm({ ...form, lie_pa: e.target.value })} placeholder="ej. -50 / 50" />
+                </Field>
+                <Field label="LSE ΔP (Pa)">
+                  <Input type="number" value={form.lse_pa}
+                    onChange={(e) => setForm({ ...form, lse_pa: e.target.value })} placeholder="ej. 50 / 250" />
+                </Field>
+              </div>
+              {esFiltroHEPA && (
+                <>
+                  <p className="text-[11px] font-medium text-muted-foreground pt-2 border-t border-border/60">
+                    Baseline para alarma de tendencia (filtro HEPA — crítico).
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Baseline ΔP (Pa)">
+                      <Input type="number" value={form.baseline_pa}
+                        onChange={(e) => setForm({ ...form, baseline_pa: e.target.value })} placeholder="lectura inicial limpia" />
+                    </Field>
+                    <Field label="Tolerancia baseline (%)">
+                      <Input type="number" value={form.baseline_tolerancia_pct}
+                        onChange={(e) => setForm({ ...form, baseline_tolerancia_pct: e.target.value })} placeholder="25" />
+                    </Field>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Se dispara alerta si la lectura se desvía más del % indicado respecto al baseline.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {item && (
             <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-1.5">
               <p className="text-[11px] font-medium text-muted-foreground">
-                Asignación a pares de cuartos / equipos / filtros HEPA
+                Pares de cuartos vinculados
               </p>
               {objetivosAsignados.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground">
-                  Este instrumento no está vinculado a ningún objetivo de presión todavía.
-                  Vincúlalo desde la pestaña <span className="font-medium">Pares de cuartos</span> (próximamente Equipos / Filtros)
-                  seleccionando este código en el campo "Instrumento".
+                  Este instrumento no está vinculado a ningún par de cuartos.
                 </p>
               ) : (
-                <>
-                  <div className="flex flex-wrap gap-1">
-                    {objetivosAsignados.map((o) => (
-                      <span key={o.id} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-background border border-border" : "bg-muted/50 line-through"}`}>
-                        {labelObjetivo(o)}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Para cambiar estas asignaciones, edita el objetivo desde su pestaña correspondiente.
-                  </p>
-                </>
+                <div className="flex flex-wrap gap-1">
+                  {objetivosAsignados.map((o) => (
+                    <span key={o.id} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-background border border-border" : "bg-muted/50 line-through"}`}>
+                      {labelObjetivo(o)}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -536,13 +581,11 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
   );
 }
 
-/* ============================ Objetivos de presión (par / equipo / filtro) ============================ */
+/* ============================ Objetivos de presión (pares de cuartos) ============================ */
 function ObjetivosTab() {
   const [items, setItems] = useState<ObjetivoPresion[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
   const [instrs, setInstrs] = useState<Instrumento[]>([]);
-  const [hvacs, setHvacs] = useState<SistemaHVAC[]>([]);
-  const [filtro, setFiltro] = useState<TipoObjetivoPresion | "todos">("todos");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ObjetivoPresion | null>(null);
   const [open, setOpen] = useState(false);
@@ -550,13 +593,12 @@ function ObjetivosTab() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [os, as, is, hs] = await Promise.all([
+      const [os, as, is] = await Promise.all([
         listObjetivosPresion(false),
         listAreas(false),
         listInstrumentos(),
-        listSistemasHVAC(false),
       ]);
-      setItems(os); setAreas(as); setInstrs(is); setHvacs(hs);
+      setItems(os); setAreas(as); setInstrs(is);
     } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   };
@@ -564,7 +606,6 @@ function ObjetivosTab() {
 
   const areaCode = (id: string | null) => areas.find((a) => a.id === id)?.codigo ?? "—";
   const instrCode = (id: string | null) => instrs.find((i) => i.id === id)?.codigo ?? "—";
-  const hvacCode = (id: string | null) => hvacs.find((h) => h.id === id)?.codigo ?? "—";
 
   const onToggle = async (it: ObjetivoPresion) => {
     if (it.activo && !confirm(`¿Dar de baja "${it.codigo}"? Los datos históricos se conservan.`)) return;
@@ -572,36 +613,14 @@ function ObjetivosTab() {
     catch (e) { toast.error((e as Error).message); }
   };
 
-  const visibles = items.filter((o) => filtro === "todos" || o.tipo === filtro);
-
-  const descripcion = (o: ObjetivoPresion) => {
-    if (o.tipo === "par_cuartos") return `${areaCode(o.cuarto_x_id)} ▸ ${areaCode(o.cuarto_y_id)}`;
-    if (o.tipo === "equipo") return o.equipo_codigo ?? "—";
-    return `${hvacCode(o.hvac_id)} · ${o.etapa ?? "—"}`;
-  };
-
   return (
-    <CatalogShell title="Objetivos de presión (pares · equipos · filtros HEPA)" onAdd={() => { setEditing(null); setOpen(true); }} loading={loading}>
-      <div className="px-5 pt-3 flex flex-wrap gap-1">
-        {(["todos", "par_cuartos", "equipo", "filtro_hepa"] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setFiltro(t)}
-            className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-              filtro === t
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:bg-muted"
-            }`}
-          >
-            {t === "todos" ? "Todos" : TIPO_OBJETIVO_LABEL[t]}
-          </button>
-        ))}
+    <CatalogShell title="Objetivos de presión — pares de cuartos" onAdd={() => { setEditing(null); setOpen(true); }} loading={loading}>
+      <div className="px-5 pt-3 text-[11px] text-muted-foreground">
+        Solo pares de cuartos. Los manómetros de equipo y de filtro HEPA se administran directamente en la pestaña <span className="font-medium">Instrumentos</span>.
       </div>
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Tipo</TableHead>
             <TableHead>Código</TableHead>
             <TableHead>Nombre / Descripción</TableHead>
             <TableHead>Instrumento</TableHead>
@@ -611,13 +630,12 @@ function ObjetivosTab() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {visibles.map((it) => (
+          {items.map((it) => (
             <TableRow key={it.id} className={!it.activo ? "opacity-50" : ""}>
-              <TableCell className="text-[11px]">{TIPO_OBJETIVO_LABEL[it.tipo]}</TableCell>
               <TableCell className="text-xs font-mono">{it.codigo}</TableCell>
               <TableCell className="text-xs">
                 <div className="font-medium">{it.nombre}</div>
-                <div className="text-muted-foreground text-[11px]">{descripcion(it)}</div>
+                <div className="text-muted-foreground text-[11px]">{areaCode(it.cuarto_x_id)} ▸ {areaCode(it.cuarto_y_id)}</div>
               </TableCell>
               <TableCell className="text-xs font-mono">{instrCode(it.instrumento_id)}</TableCell>
               <TableCell className="text-xs">{describirLimite(it)}</TableCell>
@@ -632,43 +650,32 @@ function ObjetivosTab() {
               </TableCell>
             </TableRow>
           ))}
-          {visibles.length === 0 && (
-            <TableRow><TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-6">Sin objetivos para este filtro.</TableCell></TableRow>
+          {items.length === 0 && (
+            <TableRow><TableCell colSpan={6} className="text-center text-xs text-muted-foreground py-6">Aún no hay pares de cuartos.</TableCell></TableRow>
           )}
         </TableBody>
       </Table>
 
       <ObjetivoDialog
         open={open} onOpenChange={setOpen} item={editing}
-        areas={areas} instrs={instrs} hvacs={hvacs}
+        areas={areas} instrs={instrs}
         onSaved={() => { setOpen(false); reload(); }}
       />
     </CatalogShell>
   );
 }
 
-function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSaved }: {
+function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, onSaved }: {
   open: boolean; onOpenChange: (b: boolean) => void; item: ObjetivoPresion | null;
-  areas: AreaClasificada[]; instrs: Instrumento[]; hvacs: SistemaHVAC[]; onSaved: () => void;
+  areas: AreaClasificada[]; instrs: Instrumento[]; onSaved: () => void;
 }) {
   const emptyForm = {
-    tipo: "par_cuartos" as TipoObjetivoPresion,
     codigo: "", nombre: "",
     instrumento_id: "",
-    // par
     cuarto_x_id: "", cuarto_y_id: "",
     iso: "ISO-8" as IsoClase,
     limite_normativo_pa: 5,
     isoOverride: false,
-    // equipo
-    equipo_codigo: "",
-    // filtro
-    hvac_id: "", etapa: "",
-    // límites equipo/filtro
-    lie_pa: "" as string | number,
-    lse_pa: "" as string | number,
-    baseline_pa: "" as string | number,
-    baseline_tolerancia_pct: 25 as string | number,
   };
   const [form, setForm] = useState(emptyForm);
 
@@ -676,7 +683,6 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
     if (!open) return;
     if (item) {
       setForm({
-        tipo: item.tipo,
         codigo: item.codigo, nombre: item.nombre,
         instrumento_id: item.instrumento_id ?? "",
         cuarto_x_id: item.cuarto_x_id ?? "",
@@ -684,13 +690,6 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
         iso: (item.iso ?? "ISO-8") as IsoClase,
         limite_normativo_pa: item.limite_normativo_pa ?? 5,
         isoOverride: true,
-        equipo_codigo: item.equipo_codigo ?? "",
-        hvac_id: item.hvac_id ?? "",
-        etapa: item.etapa ?? "",
-        lie_pa: item.lie_pa ?? "",
-        lse_pa: item.lse_pa ?? "",
-        baseline_pa: item.baseline_pa ?? "",
-        baseline_tolerancia_pct: item.baseline_tolerancia_pct ?? 25,
       });
     } else {
       setForm(emptyForm);
@@ -698,116 +697,57 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item, open]);
 
-  // Auto: ISO + límite por cuarto X (par_cuartos)
+  // Auto: ISO + límite por cuarto X
   useEffect(() => {
-    if (form.tipo !== "par_cuartos") return;
     if (!form.cuarto_x_id || form.isoOverride) return;
     const x = areas.find((a) => a.id === form.cuarto_x_id);
     if (x) setForm((f) => ({ ...f, iso: x.iso, limite_normativo_pa: ISO_LIMIT_PA[x.iso] }));
-  }, [form.cuarto_x_id, form.isoOverride, form.tipo, areas]);
+  }, [form.cuarto_x_id, form.isoOverride, areas]);
 
-  // Auto: nombre por defecto para par
+  // Auto: nombre por defecto
   useEffect(() => {
-    if (form.tipo !== "par_cuartos" || item) return;
+    if (item) return;
     if (form.cuarto_x_id && form.cuarto_y_id) {
       const x = areas.find((a) => a.id === form.cuarto_x_id)?.codigo ?? "";
       const y = areas.find((a) => a.id === form.cuarto_y_id)?.codigo ?? "";
       const auto = `${x} vs ${y}`;
       setForm((f) => (f.nombre === "" || f.nombre === f.codigo ? { ...f, nombre: auto, codigo: auto } : f));
     }
-  }, [form.cuarto_x_id, form.cuarto_y_id, form.tipo, item, areas]);
+  }, [form.cuarto_x_id, form.cuarto_y_id, item, areas]);
 
-  const hvacEtapas = hvacs.find((h) => h.id === form.hvac_id)?.etapas ?? [];
-
-  const num = (v: string | number) => v === "" ? null : Number(v);
+  const instrsRelevantes = instrs.filter((i) => {
+    if (!i.activo && i.id !== item?.instrumento_id) return false;
+    return i.tipo === "manometro_diferencial" || i.tipo === "otro";
+  });
 
   const save = async () => {
     if (!form.codigo.trim()) { toast.error("Código requerido"); return; }
     if (!form.nombre.trim()) { toast.error("Nombre requerido"); return; }
     try {
-      const base = {
+      await upsertObjetivoPresion({
         id: item?.id,
-        tipo: form.tipo,
         codigo: form.codigo.trim(),
         nombre: form.nombre.trim(),
         instrumento_id: form.instrumento_id || null,
         unidad: "Pa",
-      };
-      if (form.tipo === "par_cuartos") {
-        await upsertObjetivoPresion({
-          ...base,
-          cuarto_x_id: form.cuarto_x_id || null,
-          cuarto_y_id: form.cuarto_y_id || null,
-          iso: form.iso,
-          limite_normativo_pa: Number(form.limite_normativo_pa) || 0,
-          hvac_id: null, etapa: null, equipo_codigo: null,
-          lie_pa: null, lse_pa: null, baseline_pa: null, baseline_tolerancia_pct: null,
-        });
-      } else if (form.tipo === "equipo") {
-        await upsertObjetivoPresion({
-          ...base,
-          equipo_codigo: form.equipo_codigo.trim() || form.codigo.trim(),
-          lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
-          cuarto_x_id: null, cuarto_y_id: null, iso: null,
-          limite_normativo_pa: null, hvac_id: null, etapa: null,
-          baseline_pa: null, baseline_tolerancia_pct: null,
-        });
-      } else {
-        await upsertObjetivoPresion({
-          ...base,
-          hvac_id: form.hvac_id || null,
-          etapa: form.etapa || null,
-          lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
-          baseline_pa: num(form.baseline_pa),
-          baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
-          cuarto_x_id: null, cuarto_y_id: null, iso: null,
-          limite_normativo_pa: null, equipo_codigo: null,
-        });
-      }
+        cuarto_x_id: form.cuarto_x_id || null,
+        cuarto_y_id: form.cuarto_y_id || null,
+        iso: form.iso,
+        limite_normativo_pa: Number(form.limite_normativo_pa) || 0,
+      });
       toast.success("Guardado"); onSaved();
     } catch (e) { toast.error((e as Error).message); }
   };
 
-  const tipoBtn = (t: TipoObjetivoPresion) => (
-    <button
-      key={t}
-      type="button"
-      disabled={!!item}
-      onClick={() => setForm({ ...form, tipo: t, isoOverride: false })}
-      className={`text-[11px] py-1.5 rounded transition-colors ${
-        form.tipo === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-      } ${item ? "cursor-not-allowed opacity-60" : ""}`}
-    >
-      {TIPO_OBJETIVO_LABEL[t]}
-    </button>
-  );
-
-  // Filtro de instrumentos según tipo
-  const instrsRelevantes = instrs.filter((i) => {
-    if (!i.activo && i.id !== item?.instrumento_id) return false;
-    if (form.tipo === "par_cuartos") return i.tipo === "manometro_diferencial" || i.tipo === "otro";
-    if (form.tipo === "equipo") return i.tipo === "manometro_diferencial" || i.tipo === "manometro_filtro" || i.tipo === "otro";
-    return i.tipo === "manometro_filtro" || i.tipo === "manometro_diferencial" || i.tipo === "otro";
-  });
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl">
-        <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} objetivo de presión</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} par de cuartos</DialogTitle></DialogHeader>
         <div className="space-y-3">
-          <Field label="Tipo de objetivo">
-            <div className="grid grid-cols-3 gap-1 rounded-md border border-input bg-background p-1">
-              {tipoBtn("par_cuartos")}
-              {tipoBtn("equipo")}
-              {tipoBtn("filtro_hepa")}
-            </div>
-            {item && <p className="text-[11px] text-muted-foreground mt-1">El tipo no se puede cambiar al editar.</p>}
-          </Field>
-
           <div className="grid grid-cols-2 gap-3">
             <Field label="Código">
               <Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                placeholder={form.tipo === "par_cuartos" ? "DCC-03 vs DCC-02" : form.tipo === "equipo" ? "UMA-01-DP" : "HEPA-01-35%"} />
+                placeholder="DCC-03 vs DCC-02" />
             </Field>
             <Field label="Nombre / etiqueta">
               <Input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Descripción legible" />
@@ -824,111 +764,38 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
             </select>
           </Field>
 
-          {/* ===== Modo: Par de cuartos ===== */}
-          {form.tipo === "par_cuartos" && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Cuarto X (mayor presión)">
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={form.cuarto_x_id}
-                    onChange={(e) => setForm({ ...form, cuarto_x_id: e.target.value, isoOverride: false })}>
-                    <option value="">—</option>
-                    {areas.filter((a) => a.activo || a.id === item?.cuarto_x_id).map((a) => <option key={a.id} value={a.id}>{a.codigo} {a.nombre}</option>)}
-                  </select>
-                </Field>
-                <Field label="Cuarto Y (menor presión)">
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={form.cuarto_y_id} onChange={(e) => setForm({ ...form, cuarto_y_id: e.target.value })}>
-                    <option value="">—</option>
-                    {areas.filter((a) => a.activo || a.id === item?.cuarto_y_id).map((a) => <option key={a.id} value={a.id}>{a.codigo} {a.nombre}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="ISO aplicable (heredada de X)">
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.iso}
-                    onChange={(e) => {
-                      const iso = e.target.value as IsoClase;
-                      setForm({ ...form, iso, limite_normativo_pa: ISO_LIMIT_PA[iso], isoOverride: true });
-                    }}>
-                    {ISO_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </Field>
-                <Field label="Límite normativo ΔP (Pa)">
-                  <Input type="number" value={form.limite_normativo_pa}
-                    onChange={(e) => setForm({ ...form, limite_normativo_pa: Number(e.target.value), isoOverride: true })} />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {/* ===== Modo: Equipo ===== */}
-          {form.tipo === "equipo" && (
-            <>
-              <Field label="Código del equipo (opcional)">
-                <Input value={form.equipo_codigo}
-                  onChange={(e) => setForm({ ...form, equipo_codigo: e.target.value })}
-                  placeholder="UMA-01 / TANQUE-A / etc." />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="LIE ΔP (Pa) — opcional">
-                  <Input type="number" value={form.lie_pa}
-                    onChange={(e) => setForm({ ...form, lie_pa: e.target.value })} placeholder="ej. -50" />
-                </Field>
-                <Field label="LSE ΔP (Pa) — opcional">
-                  <Input type="number" value={form.lse_pa}
-                    onChange={(e) => setForm({ ...form, lse_pa: e.target.value })} placeholder="ej. 50" />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {/* ===== Modo: Filtro HEPA ===== */}
-          {form.tipo === "filtro_hepa" && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Sistema HVAC">
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={form.hvac_id} onChange={(e) => setForm({ ...form, hvac_id: e.target.value, etapa: "" })}>
-                    <option value="">—</option>
-                    {hvacs.filter((h) => h.activo || h.id === item?.hvac_id).map((h) => (
-                      <option key={h.id} value={h.id}>{h.codigo} · {h.nombre_uma}</option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Etapa de filtración">
-                  <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
-                    <option value="">—</option>
-                    {hvacEtapas.map((e) => <option key={e} value={e}>{e}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="LIE ΔP (Pa) — opcional">
-                  <Input type="number" value={form.lie_pa}
-                    onChange={(e) => setForm({ ...form, lie_pa: e.target.value })} placeholder="ej. 50" />
-                </Field>
-                <Field label="LSE ΔP (Pa) — opcional">
-                  <Input type="number" value={form.lse_pa}
-                    onChange={(e) => setForm({ ...form, lse_pa: e.target.value })} placeholder="ej. 250" />
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Baseline ΔP (Pa)">
-                  <Input type="number" value={form.baseline_pa}
-                    onChange={(e) => setForm({ ...form, baseline_pa: e.target.value })} placeholder="lectura inicial" />
-                </Field>
-                <Field label="Tolerancia baseline (%)">
-                  <Input type="number" value={form.baseline_tolerancia_pct}
-                    onChange={(e) => setForm({ ...form, baseline_tolerancia_pct: e.target.value })} placeholder="25" />
-                </Field>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                La alerta de tendencia se dispara si la lectura se desvía más de la tolerancia respecto al baseline.
-              </p>
-            </>
-          )}
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Cuarto X (mayor presión)">
+              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.cuarto_x_id}
+                onChange={(e) => setForm({ ...form, cuarto_x_id: e.target.value, isoOverride: false })}>
+                <option value="">—</option>
+                {areas.filter((a) => a.activo || a.id === item?.cuarto_x_id).map((a) => <option key={a.id} value={a.id}>{a.codigo} {a.nombre}</option>)}
+              </select>
+            </Field>
+            <Field label="Cuarto Y (menor presión)">
+              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.cuarto_y_id} onChange={(e) => setForm({ ...form, cuarto_y_id: e.target.value })}>
+                <option value="">—</option>
+                {areas.filter((a) => a.activo || a.id === item?.cuarto_y_id).map((a) => <option key={a.id} value={a.id}>{a.codigo} {a.nombre}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="ISO aplicable (heredada de X)">
+              <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.iso}
+                onChange={(e) => {
+                  const iso = e.target.value as IsoClase;
+                  setForm({ ...form, iso, limite_normativo_pa: ISO_LIMIT_PA[iso], isoOverride: true });
+                }}>
+                {ISO_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </Field>
+            <Field label="Límite normativo ΔP (Pa)">
+              <Input type="number" value={form.limite_normativo_pa}
+                onChange={(e) => setForm({ ...form, limite_normativo_pa: Number(e.target.value), isoOverride: true })} />
+            </Field>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
@@ -938,6 +805,7 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
     </Dialog>
   );
 }
+
 
 /* ============================ Helpers ============================ */
 function CatalogShell({ title, onAdd, loading, children }: { title: string; onAdd: () => void; loading: boolean; children: React.ReactNode }) {
