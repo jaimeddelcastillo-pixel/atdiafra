@@ -329,6 +329,7 @@ const TIPO_LABEL = {
 function InstrumentosTab() {
   const [items, setItems] = useState<Instrumento[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
+  const [objetivos, setObjetivos] = useState<ObjetivoPresion[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Instrumento | null>(null);
   const [open, setOpen] = useState(false);
@@ -336,12 +337,26 @@ function InstrumentosTab() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [is, as] = await Promise.all([listInstrumentos(), listAreas(false)]);
-      setItems(is); setAreas(as);
+      const [is, as, os] = await Promise.all([
+        listInstrumentos(),
+        listAreas(false),
+        listObjetivosPresion(false),
+      ]);
+      setItems(is); setAreas(as); setObjetivos(os);
     } catch (e) { toast.error((e as Error).message); }
     finally { setLoading(false); }
   };
   useEffect(() => { reload(); }, []);
+
+  const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
+
+  const labelObjetivo = (o: ObjetivoPresion): string => {
+    if (o.tipo === "par_cuartos") return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)}`;
+    if (o.tipo === "equipo") return `${o.equipo_codigo ?? o.codigo} — ${o.nombre}`;
+    return `${o.codigo}${o.etapa ? ` · ${o.etapa}` : ""}`;
+  };
+
+  const objetivosDe = (i: Instrumento) => objetivos.filter((o) => o.instrumento_id === i.id);
 
   const areaName = (i: Instrumento) => {
     if (i.area_id) {
@@ -365,6 +380,7 @@ function InstrumentosTab() {
             <TableHead>Código</TableHead>
             <TableHead>Tipo</TableHead>
             <TableHead>Área asignada</TableHead>
+            <TableHead>Asignado a (objetivos de presión)</TableHead>
             <TableHead>Parámetro</TableHead>
             <TableHead>Especificación</TableHead>
             <TableHead>Estado</TableHead>
@@ -372,28 +388,56 @@ function InstrumentosTab() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((it) => (
-            <TableRow key={it.id} className={!it.activo ? "opacity-50" : ""}>
-              <TableCell className="font-mono">{it.codigo}</TableCell>
-              <TableCell className="text-xs">{TIPO_LABEL[it.tipo]}</TableCell>
-              <TableCell className="text-xs">{areaName(it)}</TableCell>
-              <TableCell className="text-xs">{it.parametro}</TableCell>
-              <TableCell className="text-xs">{it.especificacion ?? "—"}</TableCell>
-              <TableCell>
-                <span className={`text-xs rounded-full px-2 py-0.5 ${it.activo ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                  {it.activo ? "activo" : "inactivo"}
-                </span>
-              </TableCell>
-              <TableCell className="text-right">
-                <Button size="sm" variant="ghost" onClick={() => { setEditing(it); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                <Button size="sm" variant="ghost" onClick={() => onToggle(it)}><Power className={`h-3.5 w-3.5 ${it.activo ? "text-destructive" : "text-success"}`} /></Button>
-              </TableCell>
-            </TableRow>
-          ))}
+          {items.map((it) => {
+            const objs = objetivosDe(it);
+            return (
+              <TableRow key={it.id} className={!it.activo ? "opacity-50" : ""}>
+                <TableCell className="font-mono">{it.codigo}</TableCell>
+                <TableCell className="text-xs">{TIPO_LABEL[it.tipo]}</TableCell>
+                <TableCell className="text-xs">{areaName(it)}</TableCell>
+                <TableCell className="text-xs">
+                  {objs.length === 0 ? (
+                    <span className="text-muted-foreground">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {objs.map((o) => (
+                        <span
+                          key={o.id}
+                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-muted" : "bg-muted/50 line-through"}`}
+                          title={`${TIPO_OBJETIVO_LABEL[o.tipo]}${o.activo ? "" : " (inactivo)"}`}
+                        >
+                          {labelObjetivo(o)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-xs">{it.parametro}</TableCell>
+                <TableCell className="text-xs">{it.especificacion ?? "—"}</TableCell>
+                <TableCell>
+                  <span className={`text-xs rounded-full px-2 py-0.5 ${it.activo ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
+                    {it.activo ? "activo" : "inactivo"}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" variant="ghost" onClick={() => { setEditing(it); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="ghost" onClick={() => onToggle(it)}><Power className={`h-3.5 w-3.5 ${it.activo ? "text-destructive" : "text-success"}`} /></Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
 
-      <InstrumentoDialog open={open} onOpenChange={setOpen} item={editing} areas={areas} onSaved={() => { setOpen(false); reload(); }} />
+      <InstrumentoDialog
+        open={open}
+        onOpenChange={setOpen}
+        item={editing}
+        areas={areas}
+        objetivosAsignados={editing ? objetivosDe(editing) : []}
+        labelObjetivo={labelObjetivo}
+        onSaved={() => { setOpen(false); reload(); }}
+      />
     </CatalogShell>
   );
 }
