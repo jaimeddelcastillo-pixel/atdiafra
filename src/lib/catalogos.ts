@@ -135,27 +135,5 @@ export async function setInstrumentoActivo(id: string, activo: boolean) {
   if (error) throw error;
 }
 
-// ===== Pares de cuartos =====
-export async function listPares(soloActivos = false): Promise<ParCuartos[]> {
-  let q = supabase.from("pares_cuartos").select("*").order("nombre");
-  if (soloActivos) q = q.eq("activo", true);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data ?? []) as ParCuartos[];
-}
-
-export async function upsertPar(p: Partial<ParCuartos> & { nombre: string; iso: IsoClase; limite_normativo_pa: number }) {
-  const { id, ...rest } = p;
-  if (id) {
-    const { error } = await supabase.from("pares_cuartos").update(rest).eq("id", id);
-    if (error) throw error;
-  } else {
-    const { error } = await supabase.from("pares_cuartos").insert(rest);
-    if (error) throw error;
-  }
-}
-
-export async function setParActivo(id: string, activo: boolean) {
-  const { error } = await supabase.from("pares_cuartos").update({ activo }).eq("id", id);
-  if (error) throw error;
-}
+// Pares de cuartos: tabla legacy eliminada. El catálogo unificado vive en `objetivos_presion`
+// (ver src/lib/objetivos-presion.ts).
