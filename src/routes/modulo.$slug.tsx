@@ -200,7 +200,7 @@ function TempHRModule() {
         </Link>
         <h1 className="text-2xl font-semibold text-foreground">Temperatura y Humedad Relativa</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Captura semanal por área e instrumento (Lunes–Domingo × 3 turnos = 21 lecturas).
+          Captura semanal por área e instrumento (Lunes–Domingo × 3 turnos, según aplique).
         </p>
 
         {/* Selector / creación de registro */}
