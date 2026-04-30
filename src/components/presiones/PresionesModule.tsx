@@ -267,8 +267,8 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
   useEffect(() => { setDraft(registro); setDirty(false); }, [registro.id]);
   useEffect(() => { if (!dirty) setDraft(registro); }, [registro]);
 
-  const par = pares.find((p) => p.id === draft.par_cuartos_id);
-  const limiteMinPa = Number(draft.lie ?? par?.limite_normativo_pa ?? 5);
+  const objetivo = objetivos.find((o) => o.id === draft.par_cuartos_id);
+  const limiteMinPa = Number(draft.lie ?? objetivo?.limite_normativo_pa ?? objetivo?.lie_pa ?? 5);
 
   const [activeWeekId, setActiveWeekId] = useState<string | null>(draft.semanas[0]?.id ?? null);
   useEffect(() => {
