@@ -496,6 +496,34 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
           </Field>
           <Field label="Parámetro que mide"><Input value={form.parametro} onChange={(e) => setForm({ ...form, parametro: e.target.value })} placeholder="T °C y HR %" /></Field>
           <Field label="Especificación"><Input value={form.especificacion} onChange={(e) => setForm({ ...form, especificacion: e.target.value })} placeholder="18–25°C / ≥10 Pa" /></Field>
+
+          {item && (
+            <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-1.5">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Asignación a pares de cuartos / equipos / filtros HEPA
+              </p>
+              {objetivosAsignados.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Este instrumento no está vinculado a ningún objetivo de presión todavía.
+                  Vincúlalo desde la pestaña <span className="font-medium">Pares de cuartos</span> (próximamente Equipos / Filtros)
+                  seleccionando este código en el campo "Instrumento".
+                </p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1">
+                    {objetivosAsignados.map((o) => (
+                      <span key={o.id} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-background border border-border" : "bg-muted/50 line-through"}`}>
+                        {labelObjetivo(o)}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Para cambiar estas asignaciones, edita el objetivo desde su pestaña correspondiente.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
