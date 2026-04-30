@@ -65,7 +65,7 @@ function ResetPasswordPage() {
             <KeyRound className="h-6 w-6" />
           </div>
           <CardTitle>Restablecer contraseña</CardTitle>
-          <CardDescription>DIAFRA · Define una nueva contraseña</CardDescription>
+          <CardDescription>TRACEA · Define una nueva contraseña</CardDescription>
         </CardHeader>
         <CardContent>
           {!recovery ? (

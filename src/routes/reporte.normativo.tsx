@@ -19,7 +19,7 @@ import { exportarNormativoExcel, exportarNormativoPDF } from "@/lib/export-norma
 export const Route = createFileRoute("/reporte/normativo")({
   head: () => ({
     meta: [
-      { title: "Reporte normativo trimestral — DIAFRA" },
+      { title: "Reporte normativo trimestral — TRACEA" },
       { name: "description", content: "Cumplimiento normativo trimestral y anual con análisis estadístico." },
     ],
   }),

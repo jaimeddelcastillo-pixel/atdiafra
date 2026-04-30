@@ -27,7 +27,7 @@ function moduloSlug(m: Modulo): string {
 export const Route = createFileRoute("/reporte/$id")({
   head: ({ params }) => ({
     meta: [
-      { title: `Detalle de registro — DIAFRA` },
+      { title: `Detalle de registro — TRACEA` },
       { name: "description", content: `Detalle del registro ${params.id} con sus semanas y análisis.` },
     ],
   }),
