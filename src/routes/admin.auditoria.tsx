@@ -56,7 +56,7 @@ const TABLE_LABELS: Record<string, string> = {
   sistemas_hvac: "Sistemas HVAC",
   areas_clasificadas: "Áreas clasificadas",
   instrumentos: "Instrumentos",
-  pares_cuartos: "Pares de cuartos",
+  objetivos_presion: "Objetivos de presión",
   user_roles: "Roles de usuario",
 };
 
