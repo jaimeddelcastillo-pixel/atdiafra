@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Instrumento, InstrumentoTipo,
+  Instrumento, InstrumentoTipo, AreaClasificada,
   upsertInstrumento, listInstrumentos,
 } from "@/lib/catalogos";
 
@@ -20,12 +20,14 @@ interface Props {
   /** Llamado tras crear un nuevo instrumento para que el padre recargue el catálogo */
   onCatalogChanged: (lista: Instrumento[]) => void;
   placeholderCodigo?: string;
+  /** Catálogo de áreas para resolver el nombre del área asignada (Equipo). */
+  areas?: AreaClasificada[];
 }
 
 export function InstrumentoSelector({
   tipo, tipoLabel, parametroDefault,
   value, instrumentos, onChange, onCatalogChanged,
-  placeholderCodigo = "INS-CMB-20",
+  placeholderCodigo = "INS-CMB-20", areas = [],
 }: Props) {
   const [adding, setAdding] = useState(false);
   const [nuevo, setNuevo] = useState({ codigo: "", especificacion: "" });
@@ -72,11 +74,16 @@ export function InstrumentoSelector({
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="">— Seleccionar {tipoLabel} —</option>
-          {instrumentos.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.codigo}{i.especificacion ? ` · ${i.especificacion}` : ""}
-            </option>
-          ))}
+          {instrumentos.map((i) => {
+            const areaNombre = i.area_id
+              ? (areas.find((a) => a.id === i.area_id)?.nombre ?? null)
+              : (i.area_libre ?? null);
+            return (
+              <option key={i.id} value={i.id}>
+                {i.codigo}{areaNombre ? ` · ${areaNombre}` : ""}
+              </option>
+            );
+          })}
         </select>
         <Button
           type="button"
