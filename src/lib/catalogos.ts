@@ -39,17 +39,21 @@ export interface Instrumento {
 
 export const ISO_LIMIT_PA: Record<IsoClase, number> = {
   "ISO-5": 15,
+  "ISO-6": 12,
   "ISO-7 (Clase C)": 10,
   "ISO-8 (Clase D)": 5,
   "ISO-9": 0,
+  "No clasificada": 0,
 };
 
-// Límites de T/HR por ISO (NOM-241)
+// Límites de T/HR por ISO (NOM-241). 'No clasificada' usa rangos amplios por defecto; ajustar por área si aplica.
 export const ISO_TEMP_HR: Record<IsoClase, { tempMin: number; tempMax: number; hrMin: number; hrMax: number }> = {
   "ISO-5": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
+  "ISO-6": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "ISO-7 (Clase C)": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "ISO-8 (Clase D)": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "ISO-9": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
+  "No clasificada": { tempMin: 15, tempMax: 30, hrMin: 20, hrMax: 80 },
 };
 
 // ===== Sistemas HVAC =====
