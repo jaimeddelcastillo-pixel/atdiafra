@@ -1,7 +1,9 @@
 // Cliente de catálogos contra Lovable Cloud (Supabase)
 import { supabase } from "@/integrations/supabase/client";
 
-export type IsoClase = "ISO-5" | "ISO-7 (Clase C)" | "ISO-8 (Clase D)" | "ISO-9";
+export type IsoClase = "ISO-5" | "ISO-6" | "ISO-7 (Clase C)" | "ISO-8 (Clase D)" | "ISO-9" | "No clasificada";
+
+export const ISO_CLASES: IsoClase[] = ["ISO-5", "ISO-6", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9", "No clasificada"];
 export type InstrumentoTipo = "termohigrometro" | "manometro_filtro" | "manometro_diferencial" | "otro";
 
 export interface SistemaHVAC {
