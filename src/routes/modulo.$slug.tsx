@@ -257,6 +257,7 @@ function TempHRModule() {
                     onChange={(id) => setDraft({ ...draft, instrumento_id: id })}
                     onCatalogChanged={setTermohigrometros}
                     placeholderCodigo="INS-CMB-20"
+                    areas={areas}
                   />
                   {draft.area_id && (
                     <p className="text-[11px] text-muted-foreground">
