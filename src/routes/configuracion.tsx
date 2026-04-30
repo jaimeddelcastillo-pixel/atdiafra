@@ -269,12 +269,12 @@ function AreasTab() {
 function AreaDialog({ open, onOpenChange, item, hvacs, onSaved }: {
   open: boolean; onOpenChange: (b: boolean) => void; item: AreaClasificada | null; hvacs: SistemaHVAC[]; onSaved: () => void;
 }) {
-  const [form, setForm] = useState({ codigo: "", nombre: "", iso: "ISO-8 (Clase D)" as IsoClase, hvac_id: "" });
+  const [form, setForm] = useState({ codigo: "", nombre: "", iso: "ISO-8" as IsoClase, hvac_id: "" });
   useEffect(() => {
     setForm({
       codigo: item?.codigo ?? "",
       nombre: item?.nombre ?? "",
-      iso: (item?.iso ?? "ISO-8 (Clase D)") as IsoClase,
+      iso: (item?.iso ?? "ISO-8") as IsoClase,
       hvac_id: item?.hvac_id ?? "",
     });
   }, [item, open]);
@@ -657,7 +657,7 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
     instrumento_id: "",
     // par
     cuarto_x_id: "", cuarto_y_id: "",
-    iso: "ISO-8 (Clase D)" as IsoClase,
+    iso: "ISO-8" as IsoClase,
     limite_normativo_pa: 5,
     isoOverride: false,
     // equipo
@@ -681,7 +681,7 @@ function ObjetivoDialog({ open, onOpenChange, item, areas, instrs, hvacs, onSave
         instrumento_id: item.instrumento_id ?? "",
         cuarto_x_id: item.cuarto_x_id ?? "",
         cuarto_y_id: item.cuarto_y_id ?? "",
-        iso: (item.iso ?? "ISO-8 (Clase D)") as IsoClase,
+        iso: (item.iso ?? "ISO-8") as IsoClase,
         limite_normativo_pa: item.limite_normativo_pa ?? 5,
         isoOverride: true,
         equipo_codigo: item.equipo_codigo ?? "",

@@ -15,7 +15,7 @@ interface Props {
 
 const ISO_OPTIONS: IsoClase[] = ISO_CLASES;
 
-export function AreaSelector({ value, areas, onChange, onCatalogChanged, defaultIso = "ISO-8 (Clase D)" }: Props) {
+export function AreaSelector({ value, areas, onChange, onCatalogChanged, defaultIso = "ISO-8" }: Props) {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nueva, setNueva] = useState({ codigo: "", nombre: "", iso: defaultIso });
