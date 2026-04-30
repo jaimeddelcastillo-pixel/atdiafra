@@ -141,7 +141,7 @@ export function PresionesModule() {
         </Link>
         <h1 className="text-2xl font-semibold text-foreground">Presiones diferenciales</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Captura semanal en Pa (Lunes–Domingo × 3 turnos = 21 lecturas) para pares de cuartos, equipos y filtros HEPA.
+          Captura semanal (Lunes–Domingo × 3 turnos, según aplique) para pares de cuartos, instrumentos (equipos) y filtros HEPA.
         </p>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
