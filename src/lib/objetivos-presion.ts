@@ -30,7 +30,7 @@ export interface ObjetivoPresion {
 
 export const TIPO_OBJETIVO_LABEL: Record<TipoObjetivoPresion, string> = {
   par_cuartos: "Par de cuartos",
-  equipo: "Equipo (manómetro)",
+  equipo: "Instrumento (manómetro)",
   filtro_hepa: "Filtro HEPA / etapa",
 };
 
