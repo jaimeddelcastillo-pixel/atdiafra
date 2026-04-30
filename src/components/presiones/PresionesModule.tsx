@@ -14,9 +14,12 @@ import {
 
 import { useAuth } from "@/lib/auth-context";
 import {
-  AreaClasificada, Instrumento, ParCuartos,
-  listAreas, listInstrumentos, listPares,
+  AreaClasificada, Instrumento,
+  listAreas, listInstrumentos,
 } from "@/lib/catalogos";
+import {
+  ObjetivoPresion, listObjetivosPresion, describirLimite,
+} from "@/lib/objetivos-presion";
 import {
   Registro, Semana, lunesDe, nombreMes, semanaVacia,
   upsertRegistro, listRegistros, deleteRegistro,
@@ -25,13 +28,13 @@ import {
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF } from "@/lib/export-normativo";
 
-import { ParCuartosSelector } from "./ParCuartosSelector";
+import { ObjetivoPresionSelector } from "./ObjetivoPresionSelector";
 import { WeeklyReadingsTablePresion } from "./WeeklyReadingsTablePresion";
 import { ImageImporterPresion } from "./ImageImporterPresion";
 import { PresionAnalysis } from "./PresionAnalysis";
 
 export function PresionesModule() {
-  const [pares, setPares] = useState<ParCuartos[]>([]);
+  const [objetivos, setObjetivos] = useState<ObjetivoPresion[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
   const [manometros, setManometros] = useState<Instrumento[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
@@ -42,10 +45,11 @@ export function PresionesModule() {
       .catch((e) => toast.error("No se pudieron cargar registros: " + e.message));
 
   useEffect(() => {
-    listPares(true).then(setPares).catch((e) => toast.error("Pares: " + e.message));
+    listObjetivosPresion(true).then(setObjetivos).catch((e) => toast.error("Objetivos: " + e.message));
     listAreas(true).then(setAreas).catch((e) => toast.error("Áreas: " + e.message));
-    listInstrumentos({ tipo: "manometro_diferencial", soloActivos: true })
-      .then(setManometros)
+    // Ahora aceptamos manómetros de cualquier tipo (diferencial o de filtro)
+    listInstrumentos({ soloActivos: true })
+      .then((all) => setManometros(all.filter((i) => i.tipo === "manometro_diferencial" || i.tipo === "manometro_filtro")))
       .catch((e) => toast.error("Instrumentos: " + e.message));
     reload();
   }, []);
@@ -56,28 +60,39 @@ export function PresionesModule() {
     [registros, activeId],
   );
 
-  const [draftParId, setDraftParId] = useState("");
+  const [draftObjId, setDraftObjId] = useState("");
 
   const createRegistro = async () => {
-    if (!draftParId) {
-      toast.error("Selecciona un par de cuartos");
+    if (!draftObjId) {
+      toast.error("Selecciona un objetivo de medición");
       return;
     }
-    const par = pares.find((p) => p.id === draftParId);
-    if (!par) return;
-    const xCod = areas.find((a) => a.id === par.cuarto_x_id)?.codigo ?? "X";
-    const yCod = areas.find((a) => a.id === par.cuarto_y_id)?.codigo ?? "Y";
-    const instCod = manometros.find((m) => m.id === par.instrumento_id)?.codigo ?? "";
+    const obj = objetivos.find((o) => o.id === draftObjId);
+    if (!obj) return;
+
+    // Construir nombre legible según tipo
+    let nombre = obj.nombre;
+    if (obj.tipo === "par_cuartos") {
+      const xCod = areas.find((a) => a.id === obj.cuarto_x_id)?.codigo ?? "X";
+      const yCod = areas.find((a) => a.id === obj.cuarto_y_id)?.codigo ?? "Y";
+      const instCod = manometros.find((m) => m.id === obj.instrumento_id)?.codigo ?? "";
+      nombre = `${xCod} vs ${yCod}${instCod ? ` · ${instCod}` : ""}`;
+    } else if (obj.tipo === "equipo") {
+      nombre = `${obj.equipo_codigo ?? obj.codigo} — ${obj.nombre}`;
+    } else {
+      nombre = `${obj.codigo} · ${obj.etapa ?? "filtro"}`;
+    }
 
     const r: Registro = {
       id: crypto.randomUUID(),
       modulo: "presiones",
-      nombre: `${xCod} vs ${yCod}${instCod ? ` · ${instCod}` : ""}`,
-      par_cuartos_id: par.id,
-      instrumento_id: par.instrumento_id ?? null,
-      iso: par.iso,
-      lse: null,
-      lie: par.limite_normativo_pa,
+      nombre,
+      // Reusamos par_cuartos_id como FK al objetivo (todos los objetivos tienen uuid propio).
+      par_cuartos_id: obj.id,
+      instrumento_id: obj.instrumento_id ?? null,
+      iso: (obj.iso as any) ?? null,
+      lse: obj.lse_pa,
+      lie: obj.tipo === "par_cuartos" ? obj.limite_normativo_pa : obj.lie_pa,
       semanas: [],
       created_at: new Date().toISOString(),
       activo: true,
