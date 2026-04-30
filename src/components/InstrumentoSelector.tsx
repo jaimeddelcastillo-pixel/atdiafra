@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 import { toast } from "sonner";
 import {
-  Instrumento, InstrumentoTipo,
+  Instrumento, InstrumentoTipo, AreaClasificada,
   upsertInstrumento, listInstrumentos,
 } from "@/lib/catalogos";
 
@@ -20,6 +20,8 @@ interface Props {
   /** Llamado tras crear un nuevo instrumento para que el padre recargue el catálogo */
   onCatalogChanged: (lista: Instrumento[]) => void;
   placeholderCodigo?: string;
+  /** Catálogo de áreas para resolver el nombre del área asignada (Equipo). */
+  areas?: AreaClasificada[];
 }
 
 export function InstrumentoSelector({
