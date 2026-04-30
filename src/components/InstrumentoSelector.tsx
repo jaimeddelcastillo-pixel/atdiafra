@@ -27,7 +27,7 @@ interface Props {
 export function InstrumentoSelector({
   tipo, tipoLabel, parametroDefault,
   value, instrumentos, onChange, onCatalogChanged,
-  placeholderCodigo = "INS-CMB-20",
+  placeholderCodigo = "INS-CMB-20", areas = [],
 }: Props) {
   const [adding, setAdding] = useState(false);
   const [nuevo, setNuevo] = useState({ codigo: "", especificacion: "" });
