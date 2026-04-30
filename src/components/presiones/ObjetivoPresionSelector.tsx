@@ -35,12 +35,25 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
   const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
   const instCodigo = (id: string | null) => (id ? instrumentos.find((x) => x.id === id)?.codigo ?? "—" : "—");
 
+  const areaNombreInst = (instId: string | null) => {
+    if (!instId) return null;
+    const i = instrumentos.find((x) => x.id === instId);
+    if (!i) return null;
+    if (i.area_id) return areas.find((a) => a.id === i.area_id)?.nombre ?? null;
+    return i.area_libre ?? null;
+  };
+
   const opciones = useMemo(() => {
     if (tipo === "par_cuartos") {
-      return objetivos.filter((o) => o.activo).map((o) => ({
-        id: o.id,
-        label: `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)} · ${instCodigo(o.instrumento_id)} · ${describirLimite(o)}`,
-      }));
+      return objetivos.filter((o) => o.activo).map((o) => {
+        const inst = instCodigo(o.instrumento_id);
+        const areaInst = areaNombreInst(o.instrumento_id);
+        const instLabel = areaInst ? `${inst} · ${areaInst}` : inst;
+        return {
+          id: o.id,
+          label: `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)} · ${instLabel} · ${describirLimite(o)}`,
+        };
+      });
     }
     const filtroTipo = tipo === "filtro_hepa" ? "manometro_filtro" : null;
     return instrumentos
@@ -55,8 +68,11 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
         if (i.lie_pa != null) limites.push(`≥${i.lie_pa}`);
         if (i.lse_pa != null) limites.push(`≤${i.lse_pa}`);
         const lim = limites.length ? ` · ${limites.join(" / ")} Pa` : "";
-        const esp = i.especificacion ? ` · ${i.especificacion.split("|")[0].trim()}` : "";
-        return { id: i.id, label: `${i.codigo}${esp}${lim}` };
+        const areaNombre = i.area_id
+          ? (areas.find((a) => a.id === i.area_id)?.nombre ?? null)
+          : (i.area_libre ?? null);
+        const areaTxt = areaNombre ? ` · ${areaNombre}` : "";
+        return { id: i.id, label: `${i.codigo}${areaTxt}${lim}` };
       });
   }, [tipo, objetivos, instrumentos, areas]);
 
