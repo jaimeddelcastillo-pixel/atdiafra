@@ -1,73 +1,102 @@
-// Selector de objetivo de presión: tipo (par / equipo / filtro) → ítem.
+// Selector unificado para Presiones: 3 botones (Par de cuartos / Instrumento / Filtro HEPA).
+// - Par de cuartos → lista objetivos_presion (tipo par_cuartos).
+// - Instrumento (manómetro) → lista catálogo de instrumentos tipo manometro_diferencial / otro.
+// - Filtro HEPA → lista catálogo de instrumentos tipo manometro_filtro.
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  ObjetivoPresion, TipoObjetivoPresion, TIPO_OBJETIVO_LABEL, describirLimite,
-} from "@/lib/objetivos-presion";
+import { ObjetivoPresion, describirLimite } from "@/lib/objetivos-presion";
 import { AreaClasificada, Instrumento } from "@/lib/catalogos";
 
+export type SeleccionPresionTipo = "par_cuartos" | "instrumento" | "filtro_hepa";
+
+export interface SeleccionPresion {
+  tipo: SeleccionPresionTipo;
+  /** Para par_cuartos: id de objetivo. Para instrumento/filtro: id del instrumento. */
+  id: string;
+}
+
 interface Props {
-  value: string;
+  value: SeleccionPresion | null;
   objetivos: ObjetivoPresion[];
   areas: AreaClasificada[];
   instrumentos: Instrumento[];
-  onChange: (id: string, obj?: ObjetivoPresion) => void;
+  onChange: (sel: SeleccionPresion | null) => void;
 }
 
-export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos, onChange }: Props) {
-  const selected = objetivos.find((o) => o.id === value);
-  const [tipo, setTipo] = useState<TipoObjetivoPresion>(selected?.tipo ?? "par_cuartos");
+const TIPO_LABEL: Record<SeleccionPresionTipo, string> = {
+  par_cuartos: "Par de cuartos",
+  instrumento: "Instrumento (manómetro)",
+  filtro_hepa: "Filtro HEPA",
+};
 
-  const filtrados = useMemo(() => objetivos.filter((o) => o.tipo === tipo), [objetivos, tipo]);
+export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos, onChange }: Props) {
+  const [tipo, setTipo] = useState<SeleccionPresionTipo>(value?.tipo ?? "par_cuartos");
 
   const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
   const instCodigo = (id: string | null) => (id ? instrumentos.find((x) => x.id === id)?.codigo ?? "—" : "—");
 
-  const labelObjetivo = (o: ObjetivoPresion) => {
-    if (o.tipo === "par_cuartos") {
-      return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)} · ${instCodigo(o.instrumento_id)} · ${describirLimite(o)}`;
+  const opciones = useMemo(() => {
+    if (tipo === "par_cuartos") {
+      return objetivos.filter((o) => o.activo).map((o) => ({
+        id: o.id,
+        label: `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)} · ${instCodigo(o.instrumento_id)} · ${describirLimite(o)}`,
+      }));
     }
-    if (o.tipo === "equipo") {
-      return `${o.equipo_codigo ?? o.codigo} — ${o.nombre} · ${instCodigo(o.instrumento_id)} · ${describirLimite(o)}`;
-    }
-    // filtro_hepa
-    return `${o.codigo} · ${o.etapa ?? "etapa"} · ${instCodigo(o.instrumento_id)} · ${describirLimite(o)}`;
-  };
+    const filtroTipo = tipo === "filtro_hepa" ? "manometro_filtro" : null;
+    return instrumentos
+      .filter((i) => {
+        if (!i.activo) return false;
+        if (filtroTipo) return i.tipo === filtroTipo;
+        // instrumento (manómetro) → diferenciales y otros, NO los de filtro HEPA
+        return i.tipo === "manometro_diferencial" || i.tipo === "otro";
+      })
+      .map((i) => {
+        const limites: string[] = [];
+        if (i.lie_pa != null) limites.push(`≥${i.lie_pa}`);
+        if (i.lse_pa != null) limites.push(`≤${i.lse_pa}`);
+        const lim = limites.length ? ` · ${limites.join(" / ")} Pa` : "";
+        const esp = i.especificacion ? ` · ${i.especificacion.split("|")[0].trim()}` : "";
+        return { id: i.id, label: `${i.codigo}${esp}${lim}` };
+      });
+  }, [tipo, objetivos, instrumentos, areas]);
+
+  const selectedId = value?.tipo === tipo ? value.id : "";
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 gap-1 rounded-md border border-input bg-background p-1">
-        {(Object.keys(TIPO_OBJETIVO_LABEL) as TipoObjetivoPresion[]).map((t) => (
+        {(Object.keys(TIPO_LABEL) as SeleccionPresionTipo[]).map((t) => (
           <button
             key={t}
             type="button"
-            onClick={() => { setTipo(t); onChange("", undefined); }}
+            onClick={() => { setTipo(t); onChange(null); }}
             className={`text-[11px] py-1.5 rounded transition-colors ${
               tipo === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
             }`}
           >
-            {TIPO_OBJETIVO_LABEL[t]}
+            {TIPO_LABEL[t]}
           </button>
         ))}
       </div>
 
       <select
-        value={value}
+        value={selectedId}
         onChange={(e) => {
           const id = e.target.value;
-          onChange(id, objetivos.find((o) => o.id === id));
+          onChange(id ? { tipo, id } : null);
         }}
         className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
       >
-        <option value="">— Selecciona {TIPO_OBJETIVO_LABEL[tipo].toLowerCase()} —</option>
-        {filtrados.map((o) => (
-          <option key={o.id} value={o.id}>{labelObjetivo(o)}</option>
+        <option value="">— Selecciona {TIPO_LABEL[tipo].toLowerCase()} —</option>
+        {opciones.map((o) => (
+          <option key={o.id} value={o.id}>{o.label}</option>
         ))}
       </select>
 
-      {filtrados.length === 0 && (
+      {opciones.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
-          No hay {TIPO_OBJETIVO_LABEL[tipo].toLowerCase()} cargados. Administra el catálogo en{" "}
+          No hay {TIPO_LABEL[tipo].toLowerCase()} cargados.{" "}
+          {tipo === "par_cuartos" ? "Da de alta pares en " : "Da de alta instrumentos en "}
           <Link to="/configuracion" className="text-primary hover:underline">Configuración</Link>.
         </p>
       )}
