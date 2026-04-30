@@ -379,7 +379,7 @@ function InstrumentosTab() {
           <TableRow>
             <TableHead>Código</TableHead>
             <TableHead>Tipo</TableHead>
-            <TableHead>Área asignada</TableHead>
+            <TableHead>Área asignada (Equipo)</TableHead>
             <TableHead>Asignado a (objetivos de presión)</TableHead>
             <TableHead>Parámetro</TableHead>
             <TableHead>Especificación</TableHead>
@@ -499,7 +499,7 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
               ))}
             </select>
           </Field>
-          <Field label="Área asignada (catálogo)">
+          <Field label="Área asignada (Equipo) (catálogo)">
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.area_id} onChange={(e) => setForm({ ...form, area_id: e.target.value })}>
               <option value="">— ninguna del catálogo —</option>
               {areas.filter((a) => a.activo || a.id === item?.area_id).map((a) => (
