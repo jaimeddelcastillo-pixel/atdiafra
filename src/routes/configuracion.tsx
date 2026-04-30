@@ -26,6 +26,9 @@ import {
   setAreaActivo, setInstrumentoActivo, setParActivo, setSistemaHVACActivo,
   upsertArea, upsertInstrumento, upsertPar, upsertSistemaHVAC,
 } from "@/lib/catalogos";
+import {
+  ObjetivoPresion, listObjetivosPresion, TIPO_OBJETIVO_LABEL,
+} from "@/lib/objetivos-presion";
 
 export const Route = createFileRoute("/configuracion")({
   head: () => ({
