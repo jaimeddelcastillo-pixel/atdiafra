@@ -449,14 +449,24 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
   const [form, setForm] = useState({
     codigo: "", tipo: "termohigrometro" as Instrumento["tipo"],
     area_id: "", area_libre: "", parametro: "", especificacion: "",
+    lie_pa: "" as string | number,
+    lse_pa: "" as string | number,
+    baseline_pa: "" as string | number,
+    baseline_tolerancia_pct: 25 as string | number,
   });
   useEffect(() => {
     setForm({
       codigo: item?.codigo ?? "", tipo: item?.tipo ?? "termohigrometro",
       area_id: item?.area_id ?? "", area_libre: item?.area_libre ?? "",
       parametro: item?.parametro ?? "", especificacion: item?.especificacion ?? "",
+      lie_pa: item?.lie_pa ?? "",
+      lse_pa: item?.lse_pa ?? "",
+      baseline_pa: item?.baseline_pa ?? "",
+      baseline_tolerancia_pct: item?.baseline_tolerancia_pct ?? 25,
     });
   }, [item, open]);
+
+  const num = (v: string | number) => v === "" ? null : Number(v);
 
   const save = async () => {
     if (!form.codigo.trim()) { toast.error("Código requerido"); return; }
@@ -465,16 +475,22 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         id: item?.id, codigo: form.codigo.trim(), tipo: form.tipo,
         area_id: form.area_id || null, area_libre: form.area_libre.trim() || null,
         parametro: form.parametro.trim(), especificacion: form.especificacion.trim() || null,
+        lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
+        baseline_pa: num(form.baseline_pa),
+        baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
       });
       toast.success("Guardado"); onSaved();
     } catch (e) { toast.error((e as Error).message); }
   };
 
+  const esManometro = form.tipo === "manometro_diferencial" || form.tipo === "manometro_filtro";
+  const esFiltroHEPA = form.tipo === "manometro_filtro";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} instrumento</DialogTitle></DialogHeader>
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto">
           <Field label="Código"><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="INS-CMB-20" /></Field>
           <Field label="Tipo">
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Instrumento["tipo"] })}>
@@ -495,32 +511,63 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
             <Input value={form.area_libre} onChange={(e) => setForm({ ...form, area_libre: e.target.value })} placeholder="EQU-CMB-08 etapa 35% / Sistema agua / etc." />
           </Field>
           <Field label="Parámetro que mide"><Input value={form.parametro} onChange={(e) => setForm({ ...form, parametro: e.target.value })} placeholder="T °C y HR %" /></Field>
-          <Field label="Especificación"><Input value={form.especificacion} onChange={(e) => setForm({ ...form, especificacion: e.target.value })} placeholder="18–25°C / ≥10 Pa" /></Field>
+          <Field label="Especificación"><Input value={form.especificacion} onChange={(e) => setForm({ ...form, especificacion: e.target.value })} placeholder="Marca / modelo / ubicación" /></Field>
+
+          {esManometro && (
+            <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Límites de monitoreo (Pa) — se usan para alarmas de cumplimiento normativo.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="LIE ΔP (Pa)">
+                  <Input type="number" value={form.lie_pa}
+                    onChange={(e) => setForm({ ...form, lie_pa: e.target.value })} placeholder="ej. -50 / 50" />
+                </Field>
+                <Field label="LSE ΔP (Pa)">
+                  <Input type="number" value={form.lse_pa}
+                    onChange={(e) => setForm({ ...form, lse_pa: e.target.value })} placeholder="ej. 50 / 250" />
+                </Field>
+              </div>
+              {esFiltroHEPA && (
+                <>
+                  <p className="text-[11px] font-medium text-muted-foreground pt-2 border-t border-border/60">
+                    Baseline para alarma de tendencia (filtro HEPA — crítico).
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Baseline ΔP (Pa)">
+                      <Input type="number" value={form.baseline_pa}
+                        onChange={(e) => setForm({ ...form, baseline_pa: e.target.value })} placeholder="lectura inicial limpia" />
+                    </Field>
+                    <Field label="Tolerancia baseline (%)">
+                      <Input type="number" value={form.baseline_tolerancia_pct}
+                        onChange={(e) => setForm({ ...form, baseline_tolerancia_pct: e.target.value })} placeholder="25" />
+                    </Field>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Se dispara alerta si la lectura se desvía más del % indicado respecto al baseline.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
           {item && (
             <div className="rounded-md border border-dashed border-border bg-muted/30 p-3 space-y-1.5">
               <p className="text-[11px] font-medium text-muted-foreground">
-                Asignación a pares de cuartos / equipos / filtros HEPA
+                Pares de cuartos vinculados
               </p>
               {objetivosAsignados.length === 0 ? (
                 <p className="text-[11px] text-muted-foreground">
-                  Este instrumento no está vinculado a ningún objetivo de presión todavía.
-                  Vincúlalo desde la pestaña <span className="font-medium">Pares de cuartos</span> (próximamente Equipos / Filtros)
-                  seleccionando este código en el campo "Instrumento".
+                  Este instrumento no está vinculado a ningún par de cuartos.
                 </p>
               ) : (
-                <>
-                  <div className="flex flex-wrap gap-1">
-                    {objetivosAsignados.map((o) => (
-                      <span key={o.id} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-background border border-border" : "bg-muted/50 line-through"}`}>
-                        {labelObjetivo(o)}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Para cambiar estas asignaciones, edita el objetivo desde su pestaña correspondiente.
-                  </p>
-                </>
+                <div className="flex flex-wrap gap-1">
+                  {objetivosAsignados.map((o) => (
+                    <span key={o.id} className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] ${o.activo ? "bg-background border border-border" : "bg-muted/50 line-through"}`}>
+                      {labelObjetivo(o)}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}
