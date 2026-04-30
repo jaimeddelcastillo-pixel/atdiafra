@@ -74,11 +74,16 @@ export function InstrumentoSelector({
           className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
         >
           <option value="">— Seleccionar {tipoLabel} —</option>
-          {instrumentos.map((i) => (
-            <option key={i.id} value={i.id}>
-              {i.codigo}{i.especificacion ? ` · ${i.especificacion}` : ""}
-            </option>
-          ))}
+          {instrumentos.map((i) => {
+            const areaNombre = i.area_id
+              ? (areas.find((a) => a.id === i.area_id)?.nombre ?? null)
+              : (i.area_libre ?? null);
+            return (
+              <option key={i.id} value={i.id}>
+                {i.codigo}{areaNombre ? ` · ${areaNombre}` : ""}
+              </option>
+            );
+          })}
         </select>
         <Button
           type="button"
