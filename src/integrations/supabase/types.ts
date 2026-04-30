@@ -303,67 +303,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pares_cuartos: {
-        Row: {
-          activo: boolean
-          created_at: string
-          cuarto_x_id: string | null
-          cuarto_y_id: string | null
-          id: string
-          instrumento_id: string | null
-          iso: Database["public"]["Enums"]["iso_clase"]
-          limite_normativo_pa: number
-          nombre: string
-          updated_at: string
-        }
-        Insert: {
-          activo?: boolean
-          created_at?: string
-          cuarto_x_id?: string | null
-          cuarto_y_id?: string | null
-          id?: string
-          instrumento_id?: string | null
-          iso: Database["public"]["Enums"]["iso_clase"]
-          limite_normativo_pa?: number
-          nombre: string
-          updated_at?: string
-        }
-        Update: {
-          activo?: boolean
-          created_at?: string
-          cuarto_x_id?: string | null
-          cuarto_y_id?: string | null
-          id?: string
-          instrumento_id?: string | null
-          iso?: Database["public"]["Enums"]["iso_clase"]
-          limite_normativo_pa?: number
-          nombre?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pares_cuartos_cuarto_x_id_fkey"
-            columns: ["cuarto_x_id"]
-            isOneToOne: false
-            referencedRelation: "areas_clasificadas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pares_cuartos_cuarto_y_id_fkey"
-            columns: ["cuarto_y_id"]
-            isOneToOne: false
-            referencedRelation: "areas_clasificadas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pares_cuartos_instrumento_id_fkey"
-            columns: ["instrumento_id"]
-            isOneToOne: false
-            referencedRelation: "instrumentos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       registro_semanas: {
         Row: {
           anio: string

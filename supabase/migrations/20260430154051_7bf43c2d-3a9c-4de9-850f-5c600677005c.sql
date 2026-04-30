@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS public.pares_cuartos CASCADE;
