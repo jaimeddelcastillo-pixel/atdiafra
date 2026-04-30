@@ -353,9 +353,7 @@ function InstrumentosTab() {
   const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
 
   const labelObjetivo = (o: ObjetivoPresion): string => {
-    if (o.tipo === "par_cuartos") return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)}`;
-    if (o.tipo === "equipo") return `${o.equipo_codigo ?? o.codigo} — ${o.nombre}`;
-    return `${o.codigo}${o.etapa ? ` · ${o.etapa}` : ""}`;
+    return `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)}`;
   };
 
   const objetivosDe = (i: Instrumento) => objetivos.filter((o) => o.instrumento_id === i.id);
