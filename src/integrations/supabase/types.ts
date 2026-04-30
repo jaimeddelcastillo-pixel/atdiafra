@@ -183,6 +183,8 @@ export type Database = {
           activo: boolean
           area_id: string | null
           area_libre: string | null
+          baseline_pa: number | null
+          baseline_tolerancia_pct: number | null
           codigo: string
           created_at: string
           especificacion: string | null
@@ -197,6 +199,8 @@ export type Database = {
           activo?: boolean
           area_id?: string | null
           area_libre?: string | null
+          baseline_pa?: number | null
+          baseline_tolerancia_pct?: number | null
           codigo: string
           created_at?: string
           especificacion?: string | null
@@ -211,6 +215,8 @@ export type Database = {
           activo?: boolean
           area_id?: string | null
           area_libre?: string | null
+          baseline_pa?: number | null
+          baseline_tolerancia_pct?: number | null
           codigo?: string
           created_at?: string
           especificacion?: string | null
@@ -234,15 +240,10 @@ export type Database = {
       objetivos_presion: {
         Row: {
           activo: boolean
-          baseline_pa: number | null
-          baseline_tolerancia_pct: number | null
           codigo: string
           created_at: string
           cuarto_x_id: string | null
           cuarto_y_id: string | null
-          equipo_codigo: string | null
-          etapa: string | null
-          hvac_id: string | null
           id: string
           instrumento_id: string | null
           iso: string | null
@@ -257,15 +258,10 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
-          baseline_pa?: number | null
-          baseline_tolerancia_pct?: number | null
           codigo: string
           created_at?: string
           cuarto_x_id?: string | null
           cuarto_y_id?: string | null
-          equipo_codigo?: string | null
-          etapa?: string | null
-          hvac_id?: string | null
           id?: string
           instrumento_id?: string | null
           iso?: string | null
@@ -280,15 +276,10 @@ export type Database = {
         }
         Update: {
           activo?: boolean
-          baseline_pa?: number | null
-          baseline_tolerancia_pct?: number | null
           codigo?: string
           created_at?: string
           cuarto_x_id?: string | null
           cuarto_y_id?: string | null
-          equipo_codigo?: string | null
-          etapa?: string | null
-          hvac_id?: string | null
           id?: string
           instrumento_id?: string | null
           iso?: string | null
@@ -563,7 +554,7 @@ export type Database = {
         | "ISO-9"
         | "ISO-6"
         | "No clasificada"
-      tipo_objetivo_presion: "par_cuartos" | "equipo" | "filtro_hepa"
+      tipo_objetivo_presion: "par_cuartos"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -706,7 +697,7 @@ export const Constants = {
         "ISO-6",
         "No clasificada",
       ],
-      tipo_objetivo_presion: ["par_cuartos", "equipo", "filtro_hepa"],
+      tipo_objetivo_presion: ["par_cuartos"],
     },
   },
 } as const
