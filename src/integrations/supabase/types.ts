@@ -558,8 +558,8 @@ export type Database = {
         | "otro"
       iso_clase:
         | "ISO-5"
-        | "ISO-7 (Clase C)"
-        | "ISO-8 (Clase D)"
+        | "ISO-7"
+        | "ISO-8"
         | "ISO-9"
         | "ISO-6"
         | "No clasificada"
@@ -700,8 +700,8 @@ export const Constants = {
       ],
       iso_clase: [
         "ISO-5",
-        "ISO-7 (Clase C)",
-        "ISO-8 (Clase D)",
+        "ISO-7",
+        "ISO-8",
         "ISO-9",
         "ISO-6",
         "No clasificada",

@@ -131,7 +131,7 @@ function TempHRModule() {
     codigoArea: "",
     nombreArea: "",
     instrumento_id: "",
-    iso: "ISO-8 (Clase D)" as IsoClase,
+    iso: "ISO-8" as IsoClase,
   });
 
   const createRegistro = async () => {
@@ -173,7 +173,7 @@ function TempHRModule() {
       await upsertRegistro(r);
       await reload();
       setActiveId(r.id);
-      setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8 (Clase D)" });
+      setDraft({ area_id: "", codigoArea: "", nombreArea: "", instrumento_id: "", iso: "ISO-8" });
       toast.success("Registro creado");
     } catch (e: any) {
       toast.error("No se pudo crear el registro: " + e.message);
@@ -305,7 +305,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
 }) {
   const navigate = useNavigate();
   const { canWriteRecords, canDelete } = useAuth();
-  const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
+  const iso = (registro.iso ?? "ISO-8") as IsoClase;
   // Buffer local: cambios no se persisten hasta presionar "Guardar"
   const [draft, setDraft] = useState<Registro>(registro);
   const [dirty, setDirty] = useState(false);

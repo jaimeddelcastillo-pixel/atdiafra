@@ -1,9 +1,9 @@
 // Cliente de catálogos contra Lovable Cloud (Supabase)
 import { supabase } from "@/integrations/supabase/client";
 
-export type IsoClase = "ISO-5" | "ISO-6" | "ISO-7 (Clase C)" | "ISO-8 (Clase D)" | "ISO-9" | "No clasificada";
+export type IsoClase = "ISO-5" | "ISO-6" | "ISO-7" | "ISO-8" | "ISO-9" | "No clasificada";
 
-export const ISO_CLASES: IsoClase[] = ["ISO-5", "ISO-6", "ISO-7 (Clase C)", "ISO-8 (Clase D)", "ISO-9", "No clasificada"];
+export const ISO_CLASES: IsoClase[] = ["ISO-5", "ISO-6", "ISO-7", "ISO-8", "ISO-9", "No clasificada"];
 export type InstrumentoTipo = "termohigrometro" | "manometro_filtro" | "manometro_diferencial" | "otro";
 
 export interface SistemaHVAC {
@@ -40,8 +40,8 @@ export interface Instrumento {
 export const ISO_LIMIT_PA: Record<IsoClase, number> = {
   "ISO-5": 15,
   "ISO-6": 12,
-  "ISO-7 (Clase C)": 10,
-  "ISO-8 (Clase D)": 5,
+  "ISO-7": 10,
+  "ISO-8": 5,
   "ISO-9": 0,
   "No clasificada": 0,
 };
@@ -50,8 +50,8 @@ export const ISO_LIMIT_PA: Record<IsoClase, number> = {
 export const ISO_TEMP_HR: Record<IsoClase, { tempMin: number; tempMax: number; hrMin: number; hrMax: number }> = {
   "ISO-5": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "ISO-6": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
-  "ISO-7 (Clase C)": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
-  "ISO-8 (Clase D)": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
+  "ISO-7": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
+  "ISO-8": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "ISO-9": { tempMin: 18, tempMax: 25, hrMin: 30, hrMax: 65 },
   "No clasificada": { tempMin: 15, tempMax: 30, hrMin: 20, hrMax: 80 },
 };

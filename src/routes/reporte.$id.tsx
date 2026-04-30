@@ -97,7 +97,7 @@ function DetallePage() {
   if (!registro) return null;
 
   const esTHR = registro.modulo === "temphr";
-  const iso = (registro.iso ?? "ISO-8 (Clase D)") as IsoClase;
+  const iso = (registro.iso ?? "ISO-8") as IsoClase;
   const semanasOrden = [...registro.semanas].sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio));
 
   return (
