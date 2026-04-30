@@ -454,8 +454,7 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
 
       <ImageImporterPresion
         context={{
-          codigoArea: par
-            ? `${draft.nombre}` : "",
+          codigoArea: objetivo ? `${draft.nombre}` : "",
           nombreArea: draft.nombre,
           instrumento: draft.instrumento_id ?? "",
           iso: draft.iso ?? "",
