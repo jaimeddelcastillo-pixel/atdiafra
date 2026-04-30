@@ -23,7 +23,7 @@ export function AppHeader() {
         <Link to="/" className="flex items-center gap-3">
           <TraceaLogo size={36} />
           <div className="leading-tight">
-            <p className="text-[28px] font-bold text-white tracking-tight">TRACEA</p>
+            <p className="text-[28px] font-bold text-white tracking-tight">DIAFRA</p>
             <p className="text-xs text-[#8587E8]">Análisis de Tendencias</p>
           </div>
         </Link>

@@ -72,7 +72,7 @@ function AuthPage() {
           <div className="mx-auto mb-3 flex items-center justify-center">
             <TraceaLogo size={64} />
           </div>
-          <CardTitle className="text-3xl font-bold text-secondary">TRACEA</CardTitle>
+          <CardTitle className="text-3xl font-bold text-secondary">DIAFRA</CardTitle>
           <CardDescription className="text-primary text-sm">Análisis de Tendencias · NOM-241</CardDescription>
         </CardHeader>
         <CardContent>

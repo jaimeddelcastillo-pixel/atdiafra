@@ -10,8 +10,8 @@ import { Activity, FlaskConical, Library, ChevronRight, Gauge } from "lucide-rea
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TRACEA — Análisis de Tendencias" },
-      { name: "description", content: "Módulo de Análisis de Tendencias NOM-241 | TRACEA Suite" },
+      { title: "DIAFRA — Análisis de Tendencias" },
+      { name: "description", content: "Módulo de Análisis de Tendencias NOM-241 | DIAFRA Suite" },
     ],
   }),
   component: () => <AuthGuard><Index /></AuthGuard>,
@@ -37,7 +37,7 @@ function Index() {
               </div>
               <div>
                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-                  TRACEA
+                  DIAFRA
                 </h1>
                 <p className="mt-1 text-sm sm:text-base font-medium text-primary">
                   Análisis de Tendencias
@@ -134,7 +134,7 @@ function Index() {
         </section>
 
         <footer className="mt-12 pt-6 border-t border-border text-xs text-muted-foreground">
-          © 2026 TRACEA. Todos los derechos reservados. · <a href="https://tracea.site" className="hover:text-primary">tracea.site</a> · soporte@tracea.com.mx
+          © 2026 DIAFRA. Todos los derechos reservados. · <a href="https://tracea.site" className="hover:text-primary">tracea.site</a> · soporte@tracea.com.mx
         </footer>
       </main>
     </div>
