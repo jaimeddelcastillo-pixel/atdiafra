@@ -12,7 +12,6 @@ import {
   analizarRegistro,
   semanasDelPeriodo,
   CPK_WARN,
-  CPK_FAIL,
   type Periodo,
   type EstadisticaSerie,
 } from "@/lib/normativo";
