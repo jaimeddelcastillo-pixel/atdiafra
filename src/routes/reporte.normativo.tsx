@@ -628,9 +628,8 @@ function NormativoPage() {
                       "hover:bg-muted/30";
                     const tipoReg: TipoRegistroReporte = tipoRegistroReporte(a.registro);
                     return (
-                      <>
+                      <FragmentWithKey key={a.registro.id}>
                         <tr
-                          key={a.registro.id}
                           className={`border-t border-border cursor-pointer transition-colors ${rowTone}`}
                           onClick={() => toggleExpand(a.registro.id)}
                         >
