@@ -128,6 +128,7 @@ export function exportarNormativoExcel(
 
   // Hoja 1: Resumen
   const resumen = analisis.map((a) => ({
+    Tipo: etiquetaTipoRegistro(tipoRegistroReporte(a.registro)),
     Grupo: etiquetaGrupo(a.registro, agrupar, cat),
     Registro: a.registro.nombre,
     Modulo: a.registro.modulo,
