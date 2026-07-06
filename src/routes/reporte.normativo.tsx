@@ -105,11 +105,17 @@ function hayFueraSpec(a: AnalisisRegistro): number {
   return a.series.reduce((s, r) => s + r.fueraSpec.total, 0);
 }
 
+/**
+ * Tono de fila:
+ *  · critical → No Conformidad real (fueraSpec o sin mínimo normativo).
+ *  · warning  → Sin NC, pero hay alerta estadística (Cpk < 1.33).
+ *  · ok       → Conforme y capaz. NUNCA se marca critical por Cpk solo.
+ */
 function severidad(a: AnalisisRegistro): Severidad {
   const fs = hayFueraSpec(a);
   const cpk = peorCpk(a);
-  if (fs > 0 || (cpk != null && cpk < CPK_FAIL)) return "critical";
-  if (!a.cumpleMinimo || (cpk != null && cpk < CPK_WARN)) return "warning";
+  if (fs > 0 || !a.cumpleMinimo) return "critical";
+  if (cpk != null && cpk < CPK_WARN) return "warning";
   return "ok";
 }
 
