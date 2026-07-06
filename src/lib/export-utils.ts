@@ -28,7 +28,7 @@ function num(v: number | null | undefined, d = 2) {
 
 function colorCpk(cpk: number | null): [number, number, number] | null {
   if (cpk == null) return null;
-  if (cpk < CPK_FAIL) return [220, 38, 38];
+  // Nunca rojo: Cpk bajo es Alerta estadística (ámbar), no No Conformidad.
   if (cpk < CPK_WARN) return [251, 191, 36];
   return [22, 163, 74];
 }
