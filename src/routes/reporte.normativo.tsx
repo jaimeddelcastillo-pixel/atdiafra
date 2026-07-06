@@ -211,7 +211,7 @@ function NormativoPage() {
 
   // Aplicar filtro "solo no conformidades"
   const analisisVisible = useMemo(() => {
-    const base = soloNC ? analisisTab.filter((a) => severidad(a) !== "ok") : analisisTab;
+    const base = soloNC ? analisisTab.filter((a) => severidad(a) === "critical") : analisisTab;
     // Sort
     const sorted = [...base].sort((a, b) => {
       let av = 0, bv = 0, cmp = 0;
