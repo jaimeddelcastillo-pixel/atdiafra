@@ -248,6 +248,7 @@ function UsuariosAdmin() {
                 <RefreshCw />
                 Actualizar
               </Button>
+              {isSuperAdmin && (
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogTrigger asChild>
                   <Button size="sm">
@@ -317,6 +318,8 @@ function UsuariosAdmin() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
+              {isSuperAdmin && (
               <Dialog open={openInvite} onOpenChange={setOpenInvite}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="secondary">
@@ -377,6 +380,8 @@ function UsuariosAdmin() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
+
             </div>
           </CardHeader>
           <CardContent>
