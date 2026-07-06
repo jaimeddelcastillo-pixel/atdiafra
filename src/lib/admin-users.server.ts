@@ -19,25 +19,34 @@ function assertRole(value: string): AdminRole {
   return value as AdminRole;
 }
 
-async function requireSuperAdmin(accessToken: string) {
+async function requireRoles(accessToken: string, allowed: AdminRole[]) {
   if (!accessToken) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
   if (userError || !userData.user)
     throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
-  const { data: roleRow, error: roleError } = await supabaseAdmin
+  const { data: roleRows, error: roleError } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userData.user.id)
-    .eq("role", "super_admin")
-    .maybeSingle();
+    .in("role", allowed);
 
   if (roleError) throw new Error(roleError.message);
-  if (!roleRow) throw new Error("No tienes permisos para gestionar usuarios.");
+  if (!roleRows || roleRows.length === 0)
+    throw new Error("No tienes permisos para esta acción.");
 
   return userData.user;
 }
+
+async function requireSuperAdmin(accessToken: string) {
+  return requireRoles(accessToken, ["super_admin"]);
+}
+
+async function requireAdminOrSuper(accessToken: string) {
+  return requireRoles(accessToken, ["super_admin", "admin"]);
+}
+
 
 export async function getManagedUsers(accessToken: string): Promise<AdminUserView[]> {
   await requireSuperAdmin(accessToken);
