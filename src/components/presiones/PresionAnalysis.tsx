@@ -55,7 +55,9 @@ export function PresionAnalysis({ semanas, limiteMinPa }: Props) {
   const dentro = (values.filter((v) => v >= limiteMinPa).length / values.length) * 100;
   const oosTone: "ok" | "warn" | "bad" = dentro >= 100 ? "ok" : dentro >= 95 ? "warn" : "bad";
   const cpkUnilat = sigma > 0 ? (mean - limiteMinPa) / (3 * sigma) : null;
-  const cpkTone: "ok" | "warn" | "bad" = cpkUnilat == null ? "warn" : cpkUnilat >= 1.33 ? "ok" : cpkUnilat >= 1 ? "warn" : "bad";
+  // Cpk nunca marca "bad": capacidad baja es Alerta, no NC.
+  const cpkTone: "ok" | "warn" | "bad" = cpkUnilat == null ? "warn" : cpkUnilat >= 1.33 ? "ok" : "warn";
+  const hayOOS = outliers.some((d) => d.oos);
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -68,11 +70,15 @@ export function PresionAnalysis({ semanas, limiteMinPa }: Props) {
         </div>
         {we.length === 0 && outliers.length === 0 ? (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-            <CheckCircle2 className="h-3.5 w-3.5" /> En control
+            <CheckCircle2 className="h-3.5 w-3.5" /> Bajo control
+          </span>
+        ) : hayOOS ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" /> Fuera de límite · {outliers.filter((d) => d.oos).length}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-            <AlertTriangle className="h-3.5 w-3.5" /> {we.length + outliers.length} alerta(s)
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
+            <AlertTriangle className="h-3.5 w-3.5" /> En observación · {we.length} señal(es)
           </span>
         )}
       </div>
