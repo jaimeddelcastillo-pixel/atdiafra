@@ -549,8 +549,11 @@ export function exportarNormativoPDF(
             });
             yCursor = (doc as any).lastAutoTable.finalY + 8;
 
-            // Conclusión automática
+            // Conclusión contextual (no alarmista si no hay incumplimiento normativo)
             const hits = westernElectric(b.values, b.media as number, b.sigma as number);
+            const hayOOSSerie = b.values.some(
+              (v) => (b.lse != null && v > b.lse) || (b.lie != null && v < b.lie),
+            );
             const fueraAccion = b.values.some(
               (v) => v > (b.lacs as number) || v < (b.laci as number),
             );
@@ -559,11 +562,16 @@ export function exportarNormativoPDF(
             );
             let texto: string;
             let color: [number, number, number];
-            if (fueraAccion || hits.length > 0) {
-              texto = "Proceso fuera de control estadístico";
+            if (hayOOSSerie) {
+              // NC real por incumplimiento LIE/LSE → único caso rojo.
+              texto = "No conformidad — lecturas fuera de especificación";
               color = [220, 38, 38];
+            } else if (fueraAccion || hits.length > 0) {
+              // Sin incumplimiento normativo pero con señales estadísticas.
+              texto = "Control estadístico comprometido — proceso conforme, requiere seguimiento";
+              color = [217, 119, 6];
             } else if (fueraAlerta) {
-              texto = "Proceso en alerta estadística";
+              texto = "Proceso en observación — dentro de especificación";
               color = [217, 119, 6];
             } else {
               texto = "Proceso bajo control estadístico";
@@ -579,7 +587,7 @@ export function exportarNormativoPDF(
 
             doc.setFontSize(7.5).setTextColor(120).setFont("helvetica", "italic");
             doc.text(
-              "La conclusión estadística evalúa el control del proceso y no sustituye el cumplimiento normativo LIE/LSE.",
+              "El control estadístico y la capacidad son informativos; la No Conformidad se origina únicamente por incumplimiento normativo (LIE/LSE o mínimo).",
               margin, yCursor,
             );
             doc.setTextColor(0).setFont("helvetica", "normal");
