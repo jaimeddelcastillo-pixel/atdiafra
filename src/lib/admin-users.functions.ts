@@ -5,8 +5,11 @@ import {
   deleteManagedUserAccount,
   getManagedUsers,
   inviteManagedUserAccount,
+  sendManagedUserPasswordRecoveryEmail,
+  setManagedUserPasswordAccount,
   updateManagedUserAccountRole,
 } from "./admin-users.server";
+
 
 export type { AdminRole, AdminUserView } from "./admin-users.server";
 
