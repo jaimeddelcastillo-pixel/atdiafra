@@ -393,6 +393,8 @@ function UsuariosAdmin() {
               <div className="space-y-3">
                 {rows.map((row) => {
                   const isMe = row.user_id === me?.id;
+                  const targetIsSuper = row.roles.includes("super_admin");
+                  const canModifyTarget = isSuperAdmin || !targetIsSuper;
                   const actionBusy =
                     busy === `role:${row.user_id}` || busy === `delete:${row.user_id}`;
                   return (
