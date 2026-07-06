@@ -1,14 +1,17 @@
-import { Settings, LogOut, Users, ShieldAlert } from "lucide-react";
+import { Settings, LogOut, Users, ShieldAlert, KeyRound } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TraceaLogo } from "@/components/TraceaLogo";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export function AppHeader() {
   const { user, roles, isSuperAdmin, hasRole, signOut } = useAuth();
   const canSeeAudit = isSuperAdmin || hasRole("admin");
+  const canManageUsers = isSuperAdmin || hasRole("admin");
   const navigate = useNavigate();
+
 
   const handleLogout = async () => {
     await signOut();
