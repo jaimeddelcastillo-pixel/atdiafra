@@ -292,14 +292,26 @@ export function exportarNormativoPDF(
     });
   }
 
-  // ===== Agrupados =====
-  const grupos = new Map<string, { etiqueta: string; items: AnalisisRegistro[] }>();
-  for (const a of analisis) {
-    const k = claveGrupo(a.registro, agrupar);
-    const et = etiquetaGrupo(a.registro, agrupar, cat);
-    const cur = grupos.get(k);
-    if (cur) cur.items.push(a);
-    else grupos.set(k, { etiqueta: et, items: [a] });
+  // ===== Agrupados (separando registros por área/par de cuartos vs instrumentos independientes) =====
+  const construirGrupos = (items: AnalisisRegistro[]) => {
+    const g = new Map<string, { etiqueta: string; items: AnalisisRegistro[] }>();
+    for (const a of items) {
+      const k = claveGrupo(a.registro, agrupar);
+      const et = etiquetaGrupo(a.registro, agrupar, cat);
+      const cur = g.get(k);
+      if (cur) cur.items.push(a);
+      else g.set(k, { etiqueta: et, items: [a] });
+    }
+    return Array.from(g.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
+  };
+  const analisisAreas = analisis.filter((a) => tipoRegistroReporte(a.registro) !== "instrumento");
+  const analisisInstrumentos = analisis.filter((a) => tipoRegistroReporte(a.registro) === "instrumento");
+  const secciones: Array<{ titulo: string; grupos: ReturnType<typeof construirGrupos> }> = [];
+  if (analisisAreas.length > 0) {
+    secciones.push({ titulo: "Registros por área / par de cuartos", grupos: construirGrupos(analisisAreas) });
+  }
+  if (analisisInstrumentos.length > 0) {
+    secciones.push({ titulo: "Registros por instrumento independiente", grupos: construirGrupos(analisisInstrumentos) });
   }
 
   // Color por Cpk
