@@ -75,7 +75,8 @@ async function getAccessToken() {
 }
 
 function UsuariosAdmin() {
-  const { isSuperAdmin, user: me, refreshRoles } = useAuth();
+  const { isSuperAdmin, hasRole, user: me, refreshRoles } = useAuth();
+  const canManage = isSuperAdmin || hasRole("admin");
   const [rows, setRows] = useState<AdminUserView[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -86,6 +87,9 @@ function UsuariosAdmin() {
   const [role, setRole] = useState<AppRole>("viewer");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("viewer");
+  const [resetTarget, setResetTarget] = useState<AdminUserView | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
 
   const load = async () => {
     try {
@@ -101,10 +105,11 @@ function UsuariosAdmin() {
   };
 
   useEffect(() => {
-    if (isSuperAdmin) load();
-  }, [isSuperAdmin]);
+    if (canManage) load();
+  }, [canManage]);
 
-  if (!isSuperAdmin) return <Navigate to="/" />;
+  if (!canManage) return <Navigate to="/" />;
+
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
