@@ -47,7 +47,7 @@ function num(v: number | null | undefined, d = 2) {
 }
 
 /** Dibuja encabezado corporativo (logo · título · código) y pie en cada página. */
-function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
+function pintarEncabezadoPie(doc: jsPDF, periodo: string, titulo: string = DOC_TITULO_DEFAULT) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
