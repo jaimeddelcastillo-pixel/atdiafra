@@ -59,8 +59,12 @@ function AnalysisBlock({ semanas, cfg }: { semanas: Semana[]; cfg: VarConfig }) 
     );
   }
 
-  const cpkTone: "ok" | "warn" | "bad" = cap.Cpk == null ? "warn" : cap.Cpk >= 1.33 ? "ok" : cap.Cpk >= 1 ? "warn" : "bad";
+  // Cpk nunca marca "bad": capacidad baja/marginal es Alerta estadística, no NC.
+  const cpkTone: "ok" | "warn" | "bad" = cap.Cpk == null ? "warn" : cap.Cpk >= 1.33 ? "ok" : "warn";
+  // Fuera de spec es la única condición que enciende "bad" (NC real).
   const oosTone: "ok" | "warn" | "bad" = cap.withinSpec >= 100 ? "ok" : cap.withinSpec >= 95 ? "warn" : "bad";
+  const hayOOS = outliers.some((d) => d.oos);
+  const soloWE = we.length > 0 && !hayOOS;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -73,11 +77,15 @@ function AnalysisBlock({ semanas, cfg }: { semanas: Semana[]; cfg: VarConfig }) 
         </div>
         {we.length === 0 && outliers.length === 0 ? (
           <span className="inline-flex items-center gap-1 text-xs font-medium text-success">
-            <CheckCircle2 className="h-3.5 w-3.5" /> En control
+            <CheckCircle2 className="h-3.5 w-3.5" /> Bajo control
+          </span>
+        ) : hayOOS ? (
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+            <AlertTriangle className="h-3.5 w-3.5" /> Fuera de spec · {outliers.filter((d) => d.oos).length}
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-            <AlertTriangle className="h-3.5 w-3.5" /> {we.length + outliers.length} alerta(s)
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
+            <AlertTriangle className="h-3.5 w-3.5" /> En observación · {we.length} señal(es)
           </span>
         )}
       </div>
