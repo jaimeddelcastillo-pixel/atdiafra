@@ -197,9 +197,10 @@ export function exportarNormativoPDF(
   const pageH = doc.internal.pageSize.getHeight();
   const periodo = analisis[0]?.rango.etiqueta ?? "Periodo";
   const tituloDoc = tituloReporteDeModulos(analisis.map((a) => a.registro.modulo));
+  // Título de portada en mayúsculas y minúsculas (mismo texto, sin CAPS).
   const tituloPortada = tituloDoc
-    .replace(/^REPORTE NORMATIVO DE /, "Reporte Normativo de ")
-    .replace(/\b([A-ZÁÉÍÓÚÑ])([A-ZÁÉÍÓÚÑ]+)/g, (_, a, b) => a + b.toLowerCase());
+    .toLowerCase()
+    .replace(/(^|\s)(\S)/g, (_, s, c) => s + c.toUpperCase());
 
   // Margen reservado en TODAS las tablas para no chocar con encabezado/pie
   const tableMargin = { top: TOP_Y, bottom: FOOTER_H + 8, left: 40, right: 40 };
