@@ -64,7 +64,6 @@ function AnalysisBlock({ semanas, cfg }: { semanas: Semana[]; cfg: VarConfig }) 
   // Fuera de spec es la única condición que enciende "bad" (NC real).
   const oosTone: "ok" | "warn" | "bad" = cap.withinSpec >= 100 ? "ok" : cap.withinSpec >= 95 ? "warn" : "bad";
   const hayOOS = outliers.some((d) => d.oos);
-  const soloWE = we.length > 0 && !hayOOS;
 
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
