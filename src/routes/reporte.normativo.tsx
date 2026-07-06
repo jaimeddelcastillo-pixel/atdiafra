@@ -775,7 +775,10 @@ function SerieDetail({ a }: { a: AnalisisRegistro }) {
                 {s.cpkInsuficiente ? (
                   <span className="text-[10px] italic text-muted-foreground">n insuf.</span>
                 ) : s.cpk != null ? (
-                  <span className={s.cpk < CPK_FAIL ? "text-destructive font-medium" : s.cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}>
+                  <span
+                    className={s.cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
+                    title={s.cpk < CPK_FAIL ? "Capacidad baja — alerta estadística" : s.cpk < CPK_WARN ? "Capacidad marginal" : "Capacidad adecuada"}
+                  >
                     {s.cpk.toFixed(2)}
                   </span>
                 ) : "—"}
