@@ -20,13 +20,13 @@ import diafraLogo from "@/assets/diafra-logo.jpg";
 
 type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
 
-// ===== Identidad documental TRACEA (formato controlado) =====
+// ===== Identidad documental DIAFRA (formato controlado) =====
 const DOC_CODIGO = "FOR-VAL-16";
 const DOC_VERSION = "(01)";
 const DOC_DEPARTAMENTO = "FORMATO — DEPARTAMENTO: VALIDACIÓN Y MONITOREO AMBIENTAL";
 const DOC_TITULO = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
 const DOC_FOOTER =
-  "Documento confidencial propiedad de TRACEA, queda prohibido su uso, divulgación y/o reproducción total o parcial sin previa autorización.";
+  "Documento confidencial propiedad de DIAFRA, S.A. de C.V., queda prohibido su uso, divulgación y/o reproducción total o parcial sin previa autorización.";
 const DOC_NORMA = "Conforme a NOM-241-SSA1-2025 · ISO 14644 · FEUM 13ª Ed.";
 
 // Márgenes reservados para encabezado y pie en cada página
@@ -71,7 +71,7 @@ function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
       doc.addImage(diafraLogo, "JPEG", xLogo + 10, 26, wLogo - 20, HEADER_H - 32);
     } catch {
       doc.setFontSize(11).setFont("helvetica", "bold").setTextColor(30, 64, 175);
-      doc.text("TRACEA", xLogo + wLogo / 2, 45, { align: "center" });
+      doc.text("DIAFRA", xLogo + wLogo / 2, 45, { align: "center" });
       doc.setFontSize(7).setFont("helvetica", "italic").setTextColor(100);
       doc.text("S.A. DE C.V.", xLogo + wLogo / 2, 55, { align: "center" });
       doc.setTextColor(0);
@@ -82,7 +82,7 @@ function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
     const wTit = xCodigo - xTit;
     doc.setTextColor(0);
     doc.setFontSize(12).setFont("helvetica", "bold");
-    doc.text("TRACEA", xTit + wTit / 2, 34, { align: "center" });
+    doc.text("DIAFRA, S.A. DE C.V.", xTit + wTit / 2, 34, { align: "center" });
     doc.setFontSize(8).setFont("helvetica", "italic");
     doc.text(DOC_DEPARTAMENTO, xTit + wTit / 2, 46, { align: "center" });
     doc.setFontSize(10).setFont("helvetica", "bold");
@@ -199,7 +199,7 @@ export function exportarNormativoPDF(
   doc.setFontSize(18).setFont("helvetica", "bold");
   doc.text("Reporte Normativo de Monitoreo Ambiental", pageW / 2, TOP_Y + 30, { align: "center" });
   doc.setFontSize(13).setFont("helvetica", "normal");
-  doc.text(`TRACEA — ${periodo}`, pageW / 2, TOP_Y + 56, { align: "center" });
+  doc.text(`DIAFRA, S.A. de C.V. — ${periodo}`, pageW / 2, TOP_Y + 56, { align: "center" });
 
   doc.setFontSize(10);
   const total = analisis.length;

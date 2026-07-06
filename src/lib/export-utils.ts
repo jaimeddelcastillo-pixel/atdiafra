@@ -127,7 +127,7 @@ export function exportarReportePDF(
 
   // Portada
   doc.setFontSize(20).setFont("helvetica", "bold");
-  doc.text("Reporte consolidado TRACEA", pageW / 2, 80, { align: "center" });
+  doc.text("Reporte consolidado DIAFRA", pageW / 2, 80, { align: "center" });
   doc.setFontSize(13).setFont("helvetica", "normal");
   doc.text(etiqueta, pageW / 2, 108, { align: "center" });
 
@@ -209,7 +209,7 @@ export function exportarReportePDF(
       },
       didDrawPage: () => {
         doc.setFontSize(8).setTextColor(120);
-        doc.text(`${etiqueta} · TRACEA`, 40, pageH - 20);
+        doc.text(`${etiqueta} · DIAFRA`, 40, pageH - 20);
         doc.text(`Página ${doc.getNumberOfPages()}`, pageW - 40, pageH - 20, { align: "right" });
         doc.setTextColor(0);
       },
