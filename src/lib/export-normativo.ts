@@ -344,7 +344,18 @@ export function exportarNormativoPDF(
     ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
   ];
 
-  for (const g of Array.from(grupos.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta))) {
+  for (const seccion of secciones) {
+    // Página divisoria de sección (solo si hay más de una sección)
+    if (secciones.length > 1) {
+      doc.addPage();
+      doc.setFontSize(20).setFont("helvetica", "bold").setTextColor(30, 64, 175);
+      doc.text(seccion.titulo, pageW / 2, pageH / 2 - 10, { align: "center" });
+      doc.setFontSize(11).setFont("helvetica", "normal").setTextColor(90);
+      const nRegs = seccion.grupos.reduce((s, g) => s + g.items.length, 0);
+      doc.text(`${nRegs} registro(s) en esta sección`, pageW / 2, pageH / 2 + 14, { align: "center" });
+      doc.setTextColor(0);
+    }
+  for (const g of seccion.grupos) {
     for (const a of g.items) {
       // Una página por instrumento/registro (consolidado del período completo)
       doc.addPage();
