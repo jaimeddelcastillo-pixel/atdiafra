@@ -15,7 +15,7 @@ import {
   type AgruparPor,
   type EstadisticaSerie,
 } from "./normativo";
-import { generarBloqueEstadisticoRegistro, type BloqueSerie } from "./chart-renderer";
+import { generarBloqueEstadisticoRegistro } from "./chart-renderer";
 import { westernElectric } from "./statistics";
 import diafraLogo from "@/assets/diafra-logo.jpg";
 
