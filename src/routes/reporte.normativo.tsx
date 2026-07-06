@@ -529,9 +529,9 @@ function NormativoPage() {
         {/* KPIs semáforo */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KPI label="Registros" value={kpis.total} tone="default" />
-          <KPI label="Cumplen mínimo" value={`${kpis.cumplen}/${kpis.total}`} tone={kpis.cumplen === kpis.total ? "success" : "warning"} />
-          <KPI label="Críticos" value={kpis.criticos} tone={kpis.criticos === 0 ? "success" : "destructive"} />
-          <KPI label="Advertencias" value={kpis.advertencias} tone={kpis.advertencias === 0 ? "success" : "warning"} />
+          <KPI label="Cumplen normativo" value={`${kpis.total - kpis.criticos}/${kpis.total}`} tone={kpis.criticos === 0 ? "success" : "destructive"} />
+          <KPI label="No conformidades" value={kpis.criticos} tone={kpis.criticos === 0 ? "success" : "destructive"} />
+          <KPI label="Alertas estadísticas" value={kpis.advertencias} tone={kpis.advertencias === 0 ? "success" : "warning"} />
           <KPI label="Lecturas" value={kpis.totalLecturas.toLocaleString("es-MX")} tone="default" />
         </div>
 
