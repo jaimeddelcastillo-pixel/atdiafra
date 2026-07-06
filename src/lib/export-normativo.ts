@@ -196,13 +196,17 @@ export function exportarNormativoPDF(
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const periodo = analisis[0]?.rango.etiqueta ?? "Periodo";
+  const tituloDoc = tituloReporteDeModulos(analisis.map((a) => a.registro.modulo));
+  const tituloPortada = tituloDoc
+    .replace(/^REPORTE NORMATIVO DE /, "Reporte Normativo de ")
+    .replace(/\b([A-ZÁÉÍÓÚÑ])([A-ZÁÉÍÓÚÑ]+)/g, (_, a, b) => a + b.toLowerCase());
 
   // Margen reservado en TODAS las tablas para no chocar con encabezado/pie
   const tableMargin = { top: TOP_Y, bottom: FOOTER_H + 8, left: 40, right: 40 };
 
   // ===== Portada =====
   doc.setFontSize(18).setFont("helvetica", "bold");
-  doc.text("Reporte Normativo de Monitoreo Ambiental", pageW / 2, TOP_Y + 30, { align: "center" });
+  doc.text(tituloPortada, pageW / 2, TOP_Y + 30, { align: "center" });
   doc.setFontSize(13).setFont("helvetica", "normal");
   doc.text(`DIAFRA, S.A. de C.V. — ${periodo}`, pageW / 2, TOP_Y + 56, { align: "center" });
 
