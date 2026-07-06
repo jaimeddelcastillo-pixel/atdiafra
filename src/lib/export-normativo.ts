@@ -90,7 +90,7 @@ function pintarEncabezadoPie(doc: jsPDF, periodo: string, titulo: string = DOC_T
     doc.setFontSize(8).setFont("helvetica", "italic");
     doc.text(DOC_DEPARTAMENTO, xTit + wTit / 2, 46, { align: "center" });
     doc.setFontSize(10).setFont("helvetica", "bold");
-    doc.text(DOC_TITULO, xTit + wTit / 2, 60, { align: "center" });
+    doc.text(titulo, xTit + wTit / 2, 60, { align: "center" });
 
     // Código (derecha)
     doc.setFontSize(9).setFont("helvetica", "bold");
