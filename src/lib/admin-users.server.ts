@@ -214,10 +214,29 @@ export async function setManagedUserPasswordAccount(
   accessToken: string,
   input: { userId: string; password: string },
 ): Promise<{ ok: true }> {
-  await requireAdminOrSuper(accessToken);
+  const currentUser = await requireAdminOrSuper(accessToken);
   const password = input.password.trim();
   if (password.length < 8)
     throw new Error("La contraseña debe tener al menos 8 caracteres.");
+
+  if (currentUser.id !== input.userId) {
+    const { data: superRows, error: superErr } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", input.userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    if (superErr) throw new Error(superErr.message);
+    if (superRows) {
+      const { data: meSuper } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .eq("role", "super_admin")
+        .maybeSingle();
+      if (!meSuper) throw new Error("No puedes modificar la contraseña de un super_admin.");
+    }
+  }
 
   const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, {
     password,
