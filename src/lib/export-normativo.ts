@@ -28,7 +28,7 @@ type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
 const DOC_CODIGO = "FOR-VAL-16";
 const DOC_VERSION = "(01)";
 const DOC_DEPARTAMENTO = "FORMATO — DEPARTAMENTO: VALIDACIÓN Y MONITOREO AMBIENTAL";
-const DOC_TITULO = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
+const DOC_TITULO_DEFAULT = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
 const DOC_FOOTER =
   "Documento confidencial propiedad de DIAFRA, S.A. de C.V., queda prohibido su uso, divulgación y/o reproducción total o parcial sin previa autorización.";
 const DOC_NORMA = "Conforme a NOM-241-SSA1-2025 · ISO 14644 · FEUM 13ª Ed.";
