@@ -15,7 +15,8 @@ import {
   type AgruparPor,
   type EstadisticaSerie,
 } from "./normativo";
-import { generarChartsRegistro } from "./chart-renderer";
+import { generarBloqueEstadisticoRegistro, type BloqueSerie } from "./chart-renderer";
+import { westernElectric } from "./statistics";
 import diafraLogo from "@/assets/diafra-logo.jpg";
 
 type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
