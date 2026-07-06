@@ -688,13 +688,13 @@ function NormativoPage() {
                           </td>
                         </tr>
                         {isOpen && (
-                          <tr key={a.registro.id + "-detail"} className="bg-muted/20 border-t border-border">
+                          <tr className="bg-muted/20 border-t border-border">
                             <td colSpan={8} className="p-4">
                               <SerieDetail a={a} />
                             </td>
                           </tr>
                         )}
-                      </>
+                      </FragmentWithKey>
                     );
                   })}
                 </tbody>
