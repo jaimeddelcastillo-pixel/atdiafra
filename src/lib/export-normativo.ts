@@ -204,19 +204,19 @@ export function exportarNormativoExcel(
     Detalle: h.detalle,
     "Acción sugerida": h.accionSugerida,
   });
-  const nc = resumen.noConformidades.map(filaHallazgo);
+  const nc = resumenEval.noConformidades.map(filaHallazgo);
   XLSX.utils.book_append_sheet(
     wb,
     XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]),
     "No conformidades",
   );
-  const alertas = resumen.alertas.map(filaHallazgo);
+  const alertas = resumenEval.alertas.map(filaHallazgo);
   XLSX.utils.book_append_sheet(
     wb,
     XLSX.utils.json_to_sheet(alertas.length ? alertas : [{ Estado: "Sin alertas estadísticas" }]),
     "Alertas estadísticas",
   );
-  const observ = resumen.observaciones.map(filaHallazgo);
+  const observ = resumenEval.observaciones.map(filaHallazgo);
   XLSX.utils.book_append_sheet(
     wb,
     XLSX.utils.json_to_sheet(observ.length ? observ : [{ Estado: "Sin observaciones" }]),
