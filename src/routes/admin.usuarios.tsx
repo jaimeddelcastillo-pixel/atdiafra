@@ -429,46 +429,77 @@ function UsuariosAdmin() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Select
-                          value={row.primary_role}
-                          onValueChange={(value) => setUserRole(row.user_id, value as AppRole)}
-                          disabled={isMe || actionBusy}
+                        {isSuperAdmin && (
+                          <Select
+                            value={row.primary_role}
+                            onValueChange={(value) => setUserRole(row.user_id, value as AppRole)}
+                            disabled={isMe || actionBusy}
+                          >
+                            <SelectTrigger className="w-full sm:w-[160px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ROLES.map((item) => (
+                                <SelectItem key={item} value={item}>
+                                  {item}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setResetTarget(row);
+                            setResetPwd("");
+                            setResetConfirm("");
+                          }}
+                          disabled={actionBusy || busy === `pwd:${row.user_id}`}
+                          title="Definir nueva contraseña"
                         >
-                          <SelectTrigger className="w-full sm:w-[160px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ROLES.map((item) => (
-                              <SelectItem key={item} value={item}>
-                                {item}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isMe || actionBusy}>
-                              <Trash2 />
-                              Eliminar
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción elimina el acceso de {row.email ?? row.user_id} y no se
-                                puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteUser(row.user_id)}>
+                          <KeyRound />
+                          Contraseña
+                        </Button>
+                        {row.email && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => sendRecovery(row)}
+                            disabled={busy === `recovery:${row.user_id}`}
+                            title="Enviar enlace de recuperación por correo"
+                          >
+                            <Mail />
+                            {busy === `recovery:${row.user_id}` ? "Enviando…" : "Enviar enlace"}
+                          </Button>
+                        )}
+                        {isSuperAdmin && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" disabled={isMe || actionBusy}>
+                                <Trash2 />
                                 Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción elimina el acceso de {row.email ?? row.user_id} y no se
+                                  puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteUser(row.user_id)}>
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
+
                     </div>
                   );
                 })}
