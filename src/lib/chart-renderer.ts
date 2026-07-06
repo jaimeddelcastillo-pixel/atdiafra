@@ -197,18 +197,23 @@ type SerieInfo = {
   decimales: number;
 };
 
+function unidadDeRegistro(registro: Registro, semanas: Semana[]): string {
+  const s = semanas.find((w) => (w.unidad ?? "").trim().length > 0);
+  return s?.unidad ?? "";
+}
+
 /** Decimales de despliegue por tipo de variable. */
-function decimalesDe(registro: Registro, campo: "lecturas" | "lecturas_hr"): number {
+function decimalesDe(registro: Registro, unidad: string): number {
   if (registro.modulo === "temphr") return 2;
   if (registro.modulo === "presiones") {
-    const u = (registro.unidad || "").toLowerCase().replace(/\s+/g, "");
+    const u = (unidad || "").toLowerCase().replace(/\s+/g, "");
     if (u.includes("inh2o") || u.includes("in.h2o") || u.includes('"h2o')) return 3;
     return 2;
   }
   return 2;
 }
 
-function seriesInfoDeRegistro(registro: Registro): SerieInfo[] {
+function seriesInfoDeRegistro(registro: Registro, semanas: Semana[]): SerieInfo[] {
   if (registro.modulo === "temphr") {
     return [
       {
