@@ -532,9 +532,10 @@ export function exportarNormativoPDF(
       }
     }
   }
+  }
 
   // Pintar encabezado y pie en TODAS las páginas al final
-  pintarEncabezadoPie(doc, periodo);
+  pintarEncabezadoPie(doc, periodo, tituloDoc);
 
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
 }
