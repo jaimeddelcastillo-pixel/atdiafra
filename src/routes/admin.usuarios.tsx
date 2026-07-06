@@ -393,6 +393,8 @@ function UsuariosAdmin() {
               <div className="space-y-3">
                 {rows.map((row) => {
                   const isMe = row.user_id === me?.id;
+                  const targetIsSuper = row.roles.includes("super_admin");
+                  const canModifyTarget = isSuperAdmin || !targetIsSuper;
                   const actionBusy =
                     busy === `role:${row.user_id}` || busy === `delete:${row.user_id}`;
                   return (
@@ -447,21 +449,23 @@ function UsuariosAdmin() {
                             </SelectContent>
                           </Select>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setResetTarget(row);
-                            setResetPwd("");
-                            setResetConfirm("");
-                          }}
-                          disabled={actionBusy || busy === `pwd:${row.user_id}`}
-                          title="Definir nueva contraseña"
-                        >
-                          <KeyRound />
-                          Contraseña
-                        </Button>
-                        {row.email && (
+                        {canModifyTarget && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setResetTarget(row);
+                              setResetPwd("");
+                              setResetConfirm("");
+                            }}
+                            disabled={actionBusy || busy === `pwd:${row.user_id}`}
+                            title="Definir nueva contraseña"
+                          >
+                            <KeyRound />
+                            Contraseña
+                          </Button>
+                        )}
+                        {row.email && canModifyTarget && (
                           <Button
                             variant="secondary"
                             size="sm"
