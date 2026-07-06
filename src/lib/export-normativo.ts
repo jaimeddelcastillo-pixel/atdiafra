@@ -361,10 +361,6 @@ export function exportarNormativoPDF(
     );
   }
   void evaluaciones; // Reservado para futura tabla comparativa por registro.
-        }
-      },
-    });
-  }
 
   // ===== Agrupados (separando registros por área/par de cuartos vs instrumentos independientes) =====
   const construirGrupos = (items: AnalisisRegistro[]) => {
