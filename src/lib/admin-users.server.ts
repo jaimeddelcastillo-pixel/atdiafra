@@ -19,28 +19,38 @@ function assertRole(value: string): AdminRole {
   return value as AdminRole;
 }
 
-async function requireSuperAdmin(accessToken: string) {
+async function requireRoles(accessToken: string, allowed: AdminRole[]) {
   if (!accessToken) throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
   const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
   if (userError || !userData.user)
     throw new Error("Tu sesión no es válida. Vuelve a iniciar sesión.");
 
-  const { data: roleRow, error: roleError } = await supabaseAdmin
+  const { data: roleRows, error: roleError } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userData.user.id)
-    .eq("role", "super_admin")
-    .maybeSingle();
+    .in("role", allowed);
 
   if (roleError) throw new Error(roleError.message);
-  if (!roleRow) throw new Error("No tienes permisos para gestionar usuarios.");
+  if (!roleRows || roleRows.length === 0)
+    throw new Error("No tienes permisos para esta acción.");
 
   return userData.user;
 }
 
+async function requireSuperAdmin(accessToken: string) {
+  return requireRoles(accessToken, ["super_admin"]);
+}
+
+async function requireAdminOrSuper(accessToken: string) {
+  return requireRoles(accessToken, ["super_admin", "admin"]);
+}
+
+
 export async function getManagedUsers(accessToken: string): Promise<AdminUserView[]> {
-  await requireSuperAdmin(accessToken);
+  await requireAdminOrSuper(accessToken);
+
 
   const [{ data: roleRows, error: rolesError }, { data: usersData, error: usersError }] =
     await Promise.all([
@@ -198,4 +208,35 @@ export async function deleteManagedUserAccount(
     throw new Error(userError.message);
 
   return getManagedUsers(accessToken);
+}
+
+export async function setManagedUserPasswordAccount(
+  accessToken: string,
+  input: { userId: string; password: string },
+): Promise<{ ok: true }> {
+  await requireAdminOrSuper(accessToken);
+  const password = input.password.trim();
+  if (password.length < 8)
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, {
+    password,
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function sendManagedUserPasswordRecoveryEmail(
+  accessToken: string,
+  input: { email: string; redirectTo?: string },
+): Promise<{ ok: true }> {
+  await requireAdminOrSuper(accessToken);
+  const email = input.email.trim().toLowerCase();
+  if (!email) throw new Error("Correo requerido.");
+
+  const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+    redirectTo: input.redirectTo,
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
 }

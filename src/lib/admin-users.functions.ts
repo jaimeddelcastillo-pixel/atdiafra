@@ -5,8 +5,11 @@ import {
   deleteManagedUserAccount,
   getManagedUsers,
   inviteManagedUserAccount,
+  sendManagedUserPasswordRecoveryEmail,
+  setManagedUserPasswordAccount,
   updateManagedUserAccountRole,
 } from "./admin-users.server";
+
 
 export type { AdminRole, AdminUserView } from "./admin-users.server";
 
@@ -61,3 +64,27 @@ export const deleteManagedUser = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => deleteManagedUserAccount(data.accessToken, data));
+
+export const setManagedUserPassword = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    tokenSchema
+      .extend({
+        userId: z.string().uuid(),
+        password: z.string().min(8),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => setManagedUserPasswordAccount(data.accessToken, data));
+
+
+export const sendManagedUserPasswordRecovery = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    tokenSchema
+      .extend({
+        email: z.string().email(),
+        redirectTo: z.string().url().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => sendManagedUserPasswordRecoveryEmail(data.accessToken, data));
+

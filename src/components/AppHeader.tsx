@@ -1,14 +1,17 @@
-import { Settings, LogOut, Users, ShieldAlert } from "lucide-react";
+import { Settings, LogOut, Users, ShieldAlert, KeyRound } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TraceaLogo } from "@/components/TraceaLogo";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 
 export function AppHeader() {
   const { user, roles, isSuperAdmin, hasRole, signOut } = useAuth();
   const canSeeAudit = isSuperAdmin || hasRole("admin");
+  const canManageUsers = isSuperAdmin || hasRole("admin");
   const navigate = useNavigate();
+
 
   const handleLogout = async () => {
     await signOut();
@@ -44,7 +47,7 @@ export function AppHeader() {
               <ShieldAlert className="h-4 w-4" />
             </Link>
           )}
-          {isSuperAdmin && (
+          {canManageUsers && (
             <Link
               to="/admin/usuarios"
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 text-white hover:bg-white/10 transition-colors"
@@ -63,10 +66,25 @@ export function AppHeader() {
             <Settings className="h-4 w-4" />
           </Link>
           {user && (
+            <ChangePasswordDialog
+              trigger={
+                <button
+                  type="button"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 text-white hover:bg-white/10 transition-colors"
+                  aria-label="Cambiar mi contraseña"
+                  title="Cambiar mi contraseña"
+                >
+                  <KeyRound className="h-4 w-4" />
+                </button>
+              }
+            />
+          )}
+          {user && (
             <Button variant="ghost" size="sm" onClick={handleLogout} title="Cerrar sesión" className="text-white hover:bg-white/10 hover:text-white">
               <LogOut className="h-4 w-4" />
             </Button>
           )}
+
         </div>
       </div>
     </header>

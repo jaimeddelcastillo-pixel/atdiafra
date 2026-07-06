@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
-import { Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { KeyRound, Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppHeader } from "@/components/AppHeader";
@@ -10,9 +10,12 @@ import {
   deleteManagedUser,
   inviteManagedUser,
   listManagedUsers,
+  sendManagedUserPasswordRecovery,
+  setManagedUserPassword,
   updateManagedUserRole,
   type AdminUserView,
 } from "@/lib/admin-users.functions";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,7 +75,8 @@ async function getAccessToken() {
 }
 
 function UsuariosAdmin() {
-  const { isSuperAdmin, user: me, refreshRoles } = useAuth();
+  const { isSuperAdmin, hasRole, user: me, refreshRoles } = useAuth();
+  const canManage = isSuperAdmin || hasRole("admin");
   const [rows, setRows] = useState<AdminUserView[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -83,6 +87,9 @@ function UsuariosAdmin() {
   const [role, setRole] = useState<AppRole>("viewer");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<AppRole>("viewer");
+  const [resetTarget, setResetTarget] = useState<AdminUserView | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
 
   const load = async () => {
     try {
@@ -98,10 +105,11 @@ function UsuariosAdmin() {
   };
 
   useEffect(() => {
-    if (isSuperAdmin) load();
-  }, [isSuperAdmin]);
+    if (canManage) load();
+  }, [canManage]);
 
-  if (!isSuperAdmin) return <Navigate to="/" />;
+  if (!canManage) return <Navigate to="/" />;
+
 
   const handleCreate = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -173,6 +181,56 @@ function UsuariosAdmin() {
     }
   };
 
+  const handleResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetTarget) return;
+    if (resetPwd.length < 8) {
+      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (resetPwd !== resetConfirm) {
+      toast.error("Las contraseñas no coinciden.");
+      return;
+    }
+    try {
+      setBusy(`pwd:${resetTarget.user_id}`);
+      const accessToken = await getAccessToken();
+      await setManagedUserPassword({
+        data: { accessToken, userId: resetTarget.user_id, password: resetPwd },
+      });
+      toast.success("Contraseña actualizada");
+      setResetTarget(null);
+      setResetPwd("");
+      setResetConfirm("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar la contraseña");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendRecovery = async (row: AdminUserView) => {
+    if (!row.email) {
+      toast.error("Este usuario no tiene correo registrado.");
+      return;
+    }
+    try {
+      setBusy(`recovery:${row.user_id}`);
+      const accessToken = await getAccessToken();
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      await sendManagedUserPasswordRecovery({
+        data: { accessToken, email: row.email, redirectTo },
+      });
+      toast.success("Enlace de recuperación enviado por correo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo enviar el enlace");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
@@ -190,6 +248,7 @@ function UsuariosAdmin() {
                 <RefreshCw />
                 Actualizar
               </Button>
+              {isSuperAdmin && (
               <Dialog open={openCreate} onOpenChange={setOpenCreate}>
                 <DialogTrigger asChild>
                   <Button size="sm">
@@ -259,6 +318,8 @@ function UsuariosAdmin() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
+              {isSuperAdmin && (
               <Dialog open={openInvite} onOpenChange={setOpenInvite}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="secondary">
@@ -319,6 +380,8 @@ function UsuariosAdmin() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
+
             </div>
           </CardHeader>
           <CardContent>
@@ -366,46 +429,77 @@ function UsuariosAdmin() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Select
-                          value={row.primary_role}
-                          onValueChange={(value) => setUserRole(row.user_id, value as AppRole)}
-                          disabled={isMe || actionBusy}
+                        {isSuperAdmin && (
+                          <Select
+                            value={row.primary_role}
+                            onValueChange={(value) => setUserRole(row.user_id, value as AppRole)}
+                            disabled={isMe || actionBusy}
+                          >
+                            <SelectTrigger className="w-full sm:w-[160px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ROLES.map((item) => (
+                                <SelectItem key={item} value={item}>
+                                  {item}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setResetTarget(row);
+                            setResetPwd("");
+                            setResetConfirm("");
+                          }}
+                          disabled={actionBusy || busy === `pwd:${row.user_id}`}
+                          title="Definir nueva contraseña"
                         >
-                          <SelectTrigger className="w-full sm:w-[160px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ROLES.map((item) => (
-                              <SelectItem key={item} value={item}>
-                                {item}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={isMe || actionBusy}>
-                              <Trash2 />
-                              Eliminar
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción elimina el acceso de {row.email ?? row.user_id} y no se
-                                puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteUser(row.user_id)}>
+                          <KeyRound />
+                          Contraseña
+                        </Button>
+                        {row.email && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => sendRecovery(row)}
+                            disabled={busy === `recovery:${row.user_id}`}
+                            title="Enviar enlace de recuperación por correo"
+                          >
+                            <Mail />
+                            {busy === `recovery:${row.user_id}` ? "Enviando…" : "Enviar enlace"}
+                          </Button>
+                        )}
+                        {isSuperAdmin && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" disabled={isMe || actionBusy}>
+                                <Trash2 />
                                 Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Eliminar usuario</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Esta acción elimina el acceso de {row.email ?? row.user_id} y no se
+                                  puede deshacer.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteUser(row.user_id)}>
+                                  Eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
+
                     </div>
                   );
                 })}
@@ -435,6 +529,66 @@ function UsuariosAdmin() {
           </CardContent>
         </Card>
       </main>
+
+      <Dialog
+        open={resetTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetTarget(null);
+            setResetPwd("");
+            setResetConfirm("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restablecer contraseña</DialogTitle>
+            <DialogDescription>
+              {resetTarget?.email ?? resetTarget?.user_id} — mínimo 8 caracteres.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleResetPassword}>
+            <div className="space-y-2">
+              <Label htmlFor="reset-pwd">Nueva contraseña</Label>
+              <Input
+                id="reset-pwd"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={resetPwd}
+                onChange={(event) => setResetPwd(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
+              <Input
+                id="reset-confirm"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={resetConfirm}
+                onChange={(event) => setResetConfirm(event.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResetTarget(null)}
+                disabled={busy?.startsWith("pwd:")}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={busy?.startsWith("pwd:")}>
+                {busy?.startsWith("pwd:") ? "Guardando…" : "Actualizar contraseña"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
