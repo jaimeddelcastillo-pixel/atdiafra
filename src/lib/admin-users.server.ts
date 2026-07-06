@@ -209,3 +209,34 @@ export async function deleteManagedUserAccount(
 
   return getManagedUsers(accessToken);
 }
+
+export async function setManagedUserPasswordAccount(
+  accessToken: string,
+  input: { userId: string; password: string },
+): Promise<{ ok: true }> {
+  await requireAdminOrSuper(accessToken);
+  const password = input.password.trim();
+  if (password.length < 8)
+    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, {
+    password,
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+export async function sendManagedUserPasswordRecoveryEmail(
+  accessToken: string,
+  input: { email: string; redirectTo?: string },
+): Promise<{ ok: true }> {
+  await requireAdminOrSuper(accessToken);
+  const email = input.email.trim().toLowerCase();
+  if (!email) throw new Error("Correo requerido.");
+
+  const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+    redirectTo: input.redirectTo,
+  });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
