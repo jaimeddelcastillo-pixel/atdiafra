@@ -9,6 +9,9 @@ import {
   claveGrupo,
   semanasDelPeriodo,
   detectarNoConformidades,
+  tipoRegistroReporte,
+  etiquetaTipoRegistro,
+  tituloReporteDeModulos,
   CPK_WARN,
   CPK_FAIL,
   type AnalisisRegistro,
@@ -25,7 +28,7 @@ type Catalogos = { areas: Map<string, string>; hvac: Map<string, string> };
 const DOC_CODIGO = "FOR-VAL-16";
 const DOC_VERSION = "(01)";
 const DOC_DEPARTAMENTO = "FORMATO — DEPARTAMENTO: VALIDACIÓN Y MONITOREO AMBIENTAL";
-const DOC_TITULO = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
+const DOC_TITULO_DEFAULT = "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
 const DOC_FOOTER =
   "Documento confidencial propiedad de DIAFRA, S.A. de C.V., queda prohibido su uso, divulgación y/o reproducción total o parcial sin previa autorización.";
 const DOC_NORMA = "Conforme a NOM-241-SSA1-2025 · ISO 14644 · FEUM 13ª Ed.";
@@ -44,7 +47,7 @@ function num(v: number | null | undefined, d = 2) {
 }
 
 /** Dibuja encabezado corporativo (logo · título · código) y pie en cada página. */
-function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
+function pintarEncabezadoPie(doc: jsPDF, periodo: string, titulo: string = DOC_TITULO_DEFAULT) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const total = doc.getNumberOfPages();
@@ -87,7 +90,7 @@ function pintarEncabezadoPie(doc: jsPDF, periodo: string) {
     doc.setFontSize(8).setFont("helvetica", "italic");
     doc.text(DOC_DEPARTAMENTO, xTit + wTit / 2, 46, { align: "center" });
     doc.setFontSize(10).setFont("helvetica", "bold");
-    doc.text(DOC_TITULO, xTit + wTit / 2, 60, { align: "center" });
+    doc.text(titulo, xTit + wTit / 2, 60, { align: "center" });
 
     // Código (derecha)
     doc.setFontSize(9).setFont("helvetica", "bold");
@@ -125,6 +128,7 @@ export function exportarNormativoExcel(
 
   // Hoja 1: Resumen
   const resumen = analisis.map((a) => ({
+    Tipo: etiquetaTipoRegistro(tipoRegistroReporte(a.registro)),
     Grupo: etiquetaGrupo(a.registro, agrupar, cat),
     Registro: a.registro.nombre,
     Modulo: a.registro.modulo,
@@ -192,13 +196,18 @@ export function exportarNormativoPDF(
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const periodo = analisis[0]?.rango.etiqueta ?? "Periodo";
+  const tituloDoc = tituloReporteDeModulos(analisis.map((a) => a.registro.modulo));
+  // Título de portada en mayúsculas y minúsculas (mismo texto, sin CAPS).
+  const tituloPortada = tituloDoc
+    .toLowerCase()
+    .replace(/(^|\s)(\S)/g, (_, s, c) => s + c.toUpperCase());
 
   // Margen reservado en TODAS las tablas para no chocar con encabezado/pie
   const tableMargin = { top: TOP_Y, bottom: FOOTER_H + 8, left: 40, right: 40 };
 
   // ===== Portada =====
   doc.setFontSize(18).setFont("helvetica", "bold");
-  doc.text("Reporte Normativo de Monitoreo Ambiental", pageW / 2, TOP_Y + 30, { align: "center" });
+  doc.text(tituloPortada, pageW / 2, TOP_Y + 30, { align: "center" });
   doc.setFontSize(13).setFont("helvetica", "normal");
   doc.text(`DIAFRA, S.A. de C.V. — ${periodo}`, pageW / 2, TOP_Y + 56, { align: "center" });
 
@@ -283,14 +292,26 @@ export function exportarNormativoPDF(
     });
   }
 
-  // ===== Agrupados =====
-  const grupos = new Map<string, { etiqueta: string; items: AnalisisRegistro[] }>();
-  for (const a of analisis) {
-    const k = claveGrupo(a.registro, agrupar);
-    const et = etiquetaGrupo(a.registro, agrupar, cat);
-    const cur = grupos.get(k);
-    if (cur) cur.items.push(a);
-    else grupos.set(k, { etiqueta: et, items: [a] });
+  // ===== Agrupados (separando registros por área/par de cuartos vs instrumentos independientes) =====
+  const construirGrupos = (items: AnalisisRegistro[]) => {
+    const g = new Map<string, { etiqueta: string; items: AnalisisRegistro[] }>();
+    for (const a of items) {
+      const k = claveGrupo(a.registro, agrupar);
+      const et = etiquetaGrupo(a.registro, agrupar, cat);
+      const cur = g.get(k);
+      if (cur) cur.items.push(a);
+      else g.set(k, { etiqueta: et, items: [a] });
+    }
+    return Array.from(g.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
+  };
+  const analisisAreas = analisis.filter((a) => tipoRegistroReporte(a.registro) !== "instrumento");
+  const analisisInstrumentos = analisis.filter((a) => tipoRegistroReporte(a.registro) === "instrumento");
+  const secciones: Array<{ titulo: string; grupos: ReturnType<typeof construirGrupos> }> = [];
+  if (analisisAreas.length > 0) {
+    secciones.push({ titulo: "Registros por área / par de cuartos", grupos: construirGrupos(analisisAreas) });
+  }
+  if (analisisInstrumentos.length > 0) {
+    secciones.push({ titulo: "Registros por instrumento independiente", grupos: construirGrupos(analisisInstrumentos) });
   }
 
   // Color por Cpk
@@ -323,7 +344,18 @@ export function exportarNormativoPDF(
     ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
   ];
 
-  for (const g of Array.from(grupos.values()).sort((a, b) => a.etiqueta.localeCompare(b.etiqueta))) {
+  for (const seccion of secciones) {
+    // Página divisoria de sección (solo si hay más de una sección)
+    if (secciones.length > 1) {
+      doc.addPage();
+      doc.setFontSize(20).setFont("helvetica", "bold").setTextColor(30, 64, 175);
+      doc.text(seccion.titulo, pageW / 2, pageH / 2 - 10, { align: "center" });
+      doc.setFontSize(11).setFont("helvetica", "normal").setTextColor(90);
+      const nRegs = seccion.grupos.reduce((s, g) => s + g.items.length, 0);
+      doc.text(`${nRegs} registro(s) en esta sección`, pageW / 2, pageH / 2 + 14, { align: "center" });
+      doc.setTextColor(0);
+    }
+  for (const g of seccion.grupos) {
     for (const a of g.items) {
       // Una página por instrumento/registro (consolidado del período completo)
       doc.addPage();
@@ -500,9 +532,10 @@ export function exportarNormativoPDF(
       }
     }
   }
+  }
 
   // Pintar encabezado y pie en TODAS las páginas al final
-  pintarEncabezadoPie(doc, periodo);
+  pintarEncabezadoPie(doc, periodo, tituloDoc);
 
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
 }

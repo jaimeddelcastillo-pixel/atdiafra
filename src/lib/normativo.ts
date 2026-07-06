@@ -347,10 +347,20 @@ export function detectarNoConformidades(analisis: AnalisisRegistro[]): NoConform
 // ===== Agrupación =====
 export type AgruparPor = "registro" | "area" | "hvac" | "modulo";
 
+/** Un registro que representa un instrumento independiente (manómetro/HEPA sin par de cuartos ni área). */
+export function esRegistroDeInstrumento(r: Registro): boolean {
+  return !r.area_id && !r.codigo_area_libre && !r.par_cuartos_id && !!r.instrumento_id;
+}
+
+const GRUPO_INSTRUMENTOS = "__instrumentos_independientes__";
+
 export function claveGrupo(r: Registro, modo: AgruparPor): string {
   switch (modo) {
     case "area":
-      return r.area_id ?? r.codigo_area_libre ?? "Sin área";
+      if (r.area_id) return r.area_id;
+      if (r.par_cuartos_id) return `par:${r.par_cuartos_id}`;
+      if (esRegistroDeInstrumento(r)) return GRUPO_INSTRUMENTOS;
+      return r.codigo_area_libre ?? "Sin área";
     case "hvac":
       return r.hvac_id ?? "Sin HVAC";
     case "modulo":
@@ -367,7 +377,10 @@ export function etiquetaGrupo(
 ): string {
   switch (modo) {
     case "area":
-      return r.area_id ? catalogos.areas.get(r.area_id) ?? "Área desconocida" : r.nombre_area_libre ?? r.codigo_area_libre ?? "Sin área";
+      if (r.area_id) return catalogos.areas.get(r.area_id) ?? "Área desconocida";
+      if (r.par_cuartos_id) return r.nombre; // "Área A vs Área B"
+      if (esRegistroDeInstrumento(r)) return "Instrumentos independientes";
+      return r.nombre_area_libre ?? r.codigo_area_libre ?? "Sin área";
     case "hvac":
       return r.hvac_id ? catalogos.hvac.get(r.hvac_id) ?? "HVAC desconocido" : "Sin HVAC";
     case "modulo":
@@ -376,3 +389,31 @@ export function etiquetaGrupo(
       return r.nombre;
   }
 }
+
+/** Tipo de registro para diferenciar tablas en el reporte. */
+export type TipoRegistroReporte = "area" | "par_cuartos" | "instrumento";
+
+export function tipoRegistroReporte(r: Registro): TipoRegistroReporte {
+  if (r.par_cuartos_id) return "par_cuartos";
+  if (esRegistroDeInstrumento(r)) return "instrumento";
+  return "area";
+}
+
+export function etiquetaTipoRegistro(t: TipoRegistroReporte): string {
+  return t === "area" ? "Área" : t === "par_cuartos" ? "Par de cuartos" : "Instrumento";
+}
+
+/** Determina el título del reporte según el módulo dominante en el análisis. */
+export function tituloReporteDeModulos(modulos: Array<Registro["modulo"]>): string {
+  const set = new Set(modulos);
+  if (set.size !== 1) return "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
+  const m = set.values().next().value;
+  switch (m) {
+    case "presiones": return "REPORTE NORMATIVO DE PRESIONES DIFERENCIALES";
+    case "temphr": return "REPORTE NORMATIVO DE TEMPERATURA Y HUMEDAD RELATIVA";
+    case "filtros": return "REPORTE NORMATIVO DE FILTROS";
+    case "agua": return "REPORTE NORMATIVO DE AGUA PURIFICADA";
+    default: return "REPORTE NORMATIVO DE MONITOREO AMBIENTAL";
+  }
+}
+
