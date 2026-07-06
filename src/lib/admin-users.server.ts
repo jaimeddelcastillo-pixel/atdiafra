@@ -249,9 +249,37 @@ export async function sendManagedUserPasswordRecoveryEmail(
   accessToken: string,
   input: { email: string; redirectTo?: string },
 ): Promise<{ ok: true }> {
-  await requireAdminOrSuper(accessToken);
+  const currentUser = await requireAdminOrSuper(accessToken);
   const email = input.email.trim().toLowerCase();
   if (!email) throw new Error("Correo requerido.");
+
+  // Block admins (non-super) from triggering recovery on super_admin accounts
+  const { data: meSuper } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .eq("role", "super_admin")
+    .maybeSingle();
+
+  if (!meSuper) {
+    const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+      page: 1,
+      perPage: 1000,
+    });
+    if (usersError) throw new Error(usersError.message);
+    const target = (usersData.users ?? []).find(
+      (u) => (u.email ?? "").toLowerCase() === email,
+    );
+    if (target) {
+      const { data: targetSuper } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", target.id)
+        .eq("role", "super_admin")
+        .maybeSingle();
+      if (targetSuper) throw new Error("No puedes enviar recuperación a un super_admin.");
+    }
+  }
 
   const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
     redirectTo: input.redirectTo,
