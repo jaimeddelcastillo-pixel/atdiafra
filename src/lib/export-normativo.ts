@@ -176,15 +176,52 @@ export function exportarNormativoExcel(
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stats), "Estadísticas");
 
-  // Hoja 3: No conformidades
-  const nc = detectarNoConformidades(analisis).map((n) => ({
-    Severidad: n.severidad.toUpperCase(),
-    Registro: n.registroNombre,
-    Serie: n.serie,
-    Tipo: n.tipo,
-    Detalle: n.detalle,
+  // Hoja 3: Evaluación tri-dimensional por registro
+  const { evaluaciones, resumen } = evaluarLote(analisis);
+  const evalRows = evaluaciones.map((e) => ({
+    Registro: e.analisis.registro.nombre,
+    Cumplimiento: e.cumplimiento === "cumple" ? "Cumple" : "No conforme",
+    Control: ETIQUETA_CONTROL[e.control],
+    Capacidad: ETIQUETA_CAPACIDAD[e.capacidad],
+    Estado: e.estadoGlobal === "conforme" ? "Conforme"
+          : e.estadoGlobal === "conforme_con_alertas" ? "Conforme con alertas"
+          : "No conforme",
+    "No conformidades": e.hallazgos.filter((h) => h.categoria === "no_conformidad").length,
+    "Alertas estadísticas": e.hallazgos.filter((h) => h.categoria === "alerta_estadistica").length,
+    Observaciones: e.hallazgos.filter((h) => h.categoria === "observacion").length,
+    Conclusión: e.conclusion,
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]), "No conformidades");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(evalRows), "Evaluación");
+
+  // Hoja 4: Hallazgos (categorizados)
+  const filaHallazgo = (h: Hallazgo) => ({
+    Categoría: ETIQUETA_CATEGORIA[h.categoria],
+    Severidad: h.severidad.toUpperCase(),
+    Dimensión: h.dimension,
+    Registro: h.registroNombre,
+    Serie: h.serie,
+    Título: h.titulo,
+    Detalle: h.detalle,
+    "Acción sugerida": h.accionSugerida,
+  });
+  const nc = resumen.noConformidades.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]),
+    "No conformidades",
+  );
+  const alertas = resumen.alertas.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(alertas.length ? alertas : [{ Estado: "Sin alertas estadísticas" }]),
+    "Alertas estadísticas",
+  );
+  const observ = resumen.observaciones.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(observ.length ? observ : [{ Estado: "Sin observaciones" }]),
+    "Observaciones",
+  );
 
   XLSX.writeFile(wb, `normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.xlsx`);
 }
