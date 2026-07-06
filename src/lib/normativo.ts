@@ -290,12 +290,296 @@ export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new
   };
 }
 
-// ===== Poka-yoke / no conformidades =====
+// ============================================================================
+// Modelo tri-dimensional de evaluación
+// ============================================================================
+// Separa tres dimensiones independientes para evitar mensajes alarmistas cuando
+// el proceso sigue siendo NORMATIVAMENTE conforme:
+//   1. Cumplimiento normativo  → ¿hay incumplimiento real? (LIE/LSE, mínimo de lecturas)
+//   2. Control estadístico      → ¿el proceso sigue estable? (Western Electric)
+//   3. Capacidad de proceso     → ¿la variabilidad es aceptable? (Cp/Cpk/Ppk)
+//
+// Cuarta dimensión FUTURA (no implementada en esta fase, documentada aquí para
+// alineación con PMS y Gestión de Riesgos):
+//   4. Riesgo emergente          → tendencia, deterioro entre periodos, señales
+//                                  débiles anticipatorias. Requiere comparación
+//                                  con línea base histórica y clasificación por
+//                                  criticidad del área. Ver TODO al final.
+// ============================================================================
+
 export const CPK_WARN = 1.33;
 export const CPK_FAIL = 1.0;
+/** @deprecated El % dentro de spec ya no es fuente autónoma de NC. Se conserva
+ *  únicamente como indicador informativo. La NC se dispara por `fueraSpec.total > 0`. */
 export const PCT_SPEC_FAIL = 95;
 
-export type Severidad = "alta" | "media";
+export type Severidad = "alta" | "media" | "baja";
+export type CumplimientoNormativo = "cumple" | "no_cumple";
+export type EstadoControl = "bajo_control" | "en_observacion" | "control_comprometido";
+export type Capacidad = "capaz" | "marginal" | "no_capaz" | "n_insuficiente";
+export type CategoriaHallazgo = "no_conformidad" | "alerta_estadistica" | "observacion";
+export type DimensionHallazgo = "cumplimiento" | "control" | "capacidad";
+
+export type Hallazgo = {
+  registroNombre: string;
+  registroId: string;
+  serie: string;
+  dimension: DimensionHallazgo;
+  categoria: CategoriaHallazgo;
+  severidad: Severidad;
+  titulo: string;
+  detalle: string;
+  accionSugerida: string;
+};
+
+export type EvaluacionRegistro = {
+  analisis: AnalisisRegistro;
+  cumplimiento: CumplimientoNormativo;
+  control: EstadoControl;
+  capacidad: Capacidad;
+  hallazgos: Hallazgo[];
+  /** Etiqueta corta de estado global, no alarmista. */
+  estadoGlobal: "conforme" | "conforme_con_alertas" | "no_conforme";
+  conclusion: string;
+};
+
+// Etiquetas legibles ------------------------------------------------------------
+export const ETIQUETA_CONTROL: Record<EstadoControl, string> = {
+  bajo_control: "Bajo control",
+  en_observacion: "En observación",
+  control_comprometido: "Control comprometido",
+};
+export const ETIQUETA_CAPACIDAD: Record<Capacidad, string> = {
+  capaz: "Capaz",
+  marginal: "Capacidad marginal",
+  no_capaz: "Capacidad baja",
+  n_insuficiente: "n insuficiente",
+};
+export const ETIQUETA_CUMPLIMIENTO: Record<CumplimientoNormativo, string> = {
+  cumple: "Cumple normativo",
+  no_cumple: "No conforme",
+};
+export const ETIQUETA_CATEGORIA: Record<CategoriaHallazgo, string> = {
+  no_conformidad: "No conformidad",
+  alerta_estadistica: "Alerta estadística",
+  observacion: "Observación",
+};
+
+function clasificarCapacidadSerie(s: EstadisticaSerie): Capacidad {
+  if (s.cpkInsuficiente) return "n_insuficiente";
+  if (s.cpk == null) return "n_insuficiente";
+  if (s.cpk < CPK_FAIL) return "no_capaz";
+  if (s.cpk < CPK_WARN) return "marginal";
+  return "capaz";
+}
+
+/** Peor capacidad entre todas las series (peor = más grave). */
+function peorCapacidad(caps: Capacidad[]): Capacidad {
+  const orden: Capacidad[] = ["no_capaz", "marginal", "n_insuficiente", "capaz"];
+  for (const c of orden) if (caps.includes(c)) return c;
+  return "capaz";
+}
+
+/**
+ * Evalúa un registro en las 3 dimensiones actuales. NO ejecuta Western Electric
+ * aquí (se hace en el renderer con los puntos ordenados en el tiempo); esta
+ * función parte del análisis consolidado y de banderas ya calculadas. Si
+ * `weHits` se proporciona, refina el estado de control.
+ */
+export function evaluarRegistro(
+  analisis: AnalisisRegistro,
+  opts: { weHits?: number; periodoCerrado?: boolean } = {},
+): EvaluacionRegistro {
+  const hallazgos: Hallazgo[] = [];
+  const nombreReg = analisis.registro.nombre;
+  const idReg = analisis.registro.id;
+
+  // ---- Dimensión 1: Cumplimiento normativo -----------------------------------
+  let cumplimiento: CumplimientoNormativo = "cumple";
+
+  if (!analisis.cumpleMinimo) {
+    const periodoCerrado = opts.periodoCerrado ?? true;
+    if (periodoCerrado) {
+      cumplimiento = "no_cumple";
+      hallazgos.push({
+        registroNombre: nombreReg, registroId: idReg, serie: "—",
+        dimension: "cumplimiento", categoria: "no_conformidad", severidad: "alta",
+        titulo: "Sin mínimo normativo",
+        detalle: `${analisis.totalLecturas}/${MINIMO_NORMATIVO} lecturas (${analisis.porcentajeMinimo}%)`,
+        accionSugerida: "Documentar causa de la falta de lecturas y ajustar plan de muestreo.",
+      });
+    } else {
+      hallazgos.push({
+        registroNombre: nombreReg, registroId: idReg, serie: "—",
+        dimension: "cumplimiento", categoria: "observacion", severidad: "baja",
+        titulo: "Avance parcial vs mínimo normativo",
+        detalle: `${analisis.totalLecturas}/${MINIMO_NORMATIVO} lecturas (${analisis.porcentajeMinimo}%) — periodo en curso`,
+        accionSugerida: "Mantener el ritmo de captura para alcanzar el mínimo al cierre del periodo.",
+      });
+    }
+  }
+
+  for (const s of analisis.series) {
+    if (s.fueraSpec.total > 0) {
+      cumplimiento = "no_cumple";
+      hallazgos.push({
+        registroNombre: nombreReg, registroId: idReg,
+        serie: `${s.serie} ${s.unidad}`.trim(),
+        dimension: "cumplimiento", categoria: "no_conformidad", severidad: "alta",
+        titulo: "Lecturas fuera de especificación",
+        detalle: `${s.fueraSpec.total} fuera (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓) · LIE ${s.lie ?? "—"} / LSE ${s.lse ?? "—"}`,
+        accionSugerida: "Evaluar la desviación, identificar causa raíz y registrar acción correctiva.",
+      });
+    }
+    // Nota: el % dentro de spec ya NO genera NC de forma autónoma. Se emite
+    // sólo como observación informativa cuando el proceso permanece conforme
+    // (todas las lecturas dentro de LIE/LSE) pero está cerca del margen.
+  }
+
+  // ---- Dimensión 2: Control estadístico --------------------------------------
+  // Se toma el conteo de Western Electric del renderer si está disponible.
+  // Sin WE hits, el estado depende sólo del cumplimiento: si hay OOS, "control
+  // comprometido"; si no, "bajo control".
+  const hayOOS = analisis.series.some((s) => s.fueraSpec.total > 0);
+  const hits = opts.weHits ?? 0;
+  let control: EstadoControl;
+  if (hayOOS) {
+    // Fuera de spec => el control estadístico está comprometido, pero
+    // evitamos el término alarmista "fuera de control" cuando la NC es
+    // por especificación (la lectura simplemente violó LIE/LSE).
+    control = "control_comprometido";
+  } else if (hits > 0) {
+    control = "en_observacion";
+    hallazgos.push({
+      registroNombre: nombreReg, registroId: idReg, serie: "—",
+      dimension: "control", categoria: "alerta_estadistica", severidad: "media",
+      titulo: "Reglas Western Electric activadas",
+      detalle: `${hits} señal(es) estadística(s). El proceso sigue dentro de especificación (LIE/LSE).`,
+      accionSugerida: "Seguimiento reforzado; no requiere acción correctiva mientras no haya incumplimiento normativo.",
+    });
+  } else {
+    control = "bajo_control";
+  }
+
+  // ---- Dimensión 3: Capacidad de proceso -------------------------------------
+  const caps = analisis.series.map(clasificarCapacidadSerie);
+  const capacidad = peorCapacidad(caps);
+
+  for (const s of analisis.series) {
+    const cap = clasificarCapacidadSerie(s);
+    if (cap === "no_capaz") {
+      hallazgos.push({
+        registroNombre: nombreReg, registroId: idReg,
+        serie: `${s.serie} ${s.unidad}`.trim(),
+        dimension: "capacidad", categoria: "alerta_estadistica", severidad: "media",
+        titulo: "Capacidad baja",
+        detalle: `Cpk ${s.cpk?.toFixed(2)} (< ${CPK_FAIL.toFixed(2)}) — variabilidad alta frente a los límites`,
+        accionSugerida: "Evaluar necesidad de investigación; monitorear tendencia. No es NC si no hay lecturas fuera de spec.",
+      });
+    } else if (cap === "marginal") {
+      hallazgos.push({
+        registroNombre: nombreReg, registroId: idReg,
+        serie: `${s.serie} ${s.unidad}`.trim(),
+        dimension: "capacidad", categoria: "alerta_estadistica", severidad: "baja",
+        titulo: "Capacidad marginal",
+        detalle: `Cpk ${s.cpk?.toFixed(2)} (${CPK_FAIL.toFixed(2)}–${CPK_WARN.toFixed(2)}) — margen de seguridad reducido`,
+        accionSugerida: "Seguimiento; mantener el proceso monitoreado sin acción correctiva inmediata.",
+      });
+    }
+  }
+
+  // ---- % dentro de spec como observación (nunca NC) --------------------------
+  for (const s of analisis.series) {
+    if (
+      s.fueraSpec.total === 0 &&
+      s.pctDentroSpec != null &&
+      s.pctDentroSpec < 100 // conceptualmente imposible si fueraSpec=0; blindaje
+    ) continue;
+  }
+
+  // ---- Estado global y conclusión --------------------------------------------
+  const hayNC = hallazgos.some((h) => h.categoria === "no_conformidad");
+  const hayAlerta = hallazgos.some((h) => h.categoria === "alerta_estadistica");
+  const estadoGlobal: EvaluacionRegistro["estadoGlobal"] =
+    hayNC ? "no_conforme" : hayAlerta ? "conforme_con_alertas" : "conforme";
+
+  const conclusion = construirConclusion({ cumplimiento, control, capacidad, estadoGlobal });
+
+  return { analisis, cumplimiento, control, capacidad, hallazgos, estadoGlobal, conclusion };
+}
+
+function construirConclusion(v: {
+  cumplimiento: CumplimientoNormativo;
+  control: EstadoControl;
+  capacidad: Capacidad;
+  estadoGlobal: EvaluacionRegistro["estadoGlobal"];
+}): string {
+  if (v.cumplimiento === "no_cumple") {
+    return "No conformidad detectada. Evaluar desviación, identificar causa raíz y documentar acción correctiva conforme a NOM-241.";
+  }
+  // A partir de aquí el proceso ES conforme.
+  const capTxt =
+    v.capacidad === "capaz" ? "capacidad adecuada" :
+    v.capacidad === "marginal" ? "capacidad marginal" :
+    v.capacidad === "no_capaz" ? "capacidad baja" :
+    "capacidad no evaluable (n insuficiente)";
+  if (v.control === "en_observacion") {
+    return `Proceso conforme con ${capTxt}; señales estadísticas presentes — se recomienda seguimiento reforzado sin acción correctiva.`;
+  }
+  if (v.capacidad === "no_capaz") {
+    return `Proceso conforme pero con ${capTxt}; se sugiere evaluar oportunidad de mejora (no constituye no conformidad).`;
+  }
+  if (v.capacidad === "marginal") {
+    return `Proceso conforme con ${capTxt}; mantener monitoreo del margen de seguridad.`;
+  }
+  if (v.capacidad === "n_insuficiente") {
+    return `Proceso conforme; n insuficiente para evaluar capacidad estadística (mínimo ${N_MINIMO_CPK}).`;
+  }
+  return "Proceso conforme, bajo control estadístico y con capacidad adecuada.";
+}
+
+export function conclusionRegistro(evaluacion: EvaluacionRegistro): string {
+  return evaluacion.conclusion;
+}
+
+export function evaluarLote(
+  analisis: AnalisisRegistro[],
+  opts: { periodoCerrado?: boolean } = {},
+): { evaluaciones: EvaluacionRegistro[]; resumen: ResumenLote } {
+  const evaluaciones = analisis.map((a) => evaluarRegistro(a, opts));
+  const resumen: ResumenLote = {
+    total: evaluaciones.length,
+    conformes: evaluaciones.filter((e) => e.estadoGlobal === "conforme").length,
+    conformesConAlerta: evaluaciones.filter((e) => e.estadoGlobal === "conforme_con_alertas").length,
+    noConformes: evaluaciones.filter((e) => e.estadoGlobal === "no_conforme").length,
+    noConformidades: evaluaciones.flatMap((e) => e.hallazgos.filter((h) => h.categoria === "no_conformidad")),
+    alertas: evaluaciones.flatMap((e) => e.hallazgos.filter((h) => h.categoria === "alerta_estadistica")),
+    observaciones: evaluaciones.flatMap((e) => e.hallazgos.filter((h) => h.categoria === "observacion")),
+  };
+  return { evaluaciones, resumen };
+}
+
+export type ResumenLote = {
+  total: number;
+  conformes: number;
+  conformesConAlerta: number;
+  noConformes: number;
+  noConformidades: Hallazgo[];
+  alertas: Hallazgo[];
+  observaciones: Hallazgo[];
+};
+
+// ============================================================================
+// Legacy: NoConformidad + detectarNoConformidades
+// ----------------------------------------------------------------------------
+// Se conserva como *wrapper* para no romper consumidores externos. Ahora sólo
+// emite NC reales (fuera de spec y sin mínimo normativo). Los antiguos tipos
+// `cpk_bajo` y `pct_bajo` YA NO se generan como NC:
+//   · `cpk_bajo`  → migró a "Alerta estadística" (dimensión Capacidad)
+//   · `pct_bajo`  → eliminado como fuente autónoma de NC (redundante con
+//                   `fueraSpec.total > 0`); se conserva como indicador.
+// ============================================================================
+
 export type NoConformidad = {
   registroNombre: string;
   registroId: string;
@@ -306,42 +590,29 @@ export type NoConformidad = {
 };
 
 export function detectarNoConformidades(analisis: AnalisisRegistro[]): NoConformidad[] {
-  const out: NoConformidad[] = [];
-  for (const a of analisis) {
-    if (!a.cumpleMinimo) {
-      out.push({
-        registroNombre: a.registro.nombre, registroId: a.registro.id, serie: "—",
-        tipo: "sin_minimo", severidad: "alta",
-        detalle: `${a.totalLecturas}/${MINIMO_NORMATIVO} lecturas (${a.porcentajeMinimo}%)`,
-      });
-    }
-    for (const s of a.series) {
-      if (s.fueraSpec.total > 0) {
-        out.push({
-          registroNombre: a.registro.nombre, registroId: a.registro.id,
-          serie: `${s.serie} ${s.unidad}`, tipo: "fuera_spec", severidad: "alta",
-          detalle: `${s.fueraSpec.total} lecturas fuera (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓) · LIE ${s.lie ?? "—"} / LSE ${s.lse ?? "—"}`,
-        });
-      }
-      if (s.pctDentroSpec != null && s.pctDentroSpec < PCT_SPEC_FAIL) {
-        out.push({
-          registroNombre: a.registro.nombre, registroId: a.registro.id,
-          serie: `${s.serie} ${s.unidad}`, tipo: "pct_bajo", severidad: "alta",
-          detalle: `Solo ${s.pctDentroSpec.toFixed(1)}% dentro de spec (mínimo ${PCT_SPEC_FAIL}%)`,
-        });
-      }
-      if (s.cpk != null && s.cpk < CPK_WARN) {
-        out.push({
-          registroNombre: a.registro.nombre, registroId: a.registro.id,
-          serie: `${s.serie} ${s.unidad}`, tipo: "cpk_bajo",
-          severidad: s.cpk < CPK_FAIL ? "alta" : "media",
-          detalle: `Cpk ${s.cpk.toFixed(2)} (${s.cpk < CPK_FAIL ? "crítico < 1.00" : "bajo < 1.33"})`,
-        });
-      }
-    }
-  }
-  return out;
+  const { resumen } = evaluarLote(analisis);
+  return resumen.noConformidades.map((h) => ({
+    registroNombre: h.registroNombre,
+    registroId: h.registroId,
+    serie: h.serie,
+    tipo: h.titulo.toLowerCase().includes("mínimo") ? "sin_minimo" : "fuera_spec",
+    severidad: h.severidad === "baja" ? "media" : (h.severidad as "alta" | "media"),
+    detalle: h.detalle,
+  }));
 }
+
+// ============================================================================
+// TODO — Riesgo Emergente (dimensión 4, fase posterior)
+// ----------------------------------------------------------------------------
+// Objetivo: alimentar el Product Monitoring System y la Gestión de Riesgos con
+// señales anticipatorias que NO son incumplimiento pero sugieren deterioro:
+//   · Comparación de Cpk/media/σ vs periodo previo (deterioro > umbral).
+//   · Reglas Nelson (rules 5–8, extensión de Western Electric).
+//   · Tendencia sostenida hacia LIE/LSE aún dentro de spec.
+//   · Ponderación por criticidad del área (Grado A/B/C/D) y por ISO clase.
+// Salida esperada: `Hallazgo` con `dimension: "riesgo_emergente"` y
+// `categoria: "observacion"`, sin bloquear la conformidad actual.
+// ============================================================================
 
 
 // ===== Agrupación =====

@@ -105,11 +105,17 @@ function hayFueraSpec(a: AnalisisRegistro): number {
   return a.series.reduce((s, r) => s + r.fueraSpec.total, 0);
 }
 
+/**
+ * Tono de fila:
+ *  · critical → No Conformidad real (fueraSpec o sin mínimo normativo).
+ *  · warning  → Sin NC, pero hay alerta estadística (Cpk < 1.33).
+ *  · ok       → Conforme y capaz. NUNCA se marca critical por Cpk solo.
+ */
 function severidad(a: AnalisisRegistro): Severidad {
   const fs = hayFueraSpec(a);
   const cpk = peorCpk(a);
-  if (fs > 0 || (cpk != null && cpk < CPK_FAIL)) return "critical";
-  if (!a.cumpleMinimo || (cpk != null && cpk < CPK_WARN)) return "warning";
+  if (fs > 0 || !a.cumpleMinimo) return "critical";
+  if (cpk != null && cpk < CPK_WARN) return "warning";
   return "ok";
 }
 
@@ -205,7 +211,7 @@ function NormativoPage() {
 
   // Aplicar filtro "solo no conformidades"
   const analisisVisible = useMemo(() => {
-    const base = soloNC ? analisisTab.filter((a) => severidad(a) !== "ok") : analisisTab;
+    const base = soloNC ? analisisTab.filter((a) => severidad(a) === "critical") : analisisTab;
     // Sort
     const sorted = [...base].sort((a, b) => {
       let av = 0, bv = 0, cmp = 0;
@@ -523,9 +529,9 @@ function NormativoPage() {
         {/* KPIs semáforo */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KPI label="Registros" value={kpis.total} tone="default" />
-          <KPI label="Cumplen mínimo" value={`${kpis.cumplen}/${kpis.total}`} tone={kpis.cumplen === kpis.total ? "success" : "warning"} />
-          <KPI label="Críticos" value={kpis.criticos} tone={kpis.criticos === 0 ? "success" : "destructive"} />
-          <KPI label="Advertencias" value={kpis.advertencias} tone={kpis.advertencias === 0 ? "success" : "warning"} />
+          <KPI label="Cumplen normativo" value={`${kpis.total - kpis.criticos}/${kpis.total}`} tone={kpis.criticos === 0 ? "success" : "destructive"} />
+          <KPI label="No conformidades" value={kpis.criticos} tone={kpis.criticos === 0 ? "success" : "destructive"} />
+          <KPI label="Alertas estadísticas" value={kpis.advertencias} tone={kpis.advertencias === 0 ? "success" : "warning"} />
           <KPI label="Lecturas" value={kpis.totalLecturas.toLocaleString("es-MX")} tone="default" />
         </div>
 
@@ -669,7 +675,10 @@ function NormativoPage() {
                             {cpk == null ? (
                               <span className="text-[11px] italic text-muted-foreground">n insuf.</span>
                             ) : (
-                              <span className={cpk < CPK_FAIL ? "text-destructive font-medium" : cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}>
+                              <span
+                                className={cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
+                                title={cpk < CPK_FAIL ? "Capacidad baja — alerta estadística (no NC)" : cpk < CPK_WARN ? "Capacidad marginal" : "Capacidad adecuada"}
+                              >
                                 {cpk.toFixed(2)}
                               </span>
                             )}
@@ -766,7 +775,10 @@ function SerieDetail({ a }: { a: AnalisisRegistro }) {
                 {s.cpkInsuficiente ? (
                   <span className="text-[10px] italic text-muted-foreground">n insuf.</span>
                 ) : s.cpk != null ? (
-                  <span className={s.cpk < CPK_FAIL ? "text-destructive font-medium" : s.cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}>
+                  <span
+                    className={s.cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
+                    title={s.cpk < CPK_FAIL ? "Capacidad baja — alerta estadística" : s.cpk < CPK_WARN ? "Capacidad marginal" : "Capacidad adecuada"}
+                  >
                     {s.cpk.toFixed(2)}
                   </span>
                 ) : "—"}

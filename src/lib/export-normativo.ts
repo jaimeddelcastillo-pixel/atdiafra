@@ -8,7 +8,10 @@ import {
   etiquetaGrupo,
   claveGrupo,
   semanasDelPeriodo,
-  detectarNoConformidades,
+  evaluarLote,
+  ETIQUETA_CONTROL,
+  ETIQUETA_CAPACIDAD,
+  ETIQUETA_CATEGORIA,
   tipoRegistroReporte,
   etiquetaTipoRegistro,
   tituloReporteDeModulos,
@@ -17,6 +20,7 @@ import {
   type AnalisisRegistro,
   type AgruparPor,
   type EstadisticaSerie,
+  type Hallazgo,
 } from "./normativo";
 import { generarBloqueEstadisticoRegistro } from "./chart-renderer";
 import { westernElectric } from "./statistics";
@@ -172,15 +176,52 @@ export function exportarNormativoExcel(
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stats), "Estadísticas");
 
-  // Hoja 3: No conformidades
-  const nc = detectarNoConformidades(analisis).map((n) => ({
-    Severidad: n.severidad.toUpperCase(),
-    Registro: n.registroNombre,
-    Serie: n.serie,
-    Tipo: n.tipo,
-    Detalle: n.detalle,
+  // Hoja 3: Evaluación tri-dimensional por registro
+  const { evaluaciones, resumen: resumenEval } = evaluarLote(analisis);
+  const evalRows = evaluaciones.map((e) => ({
+    Registro: e.analisis.registro.nombre,
+    Cumplimiento: e.cumplimiento === "cumple" ? "Cumple" : "No conforme",
+    Control: ETIQUETA_CONTROL[e.control],
+    Capacidad: ETIQUETA_CAPACIDAD[e.capacidad],
+    Estado: e.estadoGlobal === "conforme" ? "Conforme"
+          : e.estadoGlobal === "conforme_con_alertas" ? "Conforme con alertas"
+          : "No conforme",
+    "No conformidades": e.hallazgos.filter((h) => h.categoria === "no_conformidad").length,
+    "Alertas estadísticas": e.hallazgos.filter((h) => h.categoria === "alerta_estadistica").length,
+    Observaciones: e.hallazgos.filter((h) => h.categoria === "observacion").length,
+    Conclusión: e.conclusion,
   }));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]), "No conformidades");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(evalRows), "Evaluación");
+
+  // Hoja 4: Hallazgos (categorizados)
+  const filaHallazgo = (h: Hallazgo) => ({
+    Categoría: ETIQUETA_CATEGORIA[h.categoria],
+    Severidad: h.severidad.toUpperCase(),
+    Dimensión: h.dimension,
+    Registro: h.registroNombre,
+    Serie: h.serie,
+    Título: h.titulo,
+    Detalle: h.detalle,
+    "Acción sugerida": h.accionSugerida,
+  });
+  const nc = resumenEval.noConformidades.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(nc.length ? nc : [{ Estado: "Sin no conformidades" }]),
+    "No conformidades",
+  );
+  const alertas = resumenEval.alertas.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(alertas.length ? alertas : [{ Estado: "Sin alertas estadísticas" }]),
+    "Alertas estadísticas",
+  );
+  const observ = resumenEval.observaciones.map(filaHallazgo);
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(observ.length ? observ : [{ Estado: "Sin observaciones" }]),
+    "Observaciones",
+  );
 
   XLSX.writeFile(wb, `normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.xlsx`);
 }
@@ -216,9 +257,10 @@ export function exportarNormativoPDF(
   const cumplen = analisis.filter((a) => a.cumpleMinimo).length;
   const desv = analisis.filter((a) => a.series.some((s) => s.fueraSpec.total > 0)).length;
   const lecturas = analisis.reduce((s, a) => s + a.totalLecturas, 0);
-  const noConformidades = detectarNoConformidades(analisis);
-  const ncAltas = noConformidades.filter((n) => n.severidad === "alta").length;
-  const ncMedias = noConformidades.filter((n) => n.severidad === "media").length;
+  const { evaluaciones, resumen: resumenEval } = evaluarLote(analisis);
+  const nHallazgosNC = resumenEval.noConformidades.length;
+  const nAlertas = resumenEval.alertas.length;
+  const nObserv = resumenEval.observaciones.length;
 
   autoTable(doc, {
     startY: TOP_Y + 80,
@@ -226,9 +268,15 @@ export function exportarNormativoPDF(
     body: [
       ["Mínimo normativo por registro", `${MINIMO_NORMATIVO} lecturas`],
       ["Registros analizados", String(total)],
-      ["Cumplen mínimo", `${cumplen} / ${total} (${total ? Math.round((cumplen / total) * 100) : 0}%)`],
+      ["Registros conformes (cumplen normativo)", `${resumenEval.conformes + resumenEval.conformesConAlerta} / ${total}`],
+      ["  · Conformes sin alertas", String(resumenEval.conformes)],
+      ["  · Conformes con alertas estadísticas", String(resumenEval.conformesConAlerta)],
+      ["Registros no conformes", String(resumenEval.noConformes)],
       ["Con fuera de especificación", String(desv)],
-      ["No conformidades detectadas", `${noConformidades.length} (${ncAltas} críticas / ${ncMedias} advertencias)`],
+      ["Cumplen mínimo de lecturas", `${cumplen} / ${total} (${total ? Math.round((cumplen / total) * 100) : 0}%)`],
+      ["No conformidades (LIE/LSE, mínimo normativo)", String(nHallazgosNC)],
+      ["Alertas estadísticas (WE, Cpk)", String(nAlertas)],
+      ["Observaciones", String(nObserv)],
       ["Total de lecturas capturadas", lecturas.toLocaleString("es-MX")],
       ["Generado", new Date().toLocaleString("es-MX")],
     ],
@@ -238,59 +286,81 @@ export function exportarNormativoPDF(
     margin: { ...tableMargin, left: 80, right: 80 },
   });
 
-  // ===== Hoja de no conformidades =====
-  doc.addPage();
-  doc.setFontSize(14).setFont("helvetica", "bold");
-  doc.text("Resumen de no conformidades (Poka-Yoke)", 40, TOP_Y + 6);
-  doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
+  // Nota metodológica en portada
+  const yNota = (doc as any).lastAutoTable.finalY + 12;
+  doc.setFontSize(8).setFont("helvetica", "italic").setTextColor(90);
   doc.text(
-    `Criterios: lecturas fuera de LIE/LSE · % dentro de spec < 95% · Cpk < ${CPK_WARN} (advertencia) · Cpk < ${CPK_FAIL} (crítico) · sin mínimo normativo (${MINIMO_NORMATIVO})`,
-    40, TOP_Y + 22,
+    "Metodología tri-dimensional: (1) Cumplimiento normativo — sólo lecturas fuera de LIE/LSE o incumplir el mínimo generan No Conformidad.",
+    88, yNota,
   );
-  doc.setTextColor(0);
+  doc.text(
+    "(2) Control estadístico (Western Electric) y (3) Capacidad (Cpk) son dimensiones informativas: originan Alertas u Observaciones, no NC.",
+    88, yNota + 10,
+  );
+  doc.setTextColor(0).setFont("helvetica", "normal");
 
-  if (noConformidades.length === 0) {
+  // ===== Hoja de hallazgos categorizados =====
+  const renderHallazgos = (titulo: string, items: Hallazgo[], color: [number, number, number], vacio: string) => {
+    doc.addPage();
+    doc.setFontSize(14).setFont("helvetica", "bold");
+    doc.text(titulo, 40, TOP_Y + 6);
+    doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
+    doc.text(`${items.length} elemento(s)`, 40, TOP_Y + 22);
+    doc.setTextColor(0);
+
+    if (items.length === 0) {
+      autoTable(doc, {
+        startY: TOP_Y + 40,
+        head: [["Estado"]],
+        body: [[vacio]],
+        theme: "grid",
+        headStyles: { fillColor: [22, 163, 74], textColor: 255 },
+        bodyStyles: { textColor: [22, 101, 52], fontStyle: "bold" },
+        styles: { fontSize: 11, cellPadding: 8, halign: "center" },
+        margin: tableMargin,
+      });
+      return;
+    }
     autoTable(doc, {
       startY: TOP_Y + 40,
-      head: [["Estado"]],
-      body: [["✓ Sin no conformidades en el periodo analizado"]],
-      theme: "grid",
-      headStyles: { fillColor: [22, 163, 74], textColor: 255 },
-      bodyStyles: { textColor: [22, 101, 52], fontStyle: "bold" },
-      styles: { fontSize: 11, cellPadding: 8, halign: "center" },
-      margin: tableMargin,
-    });
-  } else {
-    autoTable(doc, {
-      startY: TOP_Y + 40,
-      head: [["Sev.", "Registro", "Serie", "Tipo", "Detalle"]],
-      body: noConformidades.map((n) => [
-        n.severidad === "alta" ? "ALTA" : "MEDIA",
-        n.registroNombre,
-        n.serie,
-        ({ fuera_spec: "Fuera spec", cpk_bajo: "Cpk bajo", pct_bajo: "% bajo", sin_minimo: "Sin mínimo" } as const)[n.tipo],
-        n.detalle,
+      head: [["Sev.", "Dimensión", "Registro", "Serie", "Hallazgo", "Detalle / Acción sugerida"]],
+      body: items.map((h) => [
+        h.severidad.toUpperCase(),
+        h.dimension,
+        h.registroNombre,
+        h.serie,
+        h.titulo,
+        `${h.detalle}\n→ ${h.accionSugerida}`,
       ]),
       theme: "striped",
-      headStyles: { fillColor: [30, 64, 175], textColor: 255, fontSize: 9 },
-      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: color, textColor: 255, fontSize: 9 },
+      styles: { fontSize: 9, cellPadding: 4, valign: "top" },
+      columnStyles: { 5: { cellWidth: "auto" } },
       margin: tableMargin,
-      didParseCell: (data) => {
-        if (data.section === "body" && data.column.index === 0) {
-          const sev = String(data.cell.raw);
-          if (sev === "ALTA") {
-            data.cell.styles.fillColor = [220, 38, 38];
-            data.cell.styles.textColor = 255;
-            data.cell.styles.fontStyle = "bold";
-          } else {
-            data.cell.styles.fillColor = [251, 191, 36];
-            data.cell.styles.textColor = [69, 26, 3];
-            data.cell.styles.fontStyle = "bold";
-          }
-        }
-      },
     });
+  };
+
+  renderHallazgos(
+    "No conformidades (incumplimiento normativo LIE/LSE o mínimo)",
+    resumenEval.noConformidades,
+    [220, 38, 38],
+    "✓ Sin no conformidades en el periodo analizado",
+  );
+  renderHallazgos(
+    "Alertas estadísticas (Western Electric / Capacidad Cpk)",
+    resumenEval.alertas,
+    [217, 119, 6],
+    "✓ Sin alertas estadísticas — proceso bajo control y capaz",
+  );
+  if (resumenEval.observaciones.length > 0) {
+    renderHallazgos(
+      "Observaciones",
+      resumenEval.observaciones,
+      [37, 99, 235],
+      "Sin observaciones",
+    );
   }
+  void evaluaciones; // Reservado para futura tabla comparativa por registro.
 
   // ===== Agrupados (separando registros por área/par de cuartos vs instrumentos independientes) =====
   const construirGrupos = (items: AnalisisRegistro[]) => {
@@ -314,11 +384,11 @@ export function exportarNormativoPDF(
     secciones.push({ titulo: "Registros por instrumento independiente", grupos: construirGrupos(analisisInstrumentos) });
   }
 
-  // Color por Cpk
+  // Color por Cpk — jamás en rojo: capacidad baja/marginal es alerta (ámbar).
+  // El rojo se reserva a incumplimiento normativo real (fuera de LIE/LSE).
   const colorCpk = (cpk: number | null): [number, number, number] | null => {
     if (cpk == null) return null;
-    if (cpk < CPK_FAIL) return [220, 38, 38];
-    if (cpk < CPK_WARN) return [251, 191, 36];
+    if (cpk < CPK_WARN) return [251, 191, 36]; // ámbar (alerta) para Cpk < 1.33
     return [22, 163, 74];
   };
 
@@ -479,8 +549,11 @@ export function exportarNormativoPDF(
             });
             yCursor = (doc as any).lastAutoTable.finalY + 8;
 
-            // Conclusión automática
+            // Conclusión contextual (no alarmista si no hay incumplimiento normativo)
             const hits = westernElectric(b.values, b.media as number, b.sigma as number);
+            const hayOOSSerie = b.values.some(
+              (v) => (b.lse != null && v > b.lse) || (b.lie != null && v < b.lie),
+            );
             const fueraAccion = b.values.some(
               (v) => v > (b.lacs as number) || v < (b.laci as number),
             );
@@ -489,11 +562,16 @@ export function exportarNormativoPDF(
             );
             let texto: string;
             let color: [number, number, number];
-            if (fueraAccion || hits.length > 0) {
-              texto = "Proceso fuera de control estadístico";
+            if (hayOOSSerie) {
+              // NC real por incumplimiento LIE/LSE → único caso rojo.
+              texto = "No conformidad — lecturas fuera de especificación";
               color = [220, 38, 38];
+            } else if (fueraAccion || hits.length > 0) {
+              // Sin incumplimiento normativo pero con señales estadísticas.
+              texto = "Control estadístico comprometido — proceso conforme, requiere seguimiento";
+              color = [217, 119, 6];
             } else if (fueraAlerta) {
-              texto = "Proceso en alerta estadística";
+              texto = "Proceso en observación — dentro de especificación";
               color = [217, 119, 6];
             } else {
               texto = "Proceso bajo control estadístico";
@@ -509,7 +587,7 @@ export function exportarNormativoPDF(
 
             doc.setFontSize(7.5).setTextColor(120).setFont("helvetica", "italic");
             doc.text(
-              "La conclusión estadística evalúa el control del proceso y no sustituye el cumplimiento normativo LIE/LSE.",
+              "El control estadístico y la capacidad son informativos; la No Conformidad se origina únicamente por incumplimiento normativo (LIE/LSE o mínimo).",
               margin, yCursor,
             );
             doc.setTextColor(0).setFont("helvetica", "normal");
