@@ -74,10 +74,8 @@ export const setManagedUserPassword = createServerFn({ method: "POST" })
       })
       .parse(data),
   )
-  .handler(async ({ data }) => {
-    const { setManagedUserPasswordAccount } = await import("./admin-users.server");
-    return setManagedUserPasswordAccount(data.accessToken, data);
-  });
+  .handler(async ({ data }) => setManagedUserPasswordAccount(data.accessToken, data));
+
 
 export const sendManagedUserPasswordRecovery = createServerFn({ method: "POST" })
   .inputValidator((data) =>
