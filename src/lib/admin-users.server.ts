@@ -49,7 +49,8 @@ async function requireAdminOrSuper(accessToken: string) {
 
 
 export async function getManagedUsers(accessToken: string): Promise<AdminUserView[]> {
-  await requireSuperAdmin(accessToken);
+  await requireAdminOrSuper(accessToken);
+
 
   const [{ data: roleRows, error: rolesError }, { data: usersData, error: usersError }] =
     await Promise.all([
