@@ -228,7 +228,7 @@ function seriesInfoDeRegistro(registro: Registro, semanas: Semana[]): SerieInfo[
       },
     ];
   }
-  const unidad = registro.unidad || "";
+  const unidad = unidadDeRegistro(registro, semanas);
   const etiqueta =
     registro.modulo === "presiones"
       ? `Presión (${unidad || "—"})`
@@ -242,7 +242,7 @@ function seriesInfoDeRegistro(registro: Registro, semanas: Semana[]): SerieInfo[
       unidad,
       lse: registro.lse ?? null,
       lie: registro.lie ?? null,
-      decimales: decimalesDe(registro, "lecturas"),
+      decimales: decimalesDe(registro, unidad),
     },
   ];
 }
