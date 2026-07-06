@@ -529,6 +529,66 @@ function UsuariosAdmin() {
           </CardContent>
         </Card>
       </main>
+
+      <Dialog
+        open={resetTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setResetTarget(null);
+            setResetPwd("");
+            setResetConfirm("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restablecer contraseña</DialogTitle>
+            <DialogDescription>
+              {resetTarget?.email ?? resetTarget?.user_id} — mínimo 8 caracteres.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleResetPassword}>
+            <div className="space-y-2">
+              <Label htmlFor="reset-pwd">Nueva contraseña</Label>
+              <Input
+                id="reset-pwd"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={resetPwd}
+                onChange={(event) => setResetPwd(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
+              <Input
+                id="reset-confirm"
+                type="password"
+                autoComplete="new-password"
+                minLength={8}
+                value={resetConfirm}
+                onChange={(event) => setResetConfirm(event.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setResetTarget(null)}
+                disabled={busy?.startsWith("pwd:")}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={busy?.startsWith("pwd:")}>
+                {busy?.startsWith("pwd:") ? "Guardando…" : "Actualizar contraseña"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
