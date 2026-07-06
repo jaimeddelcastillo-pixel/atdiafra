@@ -86,7 +86,5 @@ export const sendManagedUserPasswordRecovery = createServerFn({ method: "POST" }
       })
       .parse(data),
   )
-  .handler(async ({ data }) => {
-    const { sendManagedUserPasswordRecoveryEmail } = await import("./admin-users.server");
-    return sendManagedUserPasswordRecoveryEmail(data.accessToken, data);
-  });
+  .handler(async ({ data }) => sendManagedUserPasswordRecoveryEmail(data.accessToken, data));
+
