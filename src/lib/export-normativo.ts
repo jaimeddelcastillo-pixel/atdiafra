@@ -384,23 +384,118 @@ export function exportarNormativoPDF(
         doc.setTextColor(0).setFont("helvetica", "normal");
       }
 
-      // Gráficas: una por fila (apiladas), ancho completo
+      // Gráficas + control estadístico por serie
       if (incluirGraficas) {
         const margin = 40;
         const chartW = pageW - margin * 2;
         const chartH = 200;
         const sems = semanasDelPeriodo(a.registro, a.periodo);
-        const charts = generarChartsRegistro(a.registro, sems, chartW, chartH);
-        let yCursor = (doc as any).lastAutoTable.finalY + 20;
-        for (const c of charts) {
-          if (yCursor + chartH > pageH - FOOTER_H - 8) {
-            doc.addPage();
-            doc.setFontSize(11).setFont("helvetica", "bold");
-            doc.text(`${a.registro.nombre} — gráficas`, 40, TOP_Y + 6);
-            yCursor = TOP_Y + 22;
+        const bloque = generarBloqueEstadisticoRegistro(a.registro, sems, chartW, chartH);
+        let yCursor = (doc as any).lastAutoTable.finalY + 16;
+
+        const nuevaPagina = (titulo: string) => {
+          doc.addPage();
+          doc.setFontSize(11).setFont("helvetica", "bold");
+          doc.text(titulo, 40, TOP_Y + 6);
+          return TOP_Y + 22;
+        };
+        const asegurarEspacio = (alto: number) => {
+          if (yCursor + alto > pageH - FOOTER_H - 8) {
+            yCursor = nuevaPagina(`${a.registro.nombre} — gráficas`);
           }
-          doc.addImage(c.dataUrl, "PNG", margin, yCursor, chartW, chartH);
-          yCursor += chartH + 14;
+        };
+
+        for (const b of bloque) {
+          // Título de serie
+          asegurarEspacio(20);
+          doc.setFontSize(10).setFont("helvetica", "bold").setTextColor(30, 41, 59);
+          doc.text(`${b.serie}`, margin, yCursor);
+          doc.setTextColor(0).setFont("helvetica", "normal");
+          yCursor += 8;
+
+          // Gráfica 1
+          asegurarEspacio(chartH + 6);
+          doc.addImage(b.chartSpecUrl, "PNG", margin, yCursor, chartW, chartH);
+          yCursor += chartH + 8;
+
+          // Gráfica 2
+          asegurarEspacio(chartH + 6);
+          doc.addImage(b.chartAlertUrl, "PNG", margin, yCursor, chartW, chartH);
+          yCursor += chartH + 8;
+
+          const dec = b.decimales;
+          const fnum = (v: number | null) =>
+            v != null && Number.isFinite(v) ? v.toFixed(dec) : "—";
+
+          if (b.statsSuficientes) {
+            // Tabla de límites
+            asegurarEspacio(60);
+            autoTable(doc, {
+              startY: yCursor,
+              head: [["Variable", "Media", "σ", "LC", "LAS", "LAI", "LACS", "LACI", "LIE", "LSE"]],
+              body: [[
+                b.serie,
+                fnum(b.media), fnum(b.sigma),
+                fnum(b.lc), fnum(b.las), fnum(b.lai),
+                fnum(b.lacs), fnum(b.laci),
+                fnum(b.lie), fnum(b.lse),
+              ]],
+              theme: "grid",
+              headStyles: { fillColor: [30, 64, 175], textColor: 255, fontSize: 8 },
+              styles: { fontSize: 8, cellPadding: 3, halign: "center" },
+              margin: { left: margin, right: margin, top: TOP_Y, bottom: FOOTER_H + 8 },
+            });
+            yCursor = (doc as any).lastAutoTable.finalY + 8;
+
+            // Conclusión automática
+            const hits = westernElectric(b.values, b.media as number, b.sigma as number);
+            const fueraAccion = b.values.some(
+              (v) => v > (b.lacs as number) || v < (b.laci as number),
+            );
+            const fueraAlerta = b.values.some(
+              (v) => v > (b.las as number) || v < (b.lai as number),
+            );
+            let texto: string;
+            let color: [number, number, number];
+            if (fueraAccion || hits.length > 0) {
+              texto = "Proceso fuera de control estadístico";
+              color = [220, 38, 38];
+            } else if (fueraAlerta) {
+              texto = "Proceso en alerta estadística";
+              color = [217, 119, 6];
+            } else {
+              texto = "Proceso bajo control estadístico";
+              color = [22, 163, 74];
+            }
+            asegurarEspacio(28);
+            doc.setFillColor(color[0], color[1], color[2]);
+            doc.rect(margin, yCursor, chartW, 14, "F");
+            doc.setTextColor(255).setFont("helvetica", "bold").setFontSize(10);
+            doc.text(texto, margin + 6, yCursor + 10);
+            doc.setTextColor(0).setFont("helvetica", "normal");
+            yCursor += 18;
+
+            doc.setFontSize(7.5).setTextColor(120).setFont("helvetica", "italic");
+            doc.text(
+              "La conclusión estadística evalúa el control del proceso y no sustituye el cumplimiento normativo LIE/LSE.",
+              margin, yCursor,
+            );
+            doc.setTextColor(0).setFont("helvetica", "normal");
+            yCursor += 14;
+          } else {
+            asegurarEspacio(24);
+            doc.setFontSize(9).setFont("helvetica", "italic").setTextColor(120);
+            doc.text("n insuficiente para control estadístico", margin, yCursor + 6);
+            doc.setTextColor(0).setFont("helvetica", "normal");
+            yCursor += 16;
+            doc.setFontSize(7.5).setTextColor(120).setFont("helvetica", "italic");
+            doc.text(
+              "La conclusión estadística evalúa el control del proceso y no sustituye el cumplimiento normativo LIE/LSE.",
+              margin, yCursor,
+            );
+            doc.setTextColor(0).setFont("helvetica", "normal");
+            yCursor += 14;
+          }
         }
       }
     }
