@@ -279,7 +279,7 @@ export function generarBloqueEstadisticoRegistro(
   width = 520,
   height = 180,
 ): BloqueSerie[] {
-  const infos = seriesInfoDeRegistro(registro);
+  const infos = seriesInfoDeRegistro(registro, semanas);
   const out: BloqueSerie[] = [];
   for (const info of infos) {
     const puntos = puntosDeSemanas(semanas, info.campo, info.lse, info.lie);
