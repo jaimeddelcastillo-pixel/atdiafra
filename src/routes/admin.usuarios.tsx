@@ -181,6 +181,56 @@ function UsuariosAdmin() {
     }
   };
 
+  const handleResetPassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!resetTarget) return;
+    if (resetPwd.length < 8) {
+      toast.error("La contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (resetPwd !== resetConfirm) {
+      toast.error("Las contraseñas no coinciden.");
+      return;
+    }
+    try {
+      setBusy(`pwd:${resetTarget.user_id}`);
+      const accessToken = await getAccessToken();
+      await setManagedUserPassword({
+        data: { accessToken, userId: resetTarget.user_id, password: resetPwd },
+      });
+      toast.success("Contraseña actualizada");
+      setResetTarget(null);
+      setResetPwd("");
+      setResetConfirm("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar la contraseña");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const sendRecovery = async (row: AdminUserView) => {
+    if (!row.email) {
+      toast.error("Este usuario no tiene correo registrado.");
+      return;
+    }
+    try {
+      setBusy(`recovery:${row.user_id}`);
+      const accessToken = await getAccessToken();
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      await sendManagedUserPasswordRecovery({
+        data: { accessToken, email: row.email, redirectTo },
+      });
+      toast.success("Enlace de recuperación enviado por correo");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo enviar el enlace");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
