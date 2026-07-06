@@ -8,7 +8,10 @@ import {
   etiquetaGrupo,
   claveGrupo,
   semanasDelPeriodo,
-  detectarNoConformidades,
+  evaluarLote,
+  ETIQUETA_CONTROL,
+  ETIQUETA_CAPACIDAD,
+  ETIQUETA_CATEGORIA,
   tipoRegistroReporte,
   etiquetaTipoRegistro,
   tituloReporteDeModulos,
@@ -17,6 +20,7 @@ import {
   type AnalisisRegistro,
   type AgruparPor,
   type EstadisticaSerie,
+  type Hallazgo,
 } from "./normativo";
 import { generarBloqueEstadisticoRegistro } from "./chart-renderer";
 import { westernElectric } from "./statistics";
