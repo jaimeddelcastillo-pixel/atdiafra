@@ -61,3 +61,31 @@ export const deleteManagedUser = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => deleteManagedUserAccount(data.accessToken, data));
+
+export const setManagedUserPassword = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    tokenSchema
+      .extend({
+        userId: z.string().uuid(),
+        password: z.string().min(8),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { setManagedUserPasswordAccount } = await import("./admin-users.server");
+    return setManagedUserPasswordAccount(data.accessToken, data);
+  });
+
+export const sendManagedUserPasswordRecovery = createServerFn({ method: "POST" })
+  .inputValidator((data) =>
+    tokenSchema
+      .extend({
+        email: z.string().email(),
+        redirectTo: z.string().url().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { sendManagedUserPasswordRecoveryEmail } = await import("./admin-users.server");
+    return sendManagedUserPasswordRecoveryEmail(data.accessToken, data);
+  });
