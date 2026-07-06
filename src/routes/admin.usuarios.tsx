@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { FormEvent, useEffect, useState } from "react";
-import { Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { KeyRound, Mail, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useAuth, type AppRole } from "@/lib/auth-context";
 import { AuthGuard } from "@/components/AuthGuard";
 import { AppHeader } from "@/components/AppHeader";
@@ -10,9 +10,12 @@ import {
   deleteManagedUser,
   inviteManagedUser,
   listManagedUsers,
+  sendManagedUserPasswordRecovery,
+  setManagedUserPassword,
   updateManagedUserRole,
   type AdminUserView,
 } from "@/lib/admin-users.functions";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
