@@ -449,21 +449,23 @@ function UsuariosAdmin() {
                             </SelectContent>
                           </Select>
                         )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setResetTarget(row);
-                            setResetPwd("");
-                            setResetConfirm("");
-                          }}
-                          disabled={actionBusy || busy === `pwd:${row.user_id}`}
-                          title="Definir nueva contraseña"
-                        >
-                          <KeyRound />
-                          Contraseña
-                        </Button>
-                        {row.email && (
+                        {canModifyTarget && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setResetTarget(row);
+                              setResetPwd("");
+                              setResetConfirm("");
+                            }}
+                            disabled={actionBusy || busy === `pwd:${row.user_id}`}
+                            title="Definir nueva contraseña"
+                          >
+                            <KeyRound />
+                            Contraseña
+                          </Button>
+                        )}
+                        {row.email && canModifyTarget && (
                           <Button
                             variant="secondary"
                             size="sm"
