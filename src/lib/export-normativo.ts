@@ -384,11 +384,11 @@ export function exportarNormativoPDF(
     secciones.push({ titulo: "Registros por instrumento independiente", grupos: construirGrupos(analisisInstrumentos) });
   }
 
-  // Color por Cpk
+  // Color por Cpk — jamás en rojo: capacidad baja/marginal es alerta (ámbar).
+  // El rojo se reserva a incumplimiento normativo real (fuera de LIE/LSE).
   const colorCpk = (cpk: number | null): [number, number, number] | null => {
     if (cpk == null) return null;
-    if (cpk < CPK_FAIL) return [220, 38, 38];
-    if (cpk < CPK_WARN) return [251, 191, 36];
+    if (cpk < CPK_WARN) return [251, 191, 36]; // ámbar (alerta) para Cpk < 1.33
     return [22, 163, 74];
   };
 
