@@ -675,7 +675,10 @@ function NormativoPage() {
                             {cpk == null ? (
                               <span className="text-[11px] italic text-muted-foreground">n insuf.</span>
                             ) : (
-                              <span className={cpk < CPK_FAIL ? "text-destructive font-medium" : cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}>
+                              <span
+                                className={cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
+                                title={cpk < CPK_FAIL ? "Capacidad baja — alerta estadística (no NC)" : cpk < CPK_WARN ? "Capacidad marginal" : "Capacidad adecuada"}
+                              >
                                 {cpk.toFixed(2)}
                               </span>
                             )}
