@@ -327,7 +327,7 @@ export function generarBloqueEstadisticoRegistro(
         puntos: [],
         refs: [],
         decimales: dec,
-        mensajeCentral: "n insuficiente para control estadístico",
+        mensajeCentral: "Datos insuficientes para evaluación estadística",
       });
     } else {
       const puntosAlerta = puntos.map((p) => ({ ...p, outOfSpec: false }));
