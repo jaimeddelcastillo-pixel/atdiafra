@@ -134,7 +134,7 @@ function NormativoPage() {
   const soloNC = search.nc ?? false;
 
   const updateSearch = (patch: Partial<SearchState>) => {
-    navigate({ search: (prev) => ({ ...prev, ...patch }), replace: true });
+    navigate({ search: (prev: SearchState) => ({ ...prev, ...patch }), replace: true });
   };
 
   const [registros, setRegistros] = useState<Registro[]>([]);
