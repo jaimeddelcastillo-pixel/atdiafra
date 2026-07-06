@@ -1,5 +1,6 @@
 // Generador de gráficas de tendencia (canvas nativo) para embeber en jsPDF.
 import type { Registro, Semana, PuntoLectura, Dia, Turno } from "./semanas";
+import { descriptive } from "./statistics";
 
 type Punto = { t: number; v: number; outOfSpec: boolean };
 
@@ -29,20 +30,28 @@ function puntosDeSemanas(
   return out.sort((a, b) => a.t - b.t);
 }
 
+type LineaRef = {
+  y: number;
+  label: string;
+  color: string;
+  dash?: number[];
+  labelPos?: "top" | "bottom";
+};
+
 type ChartOpts = {
   width: number;
   height: number;
   titulo: string;
   subtitulo?: string;
-  unidad: string;
-  lse: number | null;
-  lie: number | null;
   puntos: Punto[];
+  refs: LineaRef[];
+  decimales: number;
+  /** Mensaje central alternativo (por ejemplo "n insuficiente…"). Si se define, no se dibujan puntos ni refs. */
+  mensajeCentral?: string;
 };
 
-function dibujarChart(o: ChartOpts): string {
+function dibujarChartGenerico(o: ChartOpts): string {
   const cv = document.createElement("canvas");
-  // Alta resolución para PDF nítido
   const scale = 2;
   cv.width = o.width * scale;
   cv.height = o.height * scale;
@@ -51,7 +60,7 @@ function dibujarChart(o: ChartOpts): string {
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, o.width, o.height);
 
-  const padL = 50, padR = 16, padT = 36, padB = 28;
+  const padL = 50, padR = 74, padT = 36, padB = 28;
   const W = o.width - padL - padR;
   const H = o.height - padT - padB;
 
@@ -65,10 +74,26 @@ function dibujarChart(o: ChartOpts): string {
     ctx.fillText(o.subtitulo, padL, 30);
   }
 
+  // Marco base
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(padL, padT, W, H);
+
+  if (o.mensajeCentral) {
+    ctx.fillStyle = "#64748b";
+    ctx.font = "italic 11px Helvetica, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(o.mensajeCentral, padL + W / 2, padT + H / 2);
+    ctx.textAlign = "start";
+    return cv.toDataURL("image/png");
+  }
+
   if (o.puntos.length === 0) {
     ctx.fillStyle = "#94a3b8";
     ctx.font = "11px Helvetica, Arial, sans-serif";
-    ctx.fillText("Sin lecturas en el periodo", padL, padT + H / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Sin lecturas en el periodo", padL + W / 2, padT + H / 2);
+    ctx.textAlign = "start";
     return cv.toDataURL("image/png");
   }
 
@@ -77,8 +102,9 @@ function dibujarChart(o: ChartOpts): string {
   const tMax = o.puntos[o.puntos.length - 1].t;
   const tSpan = Math.max(1, tMax - tMin);
   const valores = o.puntos.map((p) => p.v);
-  let yMin = Math.min(...valores, ...(o.lie != null ? [o.lie] : []));
-  let yMax = Math.max(...valores, ...(o.lse != null ? [o.lse] : []));
+  const refYs = o.refs.map((r) => r.y).filter((y) => Number.isFinite(y));
+  let yMin = Math.min(...valores, ...refYs);
+  let yMax = Math.max(...valores, ...refYs);
   if (yMin === yMax) { yMin -= 1; yMax += 1; }
   const yPad = (yMax - yMin) * 0.1;
   yMin -= yPad; yMax += yPad;
@@ -99,36 +125,36 @@ function dibujarChart(o: ChartOpts): string {
     ctx.moveTo(padL, yy);
     ctx.lineTo(padL + W, yy);
     ctx.stroke();
-    ctx.fillText(v.toFixed(1), 4, yy + 3);
+    ctx.fillText(v.toFixed(o.decimales), 4, yy + 3);
   }
 
-  // Eje X (fechas)
+  // Eje X
   const fmt = (ms: number) => {
     const d = new Date(ms);
     return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
   };
-  ctx.fillStyle = "#64748b";
   for (let i = 0; i <= 4; i++) {
     const tt = tMin + (tSpan * i) / 4;
     const xx = x(tt);
     ctx.fillText(fmt(tt), xx - 12, padT + H + 14);
   }
 
-  // LSE / LIE bandas
-  if (o.lse != null) {
-    ctx.strokeStyle = "#dc2626";
-    ctx.setLineDash([4, 3]);
+  // Líneas de referencia
+  ctx.font = "9px Helvetica, Arial, sans-serif";
+  for (const r of o.refs) {
+    if (!Number.isFinite(r.y)) continue;
+    ctx.strokeStyle = r.color;
+    ctx.fillStyle = r.color;
+    ctx.setLineDash(r.dash ?? []);
     ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(padL, y(o.lse)); ctx.lineTo(padL + W, y(o.lse)); ctx.stroke();
-    ctx.fillStyle = "#dc2626";
-    ctx.fillText(`LSE ${o.lse}`, padL + W - 50, y(o.lse) - 3);
-  }
-  if (o.lie != null) {
-    ctx.strokeStyle = "#dc2626";
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath(); ctx.moveTo(padL, y(o.lie)); ctx.lineTo(padL + W, y(o.lie)); ctx.stroke();
-    ctx.fillStyle = "#dc2626";
-    ctx.fillText(`LIE ${o.lie}`, padL + W - 50, y(o.lie) + 10);
+    const yy = y(r.y);
+    ctx.beginPath();
+    ctx.moveTo(padL, yy);
+    ctx.lineTo(padL + W, yy);
+    ctx.stroke();
+    const label = `${r.label} ${r.y.toFixed(o.decimales)}`;
+    const dy = r.labelPos === "bottom" ? 10 : -3;
+    ctx.fillText(label, padL + W + 2, yy + dy);
   }
   ctx.setLineDash([]);
 
@@ -142,18 +168,13 @@ function dibujarChart(o: ChartOpts): string {
   });
   ctx.stroke();
 
-  // Puntos (rojo si fuera spec)
+  // Puntos
   for (const p of o.puntos) {
     ctx.beginPath();
     ctx.fillStyle = p.outOfSpec ? "#dc2626" : "#1e40af";
     ctx.arc(x(p.t), y(p.v), p.outOfSpec ? 2.5 : 1.5, 0, Math.PI * 2);
     ctx.fill();
   }
-
-  // Marco
-  ctx.strokeStyle = "#cbd5e1";
-  ctx.lineWidth = 0.5;
-  ctx.strokeRect(padL, padT, W, H);
 
   return cv.toDataURL("image/png");
 }
@@ -167,61 +188,197 @@ export type ChartImagen = {
   height: number;
 };
 
-/** Genera una imagen por cada serie (Temp/HR para temphr, Valor para los demás) en el rango del periodo. */
+type SerieInfo = {
+  serie: string;
+  campo: "lecturas" | "lecturas_hr";
+  unidad: string;
+  lse: number | null;
+  lie: number | null;
+  decimales: number;
+};
+
+/** Decimales de despliegue por tipo de variable. */
+function decimalesDe(registro: Registro, campo: "lecturas" | "lecturas_hr"): number {
+  if (registro.modulo === "temphr") return 2;
+  if (registro.modulo === "presiones") {
+    const u = (registro.unidad || "").toLowerCase().replace(/\s+/g, "");
+    if (u.includes("inh2o") || u.includes("in.h2o") || u.includes('"h2o')) return 3;
+    return 2;
+  }
+  return 2;
+}
+
+function seriesInfoDeRegistro(registro: Registro): SerieInfo[] {
+  if (registro.modulo === "temphr") {
+    return [
+      {
+        serie: "Temperatura (°C)", campo: "lecturas", unidad: "°C",
+        lse: registro.lse_t ?? null, lie: registro.lie_t ?? null,
+        decimales: 2,
+      },
+      {
+        serie: "Humedad (%HR)", campo: "lecturas_hr", unidad: "%HR",
+        lse: registro.lse_hr ?? null, lie: registro.lie_hr ?? null,
+        decimales: 2,
+      },
+    ];
+  }
+  const unidad = registro.unidad || "";
+  const etiqueta =
+    registro.modulo === "presiones"
+      ? `Presión (${unidad || "—"})`
+      : unidad
+        ? `Valor (${unidad})`
+        : "Valor";
+  return [
+    {
+      serie: etiqueta,
+      campo: "lecturas",
+      unidad,
+      lse: registro.lse ?? null,
+      lie: registro.lie ?? null,
+      decimales: decimalesDe(registro, "lecturas"),
+    },
+  ];
+}
+
+export type BloqueSerie = {
+  serie: string;
+  unidad: string;
+  decimales: number;
+  lie: number | null;
+  lse: number | null;
+  n: number;
+  media: number | null;
+  sigma: number | null;
+  lc: number | null;
+  las: number | null;
+  lai: number | null;
+  lacs: number | null;
+  laci: number | null;
+  values: number[];
+  statsSuficientes: boolean;
+  chartSpecUrl: string;
+  chartAlertUrl: string;
+  width: number;
+  height: number;
+};
+
+/**
+ * Devuelve, por serie del registro, las dos gráficas y los parámetros
+ * estadísticos listos para pintar tabla y conclusión en el PDF.
+ */
+export function generarBloqueEstadisticoRegistro(
+  registro: Registro,
+  semanas: Semana[],
+  width = 520,
+  height = 180,
+): BloqueSerie[] {
+  const infos = seriesInfoDeRegistro(registro);
+  const out: BloqueSerie[] = [];
+  for (const info of infos) {
+    const puntos = puntosDeSemanas(semanas, info.campo, info.lse, info.lie);
+    const values = puntos.map((p) => p.v);
+    const stats = descriptive(values);
+    const media = stats?.mean ?? null;
+    const sigma = stats?.stdev ?? null;
+    const statsSuf =
+      values.length >= 2 && sigma != null && Number.isFinite(sigma) && sigma > 0 && media != null;
+
+    const las = statsSuf ? (media as number) + 2 * (sigma as number) : null;
+    const lai = statsSuf ? (media as number) - 2 * (sigma as number) : null;
+    const lacs = statsSuf ? (media as number) + 3 * (sigma as number) : null;
+    const laci = statsSuf ? (media as number) - 3 * (sigma as number) : null;
+
+    const dec = info.decimales;
+    const subSpec = statsSuf
+      ? `LIE ${info.lie ?? "—"} · LSE ${info.lse ?? "—"} · LC ${(media as number).toFixed(dec)} · LCS ${(lacs as number).toFixed(dec)} · LCI ${(laci as number).toFixed(dec)}`
+      : `LIE ${info.lie ?? "—"} · LSE ${info.lse ?? "—"}`;
+
+    const refsSpec: LineaRef[] = [];
+    if (info.lse != null) refsSpec.push({ y: info.lse, label: "LSE", color: "#dc2626", dash: [4, 3] });
+    if (info.lie != null) refsSpec.push({ y: info.lie, label: "LIE", color: "#dc2626", dash: [4, 3], labelPos: "bottom" });
+    if (statsSuf) {
+      refsSpec.push({ y: media as number, label: "LC", color: "#0f766e" });
+      refsSpec.push({ y: lacs as number, label: "LCS", color: "#f97316", dash: [2, 2] });
+      refsSpec.push({ y: laci as number, label: "LCI", color: "#f97316", dash: [2, 2], labelPos: "bottom" });
+    }
+
+    const chartSpecUrl = dibujarChartGenerico({
+      width, height,
+      titulo: `${registro.nombre} — Especificación + Control Estadístico · ${info.serie}`,
+      subtitulo: subSpec,
+      puntos,
+      refs: refsSpec,
+      decimales: dec,
+    });
+
+    let chartAlertUrl: string;
+    if (!statsSuf) {
+      chartAlertUrl = dibujarChartGenerico({
+        width, height,
+        titulo: `${registro.nombre} — Límites de Alerta y Acción · ${info.serie}`,
+        subtitulo: "",
+        puntos: [],
+        refs: [],
+        decimales: dec,
+        mensajeCentral: "n insuficiente para control estadístico",
+      });
+    } else {
+      const puntosAlerta = puntos.map((p) => ({ ...p, outOfSpec: false }));
+      const refsAlert: LineaRef[] = [
+        { y: media as number, label: "LC", color: "#0f766e" },
+        { y: las as number, label: "LAS", color: "#f59e0b", dash: [5, 3] },
+        { y: lai as number, label: "LAI", color: "#f59e0b", dash: [5, 3], labelPos: "bottom" },
+        { y: lacs as number, label: "LACS", color: "#dc2626", dash: [2, 2] },
+        { y: laci as number, label: "LACI", color: "#dc2626", dash: [2, 2], labelPos: "bottom" },
+      ];
+      chartAlertUrl = dibujarChartGenerico({
+        width, height,
+        titulo: `${registro.nombre} — Límites de Alerta y Acción · ${info.serie}`,
+        subtitulo: `LC ${(media as number).toFixed(dec)} · ±2σ (alerta) · ±3σ (acción)`,
+        puntos: puntosAlerta,
+        refs: refsAlert,
+        decimales: dec,
+      });
+    }
+
+    out.push({
+      serie: info.serie,
+      unidad: info.unidad,
+      decimales: dec,
+      lie: info.lie,
+      lse: info.lse,
+      n: values.length,
+      media, sigma,
+      lc: media,
+      las, lai, lacs, laci,
+      values,
+      statsSuficientes: statsSuf,
+      chartSpecUrl,
+      chartAlertUrl,
+      width, height,
+    });
+  }
+  return out;
+}
+
+/**
+ * Compat: devuelve solo la gráfica 1 (Especificación + Control Estadístico) por
+ * serie. Firma preservada para consumidores existentes (`export-utils.ts`, UI).
+ */
 export function generarChartsRegistro(
   registro: Registro,
   semanas: Semana[],
   width = 520,
   height = 180,
 ): ChartImagen[] {
-  const out: ChartImagen[] = [];
-  if (registro.modulo === "temphr") {
-    out.push({
-      registroId: registro.id,
-      registroNombre: registro.nombre,
-      serie: "Temperatura (°C)",
-      dataUrl: dibujarChart({
-        width, height,
-        titulo: `${registro.nombre} — Temperatura`,
-        subtitulo: `LIE ${registro.lie_t ?? "—"} · LSE ${registro.lse_t ?? "—"}`,
-        unidad: "°C",
-        lse: registro.lse_t ?? null,
-        lie: registro.lie_t ?? null,
-        puntos: puntosDeSemanas(semanas, "lecturas", registro.lse_t ?? null, registro.lie_t ?? null),
-      }),
-      width, height,
-    });
-    out.push({
-      registroId: registro.id,
-      registroNombre: registro.nombre,
-      serie: "Humedad (%HR)",
-      dataUrl: dibujarChart({
-        width, height,
-        titulo: `${registro.nombre} — Humedad`,
-        subtitulo: `LIE ${registro.lie_hr ?? "—"} · LSE ${registro.lse_hr ?? "—"}`,
-        unidad: "%HR",
-        lse: registro.lse_hr ?? null,
-        lie: registro.lie_hr ?? null,
-        puntos: puntosDeSemanas(semanas, "lecturas_hr", registro.lse_hr ?? null, registro.lie_hr ?? null),
-      }),
-      width, height,
-    });
-  } else {
-    out.push({
-      registroId: registro.id,
-      registroNombre: registro.nombre,
-      serie: "Valor",
-      dataUrl: dibujarChart({
-        width, height,
-        titulo: registro.nombre,
-        subtitulo: `LIE ${registro.lie ?? "—"} · LSE ${registro.lse ?? "—"} · ${registro.modulo}`,
-        unidad: "",
-        lse: registro.lse ?? null,
-        lie: registro.lie ?? null,
-        puntos: puntosDeSemanas(semanas, "lecturas", registro.lse ?? null, registro.lie ?? null),
-      }),
-      width, height,
-    });
-  }
-  return out;
+  const bloque = generarBloqueEstadisticoRegistro(registro, semanas, width, height);
+  return bloque.map((b) => ({
+    registroId: registro.id,
+    registroNombre: registro.nombre,
+    serie: b.serie,
+    dataUrl: b.chartSpecUrl,
+    width, height,
+  }));
 }
