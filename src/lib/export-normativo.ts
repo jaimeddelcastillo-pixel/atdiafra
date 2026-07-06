@@ -177,7 +177,7 @@ export function exportarNormativoExcel(
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stats), "Estadísticas");
 
   // Hoja 3: Evaluación tri-dimensional por registro
-  const { evaluaciones, resumen } = evaluarLote(analisis);
+  const { evaluaciones, resumen: resumenEval } = evaluarLote(analisis);
   const evalRows = evaluaciones.map((e) => ({
     Registro: e.analisis.registro.nombre,
     Cumplimiento: e.cumplimiento === "cumple" ? "Cumple" : "No conforme",
