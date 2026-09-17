@@ -520,6 +520,23 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
           />
           <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes.</span>
         </div>
+        {activeWeek && canWriteRecords && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground mr-1">
+              Corregir fecha de la semana seleccionada ({activeWeek.semana_inicio}):
+            </span>
+            <input
+              type="date"
+              value={activeWeek.semana_inicio}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              onChange={(e) => cambiarFechaSemana(activeWeek.id, e.target.value)}
+            />
+            <span className="text-[10px] text-muted-foreground">
+              Mueve las lecturas ya capturadas a la semana correcta.
+            </span>
+          </div>
+        )}
+
         {draft.semanas.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <span className="text-xs font-medium text-muted-foreground mr-1">Semanas:</span>
