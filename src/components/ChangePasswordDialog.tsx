@@ -58,7 +58,6 @@ export function ChangePasswordDialog({ trigger }: { trigger: ReactNode }) {
             <Label htmlFor="cp-new">Nueva contraseña</Label>
             <PasswordInput
               id="cp-new"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={password}
@@ -70,7 +69,6 @@ export function ChangePasswordDialog({ trigger }: { trigger: ReactNode }) {
             <Label htmlFor="cp-confirm">Confirmar contraseña</Label>
             <PasswordInput
               id="cp-confirm"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={confirm}

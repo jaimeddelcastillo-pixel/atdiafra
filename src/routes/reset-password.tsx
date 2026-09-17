@@ -93,7 +93,6 @@ function ResetPasswordPage() {
                 <Label htmlFor="new-pwd">Nueva contraseña</Label>
                 <PasswordInput
                   id="new-pwd"
-                  type="password"
                   required
                   minLength={6}
                   value={password}
@@ -104,7 +103,6 @@ function ResetPasswordPage() {
                 <Label htmlFor="confirm-pwd">Confirmar contraseña</Label>
                 <PasswordInput
                   id="confirm-pwd"
-                  type="password"
                   required
                   minLength={6}
                   value={confirm}
