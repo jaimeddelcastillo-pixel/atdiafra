@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KeyRound } from "lucide-react";
@@ -10,6 +10,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/reset-password")({
   validateSearch: () => ({}),
+  head: () => ({
+    meta: [
+      { title: "Restablecer contraseña — TRACEA" },
+      { name: "description", content: "Define una nueva contraseña para tu cuenta de TRACEA." },
+      { property: "og:title", content: "Restablecer contraseña — TRACEA" },
+      { property: "og:description", content: "Define una nueva contraseña para tu cuenta de TRACEA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ResetPasswordPage,
 });
 
@@ -81,7 +91,7 @@ function ResetPasswordPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="new-pwd">Nueva contraseña</Label>
-                <Input
+                <PasswordInput
                   id="new-pwd"
                   type="password"
                   required
@@ -92,7 +102,7 @@ function ResetPasswordPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-pwd">Confirmar contraseña</Label>
-                <Input
+                <PasswordInput
                   id="confirm-pwd"
                   type="password"
                   required
