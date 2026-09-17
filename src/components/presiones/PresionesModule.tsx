@@ -320,6 +320,31 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
   const updateWeek = (s: Semana) =>
     mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
 
+  // Corregir la fecha de una semana ya capturada (p. ej. la foto era de otra semana)
+  const cambiarFechaSemana = (id: string, valor: string) => {
+    if (!valor) return;
+    const fecha = new Date(valor + "T00:00:00");
+    const lunes = lunesDe(fecha);
+    const actual = draft.semanas.find((s) => s.id === id);
+    if (!actual) return;
+    if (actual.semana_inicio === lunes) return;
+    if (draft.semanas.some((s) => s.id !== id && s.semana_inicio === lunes)) {
+      toast.error(`Ya existe una semana del ${lunes}. Elimínala primero o elige otra fecha.`);
+      return;
+    }
+    const base = new Date(lunes + "T00:00:00");
+    mutate((r) => ({
+      ...r,
+      semanas: r.semanas.map((x) =>
+        x.id === id
+          ? { ...x, semana_inicio: lunes, mes: nombreMes(base), anio: String(base.getFullYear()) }
+          : x,
+      ),
+    }));
+    toast.success(`Semana movida al ${lunes} — recuerda Guardar`);
+  };
+
+
   // Importación por imagen: SOLO actualiza el draft local. NO persiste hasta "Guardar".
   const handleExtracted = (s: Semana) => {
     const existing = draft.semanas.find((x) => x.semana_inicio === s.semana_inicio);
@@ -495,6 +520,23 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
           />
           <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes.</span>
         </div>
+        {activeWeek && canWriteRecords && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground mr-1">
+              Corregir fecha de la semana seleccionada ({activeWeek.semana_inicio}):
+            </span>
+            <input
+              type="date"
+              value={activeWeek.semana_inicio}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              onChange={(e) => cambiarFechaSemana(activeWeek.id, e.target.value)}
+            />
+            <span className="text-[10px] text-muted-foreground">
+              Mueve las lecturas ya capturadas a la semana correcta.
+            </span>
+          </div>
+        )}
+
         {draft.semanas.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
             <span className="text-xs font-medium text-muted-foreground mr-1">Semanas:</span>
