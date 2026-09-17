@@ -36,6 +36,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
@@ -51,6 +52,16 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin/usuarios")({
+  head: () => ({
+    meta: [
+      { title: "Gestión de usuarios — TRACEA" },
+      { name: "description", content: "Administración de usuarios, roles y accesos de TRACEA." },
+      { property: "og:title", content: "Gestión de usuarios — TRACEA" },
+      { property: "og:description", content: "Administración de usuarios, roles y accesos de TRACEA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: () => (
     <AuthGuard>
       <UsuariosAdmin />
@@ -277,9 +288,8 @@ function UsuariosAdmin() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="new-user-password">Contraseña temporal</Label>
-                      <Input
+                      <PasswordInput
                         id="new-user-password"
-                        type="password"
                         autoComplete="new-password"
                         minLength={8}
                         value={password}
@@ -554,9 +564,8 @@ function UsuariosAdmin() {
           <form className="space-y-4" onSubmit={handleResetPassword}>
             <div className="space-y-2">
               <Label htmlFor="reset-pwd">Nueva contraseña</Label>
-              <Input
+              <PasswordInput
                 id="reset-pwd"
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 value={resetPwd}
@@ -566,9 +575,8 @@ function UsuariosAdmin() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
-              <Input
+              <PasswordInput
                 id="reset-confirm"
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 value={resetConfirm}

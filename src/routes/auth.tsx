@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,16 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: () => ({}),
+  head: () => ({
+    meta: [
+      { title: "Acceso — TRACEA" },
+      { name: "description", content: "Inicia sesión o crea tu cuenta en TRACEA." },
+      { property: "og:title", content: "Acceso — TRACEA" },
+      { property: "og:description", content: "Inicia sesión o crea tu cuenta en TRACEA." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
 
@@ -127,7 +138,7 @@ function AuthPage() {
                         ¿Olvidaste tu contraseña?
                       </button>
                     </div>
-                    <Input id="pwd-in" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <PasswordInput id="pwd-in" required value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <Button type="submit" className="w-full" disabled={busy}>
                     {busy ? "Entrando..." : "Entrar"}
@@ -142,7 +153,7 @@ function AuthPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pwd-up">Contraseña</Label>
-                    <Input id="pwd-up" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <PasswordInput id="pwd-up" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
                   </div>
                   <p className="text-xs text-muted-foreground">
                     El primer usuario registrado recibe el rol <strong>super_admin</strong>. Los demás entran como <strong>viewer</strong> hasta ser promovidos.

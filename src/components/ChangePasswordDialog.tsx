@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
@@ -56,9 +56,8 @@ export function ChangePasswordDialog({ trigger }: { trigger: ReactNode }) {
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
             <Label htmlFor="cp-new">Nueva contraseña</Label>
-            <Input
+            <PasswordInput
               id="cp-new"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={password}
@@ -68,9 +67,8 @@ export function ChangePasswordDialog({ trigger }: { trigger: ReactNode }) {
           </div>
           <div className="space-y-2">
             <Label htmlFor="cp-confirm">Confirmar contraseña</Label>
-            <Input
+            <PasswordInput
               id="cp-confirm"
-              type="password"
               autoComplete="new-password"
               minLength={8}
               value={confirm}
