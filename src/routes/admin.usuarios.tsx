@@ -277,7 +277,7 @@ function UsuariosAdmin() {
                   <form className="space-y-4" onSubmit={handleCreate}>
                     <div className="space-y-2">
                       <Label htmlFor="new-user-email">Correo</Label>
-                      <PasswordInput
+                      <Input
                         id="new-user-email"
                         type="email"
                         autoComplete="email"
@@ -288,9 +288,8 @@ function UsuariosAdmin() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="new-user-password">Contraseña temporal</Label>
-               <PasswordInput
+                      <PasswordInput
                         id="new-user-password"
-                        type="password"
                         autoComplete="new-password"
                         minLength={8}
                         value={password}
@@ -348,7 +347,7 @@ function UsuariosAdmin() {
                   <form className="space-y-4" onSubmit={handleInvite}>
                     <div className="space-y-2">
                       <Label htmlFor="invite-email">Correo</Label>
-               <PasswordInput
+                      <Input
                         id="invite-email"
                         type="email"
                         autoComplete="email"
@@ -565,9 +564,8 @@ function UsuariosAdmin() {
           <form className="space-y-4" onSubmit={handleResetPassword}>
             <div className="space-y-2">
               <Label htmlFor="reset-pwd">Nueva contraseña</Label>
-              <Input
+              <PasswordInput
                 id="reset-pwd"
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 value={resetPwd}
@@ -577,9 +575,8 @@ function UsuariosAdmin() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="reset-confirm">Confirmar contraseña</Label>
-              <Input
+              <PasswordInput
                 id="reset-confirm"
-                type="password"
                 autoComplete="new-password"
                 minLength={8}
                 value={resetConfirm}
