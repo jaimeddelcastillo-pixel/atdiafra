@@ -135,7 +135,8 @@ export async function createManagedUserAccount(
   });
 
   if (createError || !created.user)
-    throw new Error(createError?.message ?? "No se pudo crear el usuario.");
+    throw new Error(createError ? mensajeAuthError(createError.message) : "No se pudo crear el usuario.");
+
 
   const { error: roleError } = await supabaseAdmin
     .from("user_roles")
@@ -254,7 +255,8 @@ export async function setManagedUserPasswordAccount(
   const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, {
     password,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensajeAuthError(error.message));
+
   return { ok: true };
 }
 
