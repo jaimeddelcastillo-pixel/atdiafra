@@ -527,19 +527,20 @@ function UsuariosAdmin() {
             <CardTitle className="text-base">Permisos por rol</CardTitle>
           </CardHeader>
           <CardContent className="text-sm space-y-2">
-            <p>
+            <div>
               <Badge>super_admin</Badge> Todo, incluido eliminar y gestionar usuarios.
-            </p>
-            <p>
+            </div>
+            <div>
               <Badge>admin</Badge> Crea y edita catálogos y registros. No elimina ni gestiona
               usuarios.
-            </p>
-            <p>
+            </div>
+            <div>
               <Badge>editor</Badge> Captura y edita registros. No modifica catálogos ni elimina.
-            </p>
-            <p>
+            </div>
+            <div>
               <Badge>viewer</Badge> Solo lectura.
-            </p>
+            </div>
+
           </CardContent>
         </Card>
       </main>
