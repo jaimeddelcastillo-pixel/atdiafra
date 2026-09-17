@@ -101,7 +101,20 @@ export async function getManagedUsers(accessToken: string): Promise<AdminUserVie
     .sort((a, b) => (a.email ?? a.user_id).localeCompare(b.email ?? b.user_id));
 }
 
+/** Traduce errores de Supabase Auth a mensajes claros en español. */
+function mensajeAuthError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("weak") || m.includes("easy to guess") || m.includes("pwned"))
+    return "Esa contraseña es demasiado común o insegura. Usa una combinación única de mayúsculas, minúsculas, números y símbolos (mínimo 8 caracteres).";
+  if (m.includes("should be at least"))
+    return "La contraseña es demasiado corta. Usa al menos 8 caracteres.";
+  if (m.includes("already registered") || m.includes("already been registered"))
+    return "Ya existe un usuario con ese correo.";
+  return msg;
+}
+
 export async function createManagedUserAccount(
+
   accessToken: string,
   input: { email: string; password: string; role: string },
 ): Promise<AdminUserView[]> {
@@ -122,7 +135,8 @@ export async function createManagedUserAccount(
   });
 
   if (createError || !created.user)
-    throw new Error(createError?.message ?? "No se pudo crear el usuario.");
+    throw new Error(createError ? mensajeAuthError(createError.message) : "No se pudo crear el usuario.");
+
 
   const { error: roleError } = await supabaseAdmin
     .from("user_roles")
@@ -241,7 +255,8 @@ export async function setManagedUserPasswordAccount(
   const { error } = await supabaseAdmin.auth.admin.updateUserById(input.userId, {
     password,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(mensajeAuthError(error.message));
+
   return { ok: true };
 }
 
