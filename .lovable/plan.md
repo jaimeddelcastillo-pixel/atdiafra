@@ -11,9 +11,10 @@
    - Permite corregir la fecha de la semana abierta sin perder sus lecturas.
    - Para captura manual, una acción “Nueva semana” pedirá primero la fecha y después creará la semana.
 
-3. **Eliminar la creación automática posterior al guardado.**
-   - Quitar la alerta “Continuar con otra semana”, que actualmente genera una semana incorrecta o vacía.
-   - Después de guardar, permanecer en la semana actual y mostrar únicamente la confirmación “Cambios guardados”.
+3. **Conservar y aclarar la continuidad posterior al guardado.**
+   - Mantener la alerta “Continuar con otra semana” porque permite seguir con el mismo instrumento.
+   - La alerta mostrará una fecha obligatoria y el lunes resultante antes de crear la semana.
+   - “Continuar con otra semana” crea y abre esa semana; “Finalizar” cierra la alerta sin crear otra.
 
 4. **Dejar un solo botón “Guardar”.**
    - Conservar el botón superior, junto a “Descartar”.
@@ -30,7 +31,8 @@ Elegir fecha de la foto → Tomar/Subir → Revisar lecturas
 Para otra captura:
 
 ```text
-Cambiar “Semana de la foto” → Tomar/Subir la siguiente imagen
+Guardar → Continuar con otra semana → Confirmar fecha
+→ Tomar/Subir la siguiente imagen
 ```
 
 Para captura manual:
@@ -44,4 +46,4 @@ Nueva semana → Elegir fecha → Capturar → Guardar
 - Dos fechas con funciones distintas y nombres explícitos, no tres.
 - Una sola acción de guardado.
 - Ninguna semana nueva se crea sin que el usuario elija su fecha.
-- No se generan semanas vacías por continuar después de guardar.
+- La continuidad conserva el mismo instrumento y abre explícitamente la semana elegida.
