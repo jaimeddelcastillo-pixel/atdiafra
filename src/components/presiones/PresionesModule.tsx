@@ -1,8 +1,8 @@
 // Módulo Presiones diferenciales — bitácora semanal Pa por par de cuartos.
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { CalendarDays, ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -242,13 +242,14 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
   onPersist: (r: Registro) => Promise<void>;
   onDelete: () => void;
 }) {
-  const navigate = useNavigate();
   const { canWriteRecords, canDelete } = useAuth();
   const [draft, setDraft] = useState<Registro>(registro);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [postSaveOpen, setPostSaveOpen] = useState(false);
   const [nuevaSemanaFecha, setNuevaSemanaFecha] = useState<string>("");
+  const [newWeekOpen, setNewWeekOpen] = useState(false);
+  const [manualWeekDate, setManualWeekDate] = useState<string>("");
 
   // Export PDF normativo
   const today = new Date().toISOString().slice(0, 10);
@@ -344,6 +345,18 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
     toast.success(`Semana movida al ${lunes} — recuerda Guardar`);
   };
 
+  const seleccionarOMoverSemana = (valor: string) => {
+    if (!valor) return;
+    const lunes = lunesDe(new Date(valor + "T00:00:00"));
+    const existing = draft.semanas.find((s) => s.semana_inicio === lunes);
+    if (existing) {
+      setActiveWeekId(existing.id);
+      if (existing.id !== activeWeekId) toast.info(`Semana ${lunes} seleccionada`);
+      return;
+    }
+    if (activeWeek) cambiarFechaSemana(activeWeek.id, valor);
+  };
+
 
   // Importación por imagen: SOLO actualiza el draft local. NO persiste hasta "Guardar".
   const handleExtracted = (s: Semana) => {
@@ -392,8 +405,9 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
       await onPersist(draft);
       setDirty(false);
       toast.success("Cambios guardados");
-      const hoy = new Date();
-      let candidato = lunesDe(hoy);
+      const base = new Date(`${activeWeek?.semana_inicio ?? lunesDe(new Date())}T00:00:00`);
+      base.setDate(base.getDate() + 7);
+      let candidato = lunesDe(base);
       let intentos = 0;
       while (draft.semanas.some((s) => s.semana_inicio === candidato) && intentos < 60) {
         const d = new Date(candidato + "T00:00:00");
@@ -419,7 +433,22 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
   };
 
-  const handleCerrarPostSave = () => { setPostSaveOpen(false); navigate({ to: "/" }); };
+  const handleCrearSemanaManual = () => {
+    if (!manualWeekDate) { toast.error("Selecciona una fecha para la nueva semana"); return; }
+    const lunes = lunesDe(new Date(manualWeekDate + "T00:00:00"));
+    const existing = draft.semanas.find((s) => s.semana_inicio === lunes);
+    if (existing) {
+      setActiveWeekId(existing.id);
+      setNewWeekOpen(false);
+      setManualWeekDate("");
+      toast.info(`La semana ${lunes} ya existía y quedó seleccionada`);
+      return;
+    }
+    addEmptyWeek(lunes);
+    setNewWeekOpen(false);
+    setManualWeekDate("");
+    toast.success(`Semana ${lunes} creada — captura las lecturas y guarda`);
+  };
 
   const handleDiscard = () => {
     if (!confirm("¿Descartar todos los cambios sin guardar?")) return;
@@ -468,8 +497,8 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
             </PopoverContent>
           </Popover>
           {canWriteRecords && (
-            <Button size="sm" variant="outline" onClick={() => addEmptyWeek()} className="gap-1">
-              <Plus className="h-4 w-4" /> Nueva semana actual
+            <Button size="sm" variant="outline" onClick={() => setNewWeekOpen(true)} className="gap-1">
+              <Plus className="h-4 w-4" /> Nueva semana
             </Button>
           )}
           {dirty && canWriteRecords && (
@@ -504,41 +533,25 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
       />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Elegir semana (cualquier fecha):</span>
-          <input
-            type="date"
-            className="rounded-md border border-input bg-background px-2 py-1 text-xs"
-            onChange={(e) => {
-              if (!e.target.value) return;
-              const lunes = lunesDe(new Date(e.target.value + "T00:00:00"));
-              const existing = draft.semanas.find((s) => s.semana_inicio === lunes);
-              if (existing) { setActiveWeekId(existing.id); toast.info(`Semana ${lunes} ya existe — seleccionada`); }
-              else { addEmptyWeek(lunes); toast.success(`Semana ${lunes} agregada (recuerda Guardar)`); }
-              e.target.value = "";
-            }}
-          />
-          <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes.</span>
-        </div>
         {activeWeek && canWriteRecords && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs font-medium text-muted-foreground mr-1">
-              Corregir fecha de la semana seleccionada ({activeWeek.semana_inicio}):
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-foreground mr-1 flex items-center gap-1">
+              <CalendarDays className="h-3.5 w-3.5" /> Semana seleccionada:
             </span>
             <input
               type="date"
               value={activeWeek.semana_inicio}
               className="rounded-md border border-input bg-background px-2 py-1 text-xs"
-              onChange={(e) => cambiarFechaSemana(activeWeek.id, e.target.value)}
+              onChange={(e) => seleccionarOMoverSemana(e.target.value)}
             />
             <span className="text-[10px] text-muted-foreground">
-              Mueve las lecturas ya capturadas a la semana correcta.
+              Elige una semana existente o corrige la fecha de ésta. Se ajusta al lunes.
             </span>
           </div>
         )}
 
         {draft.semanas.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <div className={`flex flex-wrap items-center gap-2 ${activeWeek && canWriteRecords ? "border-t border-border pt-3" : ""}`}>
             <span className="text-xs font-medium text-muted-foreground mr-1">Semanas:</span>
             {draft.semanas.slice().sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio)).map((s) => {
               const cap = lecturasCapturadas(s, false);
@@ -598,23 +611,45 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
         </>
       )}
 
-      {dirty && (
-        <div className="sticky bottom-3 flex justify-end">
-          <Button size="lg" onClick={handleSave} disabled={saving} className="gap-2 shadow-lg">
-            <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar cambios"}
-          </Button>
-        </div>
-      )}
-
       <PresionAnalysis semanas={draft.semanas} limiteMinPa={limiteMinPa} />
+
+      <AlertDialog open={newWeekOpen} onOpenChange={setNewWeekOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Nueva semana del mismo instrumento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Elige cualquier día de la semana que deseas capturar. Se guardará usando el lunes correspondiente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label htmlFor="manual-week-date" className="text-xs font-medium text-foreground">Fecha de la semana</label>
+            <input
+              id="manual-week-date"
+              type="date"
+              value={manualWeekDate}
+              onChange={(e) => setManualWeekDate(e.target.value)}
+              className="block w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm h-9"
+            />
+            {manualWeekDate && (
+              <p className="text-[11px] text-muted-foreground">
+                Semana que inicia el <span className="font-mono text-foreground">{lunesDe(new Date(manualWeekDate + "T00:00:00"))}</span>
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCrearSemanaManual} disabled={!manualWeekDate}>Crear semana</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={postSaveOpen} onOpenChange={setPostSaveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Registro guardado ✓</AlertDialogTitle>
+            <AlertDialogTitle>Cambios guardados</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
-                <div>¿Quieres capturar otra semana del mismo registro <span className="font-medium text-foreground">({draft.nombre})</span>?</div>
+                <div>¿Quieres continuar con otra semana del mismo instrumento <span className="font-medium text-foreground">({draft.nombre})</span>?</div>
                 <div>
                   <label className="text-xs font-medium text-foreground block mb-1">
                     Fecha de la nueva semana (cualquier día — se ajusta al lunes)
@@ -638,7 +673,7 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleCerrarPostSave}>Cerrar (volver al tablero)</AlertDialogCancel>
+            <AlertDialogCancel>Finalizar</AlertDialogCancel>
             <AlertDialogAction onClick={handleNuevoRegistro}>Continuar con otra semana</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
