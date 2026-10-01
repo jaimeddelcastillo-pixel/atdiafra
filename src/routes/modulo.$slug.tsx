@@ -7,6 +7,7 @@ import { MODULOS } from "@/lib/diafra-data";
 
 import { PresionesModule } from "@/components/presiones/PresionesModule";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
+import { LoteFotosImporter } from "@/components/LoteFotosImporter";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { AreaSelector } from "@/components/AreaSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
@@ -421,6 +422,25 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
     toast.success("Imagen importada — revisa y presiona Guardar");
   };
 
+  // Lote de fotos: integra varias semanas al borrador de una sola vez (reemplaza la misma semana).
+  const handleLote = (nuevas: Semana[]) => {
+    const porLunes = new Map(nuevas.map((s) => [s.semana_inicio, s]));
+    const conservadas = draft.semanas
+      .filter((x) => !esSemanaVacia(x, true) || porLunes.has(x.semana_inicio))
+      .map((x) => {
+        const n = porLunes.get(x.semana_inicio);
+        if (!n) return x;
+        porLunes.delete(x.semana_inicio);
+        return { ...n, id: x.id };
+      });
+    const semanas = [...conservadas, ...porLunes.values()];
+    setDraft({ ...draft, semanas });
+    setDirty(true);
+    const primera = semanas.slice().sort((a, b) => a.semana_inicio.localeCompare(b.semana_inicio))[0];
+    if (primera) setActiveWeekId(primera.id);
+    toast.success(`${nuevas.length} semana(s) integradas — revisa y presiona Guardar`);
+  };
+
   const updateWeek = (s: Semana) => mutate((r) => ({ ...r, semanas: r.semanas.map((x) => (x.id === s.id ? s : x)) }));
 
   const deleteWeek = (id: string) => {
@@ -578,6 +598,19 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
         }}
         semanaInicio={activeWeek?.semana_inicio ?? lunesDe(new Date())}
         onExtracted={handleExtracted}
+        extra={
+          <LoteFotosImporter
+            modulo="temp_hr"
+            context={{
+              codigoArea: draft.codigo_area_libre ?? "",
+              nombreArea: draft.nombre_area_libre ?? "",
+              instrumento: draft.instrumento_id ?? "",
+              iso,
+            }}
+            semanasExistentes={draft.semanas.filter((s) => !esSemanaVacia(s, true)).map((s) => s.semana_inicio)}
+            onApply={handleLote}
+          />
+        }
       />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
