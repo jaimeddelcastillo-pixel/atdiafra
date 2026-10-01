@@ -6,7 +6,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Instrumento } from "@/lib/catalogos";
+import type { Instrumento, AreaClasificada } from "@/lib/catalogos";
 import {
   lunesDe, lecturasCapturadas, lecturasEsperadas, esSemanaCompleta,
   type Registro, type Semana, type PuntoLectura,
@@ -17,9 +17,20 @@ interface Props {
   registros: Registro[];
   areaDe: AreaFn;
   instrMap: Map<string, Instrumento>;
+  /** Catálogo completo de instrumentos: se listan aunque no tengan capturas. */
+  catalogo: Instrumento[];
+  areasMap: Map<string, AreaClasificada>;
   desde: Date;
   hasta: Date;
 }
+
+/** Módulo probable según el tipo de instrumento del catálogo. */
+const MODULO_POR_TIPO: Record<string, string> = {
+  termohigrometro: "temphr",
+  manometro_diferencial: "presiones",
+  manometro_filtro: "filtros",
+  otro: "presiones",
+};
 
 const MODULO_LABEL: Record<string, string> = {
   temphr: "Temp. y HR", presiones: "Presiones", filtros: "Filtros", agua: "Agua",
@@ -41,6 +52,8 @@ interface Fila {
   modulo: string;
   area: string;
   sinArea: boolean;
+  /** true si el instrumento existe en catálogo pero aún no tiene ninguna captura */
+  sinDatos: boolean;
   semanas: Map<string, Semana>;
 }
 
@@ -52,7 +65,10 @@ function fueraDeLimites(r: Registro, s: Semana, ins?: Instrumento): number {
   return cuenta(s.lecturas, r.lie ?? ins?.lie_pa, r.lse ?? ins?.lse_pa);
 }
 
-function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<string, Instrumento>): Fila[] {
+function construirFilas(
+  registros: Registro[], areaDe: AreaFn, instrMap: Map<string, Instrumento>,
+  catalogo: Instrumento[] = [], areasMap: Map<string, AreaClasificada> = new Map(),
+): Fila[] {
   const m = new Map<string, Fila>();
   for (const r of registros) {
     const key = `${r.modulo}|${r.instrumento_id ?? r.par_cuartos_id ?? r.hvac_id ?? r.id}|${r.par_cuartos_id ?? ""}`;
@@ -63,7 +79,7 @@ function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<str
       f = {
         key, registro: r, codigo: ins?.codigo ?? "—", nombre: r.nombre,
         tipo: ins ? TIPO_LABEL[ins.tipo] ?? ins.tipo : "—",
-        modulo: r.modulo, area: a.etiqueta, sinArea: a.sinArea, semanas: new Map(),
+        modulo: r.modulo, area: a.etiqueta, sinArea: a.sinArea, sinDatos: false, semanas: new Map(),
       };
       m.set(key, f);
     } else if (r.created_at < f.registro.created_at) f.registro = r;
@@ -72,7 +88,32 @@ function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<str
       if (!prev || (s.saved_at ?? "") > (prev.saved_at ?? "")) f.semanas.set(s.semana_inicio, s);
     }
   }
-  return Array.from(m.values()).sort((a, b) => a.codigo.localeCompare(b.codigo) || a.nombre.localeCompare(b.nombre));
+  // Agregar instrumentos del catálogo que aún no tienen ninguna captura,
+  // para que se vea qué falta por capturar.
+  const conDatos = new Set(
+    registros.map((r) => r.instrumento_id).filter((x): x is string => !!x),
+  );
+  for (const ins of catalogo) {
+    if (!ins.activo || conDatos.has(ins.id)) continue;
+    const a = ins.area_id ? areasMap.get(ins.area_id) : undefined;
+    const etiqueta = a ? `${a.codigo} · ${a.nombre}` : ins.area_libre ?? "Instrumento sin área asignada";
+    const modulo = MODULO_POR_TIPO[ins.tipo] ?? "presiones";
+    m.set(`catalogo|${ins.id}`, {
+      key: `catalogo|${ins.id}`,
+      registro: { id: "", modulo, semanas: [], created_at: "" } as unknown as Registro,
+      codigo: ins.codigo,
+      nombre: ins.parametro,
+      tipo: TIPO_LABEL[ins.tipo] ?? ins.tipo,
+      modulo,
+      area: etiqueta,
+      sinArea: !a && !ins.area_libre,
+      sinDatos: true,
+      semanas: new Map(),
+    });
+  }
+  return Array.from(m.values()).sort((a, b) =>
+    Number(a.sinDatos) - Number(b.sinDatos) ||
+    a.codigo.localeCompare(b.codigo) || a.nombre.localeCompare(b.nombre));
 }
 
 function lunesDelPeriodo(desde: Date, hasta: Date): string[] {
@@ -91,6 +132,7 @@ function estadoSemana(f: Fila, lunes: string, instrMap: Map<string, Instrumento>
   const s = f.semanas.get(lunes);
   const esTHR = f.modulo === "temphr";
   if (!s) return { estado: "vacia" as Estado, cap: 0, esp: 0, fuera: 0 };
+  if (f.sinDatos) return { estado: "vacia" as Estado, cap: 0, esp: 0, fuera: 0 };
   const cap = lecturasCapturadas(s, esTHR);
   const esp = lecturasEsperadas(s, esTHR);
   const fuera = fueraDeLimites(f.registro, s, f.registro.instrumento_id ? instrMap.get(f.registro.instrumento_id) : undefined);
@@ -131,6 +173,9 @@ function useFiltro(filas: Fila[]) {
 }
 
 function EditarLink({ f, children, className }: { f: Fila; children: React.ReactNode; className?: string }) {
+  if (f.sinDatos || !f.registro.id) {
+    return <span className={cn(className, "pointer-events-none opacity-80")}>{children}</span>;
+  }
   return (
     <Link to="/modulo/$slug" params={{ slug: MODULO_SLUG[f.modulo] ?? f.modulo }} search={{ registroId: f.registro.id }} className={className}>
       {children}
@@ -138,16 +183,16 @@ function EditarLink({ f, children, className }: { f: Fila; children: React.React
   );
 }
 
-export function VistaInstrumentos({ registros, areaDe, instrMap, desde, hasta }: Props) {
-  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap), [registros, areaDe, instrMap]);
+export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
+  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
 
   return (
     <section className="mt-3">
       <Leyenda>
-        Lista de <b className="text-foreground">todos los instrumentos con datos</b>, sin importar el módulo. "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A).
-        "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Da clic en "Abrir" para capturar o corregir.
+        Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Da clic en "Abrir" para capturar o corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
@@ -177,7 +222,10 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, desde, hasta }:
               return (
                 <tr key={f.key} className="border-t border-border">
                   <td className="px-3 py-2">
-                    <div className="font-medium text-foreground">{f.codigo}</div>
+                    <div className="font-medium text-foreground">
+                      {f.codigo}
+                      {f.sinDatos && <span className="ml-2 rounded border border-warning/40 bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">{f.nombre}</div>
                   </td>
                   <td className="px-3 py-2 text-xs">{f.tipo}</td>
@@ -210,8 +258,8 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, desde, hasta }:
   );
 }
 
-export function VistaAvance({ registros, areaDe, instrMap, desde, hasta }: Props) {
-  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap), [registros, areaDe, instrMap]);
+export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
+  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
   const ultima = lunes[lunes.length - 1];
@@ -254,7 +302,7 @@ export function VistaAvance({ registros, areaDe, instrMap, desde, hasta }: Props
   return (
     <section className="mt-3">
       <Leyenda>
-        Una fila por instrumento y una columna por semana (lunes) del periodo. Cada celda muestra lecturas capturadas / esperadas.
+        Una fila por instrumento del catálogo (incluye los que aún no tienen capturas, marcados como <b className="text-warning">Sin capturas</b>) y una columna por semana (lunes) del periodo. Cada celda muestra lecturas capturadas / esperadas.
         <div className="mt-2 flex flex-wrap gap-3">
           <span className={cn("rounded border px-2", CELDA.completa)}>Completa</span>
           <span className={cn("rounded border px-2", CELDA.parcial)}>Parcial</span>
@@ -300,7 +348,10 @@ export function VistaAvance({ registros, areaDe, instrMap, desde, hasta }: Props
             {filtradas.map((f) => (
               <tr key={f.key} className="border-t border-border">
                 <td className="sticky left-0 bg-card px-3 py-1.5">
-                  <div className="font-medium text-foreground">{f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span></div>
+                  <div className="font-medium text-foreground">
+                    {f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span>
+                    {f.sinDatos && <span className="ml-1 rounded border border-warning/40 bg-warning/15 px-1 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
+                  </div>
                   <div className={cn("text-[11px] truncate max-w-[260px]", f.sinArea ? "text-warning" : "text-muted-foreground")}>{f.area}</div>
                 </td>
                 {lunes.map((l) => {

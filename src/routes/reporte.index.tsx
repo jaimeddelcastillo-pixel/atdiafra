@@ -381,10 +381,10 @@ function ReportePage() {
         </div>
 
         {vista === "instrumento" && !loading && (
-          <VistaInstrumentos registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} desde={desde} hasta={hasta} />
+          <VistaInstrumentos registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} catalogo={instrumentos} areasMap={areasMap} desde={desde} hasta={hasta} />
         )}
         {vista === "avance" && !loading && (
-          <VistaAvance registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} desde={desde} hasta={hasta} />
+          <VistaAvance registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} catalogo={instrumentos} areasMap={areasMap} desde={desde} hasta={hasta} />
         )}
 
         {vista === "area" && (<>
