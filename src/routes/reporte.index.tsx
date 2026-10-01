@@ -18,6 +18,7 @@ import { listAreas, listInstrumentos, listSistemasHVAC, type AreaClasificada, ty
 import { MODULOS } from "@/lib/diafra-data";
 import { exportarNormativoExcel, exportarNormativoPDF } from "@/lib/export-normativo";
 import { Input } from "@/components/ui/input";
+import { VistaInstrumentos, VistaAvance } from "@/components/reporte/ReporteVistas";
 import { MINIMO_NORMATIVO, analizarRegistro, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
 
 export const Route = createFileRoute("/reporte/")({
@@ -40,16 +41,21 @@ function moduloSlug(m: string): string {
   return map[m] ?? m;
 }
 
-function etiquetaArea(r: Registro, areasMap: Map<string, AreaClasificada>): string {
-  if (r.area_id) {
-    const a = areasMap.get(r.area_id);
-    return a ? `${a.codigo} · ${a.nombre}` : "Área desconocida";
-  }
-  return r.nombre_area_libre || r.codigo_area_libre || "Sin área";
-}
-
-function claveArea(r: Registro): string {
-  return r.area_id ?? `libre:${r.codigo_area_libre ?? r.nombre_area_libre ?? "sin-area"}`;
+/** Área efectiva: la del registro o, si no tiene, la del instrumento asignado. */
+function areaEfectiva(
+  r: Registro, areasMap: Map<string, AreaClasificada>, instrMap: Map<string, Instrumento>,
+): { key: string; etiqueta: string; sinArea: boolean } {
+  const deArea = (id: string) => {
+    const a = areasMap.get(id);
+    return { key: id, etiqueta: a ? `${a.codigo} · ${a.nombre}` : "Área desconocida", sinArea: false };
+  };
+  if (r.area_id) return deArea(r.area_id);
+  const libre = r.nombre_area_libre || r.codigo_area_libre;
+  if (libre) return { key: `libre:${libre}`, etiqueta: libre, sinArea: false };
+  const ins = r.instrumento_id ? instrMap.get(r.instrumento_id) : undefined;
+  if (ins?.area_id) return deArea(ins.area_id);
+  if (ins?.area_libre) return { key: `libre:${ins.area_libre}`, etiqueta: ins.area_libre, sinArea: false };
+  return { key: "sin-area", etiqueta: "Instrumento sin área asignada", sinArea: true };
 }
 
 function etiquetaInstrumento(r: Registro, instrMap: Map<string, Instrumento>): string {
@@ -112,6 +118,7 @@ function ReportePage() {
   const [loading, setLoading] = useState(true);
 
   // Drill-down: área seleccionada → instrumento seleccionado
+  const [vista, setVista] = useState<"area" | "instrumento" | "avance">("area");
   const [areaSel, setAreaSel] = useState<string | null>(null);
   const [instrSel, setInstrSel] = useState<string | null>(null);
 
@@ -154,8 +161,7 @@ function ReportePage() {
   const grupoPorArea = useMemo(() => {
     const m = new Map<string, { etiqueta: string; registros: Registro[] }>();
     for (const r of registros) {
-      const k = claveArea(r);
-      const et = etiquetaArea(r, areasMap);
+      const { key: k, etiqueta: et } = areaEfectiva(r, areasMap, instrMap);
       const cur = m.get(k);
       if (cur) cur.registros.push(r);
       else m.set(k, { etiqueta: et, registros: [r] });
@@ -165,7 +171,7 @@ function ReportePage() {
       .map(([k, v]) => ({ key: k, ...v }))
       .filter((g) => !q || g.etiqueta.toLowerCase().includes(q))
       .sort((a, b) => a.etiqueta.localeCompare(b.etiqueta));
-  }, [registros, areasMap, filtroArea]);
+  }, [registros, areasMap, instrMap, filtroArea]);
 
   // Para el área seleccionada, agrupar por instrumento (con filtro de texto)
   const instrumentosDelArea = useMemo(() => {
@@ -360,8 +366,33 @@ function ReportePage() {
           </div>
         </div>
 
+        {/* Pestañas */}
+        <div className="mt-6 inline-flex rounded-lg border border-border bg-card p-1 gap-1">
+          {([
+            ["area", "Por área"],
+            ["instrumento", "Por instrumento"],
+            ["avance", "Avance semanal"],
+          ] as const).map(([k, l]) => (
+            <button key={k} onClick={() => setVista(k)}
+              className={cn("px-3 py-1.5 text-sm rounded-md", vista === k ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:bg-muted")}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {vista === "instrumento" && !loading && (
+          <VistaInstrumentos registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} desde={desde} hasta={hasta} />
+        )}
+        {vista === "avance" && !loading && (
+          <VistaAvance registros={registros} areaDe={(r) => areaEfectiva(r, areasMap, instrMap)} instrMap={instrMap} desde={desde} hasta={hasta} />
+        )}
+
+        {vista === "area" && (<>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Cada área agrupa sus registros. Los registros de presiones toman el área de su instrumento. Da clic en una fila para ver sus instrumentos y registros.
+        </p>
         {/* Breadcrumb drill-down */}
-        <div className="mt-6 flex items-center flex-wrap gap-1 text-sm">
+        <div className="mt-3 flex items-center flex-wrap gap-1 text-sm">
           <button
             onClick={() => { setAreaSel(null); setInstrSel(null); }}
             className={cn("px-2 py-1 rounded hover:bg-muted", !areaSel && "font-semibold text-foreground")}
@@ -465,6 +496,7 @@ function ReportePage() {
             />
           )}
         </section>
+        </>)}
       </main>
     </div>
   );
