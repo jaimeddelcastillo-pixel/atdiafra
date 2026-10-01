@@ -12,7 +12,7 @@ interface Props {
   onExtracted: (s: Semana) => void;
 }
 
-async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+export async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
