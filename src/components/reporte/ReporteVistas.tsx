@@ -6,7 +6,7 @@ import { FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { Instrumento } from "@/lib/catalogos";
+import type { Instrumento, AreaClasificada } from "@/lib/catalogos";
 import {
   lunesDe, lecturasCapturadas, lecturasEsperadas, esSemanaCompleta,
   type Registro, type Semana, type PuntoLectura,
@@ -17,9 +17,20 @@ interface Props {
   registros: Registro[];
   areaDe: AreaFn;
   instrMap: Map<string, Instrumento>;
+  /** Catálogo completo de instrumentos: se listan aunque no tengan capturas. */
+  catalogo: Instrumento[];
+  areasMap: Map<string, AreaClasificada>;
   desde: Date;
   hasta: Date;
 }
+
+/** Módulo probable según el tipo de instrumento del catálogo. */
+const MODULO_POR_TIPO: Record<string, string> = {
+  termohigrometro: "temphr",
+  manometro_diferencial: "presiones",
+  manometro_filtro: "filtros",
+  otro: "presiones",
+};
 
 const MODULO_LABEL: Record<string, string> = {
   temphr: "Temp. y HR", presiones: "Presiones", filtros: "Filtros", agua: "Agua",
