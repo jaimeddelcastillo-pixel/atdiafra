@@ -65,7 +65,10 @@ function fueraDeLimites(r: Registro, s: Semana, ins?: Instrumento): number {
   return cuenta(s.lecturas, r.lie ?? ins?.lie_pa, r.lse ?? ins?.lse_pa);
 }
 
-function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<string, Instrumento>): Fila[] {
+function construirFilas(
+  registros: Registro[], areaDe: AreaFn, instrMap: Map<string, Instrumento>,
+  catalogo: Instrumento[] = [], areasMap: Map<string, AreaClasificada> = new Map(),
+): Fila[] {
   const m = new Map<string, Fila>();
   for (const r of registros) {
     const key = `${r.modulo}|${r.instrumento_id ?? r.par_cuartos_id ?? r.hvac_id ?? r.id}|${r.par_cuartos_id ?? ""}`;
@@ -76,7 +79,7 @@ function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<str
       f = {
         key, registro: r, codigo: ins?.codigo ?? "—", nombre: r.nombre,
         tipo: ins ? TIPO_LABEL[ins.tipo] ?? ins.tipo : "—",
-        modulo: r.modulo, area: a.etiqueta, sinArea: a.sinArea, semanas: new Map(),
+        modulo: r.modulo, area: a.etiqueta, sinArea: a.sinArea, sinDatos: false, semanas: new Map(),
       };
       m.set(key, f);
     } else if (r.created_at < f.registro.created_at) f.registro = r;
@@ -85,7 +88,32 @@ function construirFilas(registros: Registro[], areaDe: AreaFn, instrMap: Map<str
       if (!prev || (s.saved_at ?? "") > (prev.saved_at ?? "")) f.semanas.set(s.semana_inicio, s);
     }
   }
-  return Array.from(m.values()).sort((a, b) => a.codigo.localeCompare(b.codigo) || a.nombre.localeCompare(b.nombre));
+  // Agregar instrumentos del catálogo que aún no tienen ninguna captura,
+  // para que se vea qué falta por capturar.
+  const conDatos = new Set(
+    registros.map((r) => r.instrumento_id).filter((x): x is string => !!x),
+  );
+  for (const ins of catalogo) {
+    if (!ins.activo || conDatos.has(ins.id)) continue;
+    const a = ins.area_id ? areasMap.get(ins.area_id) : undefined;
+    const etiqueta = a ? `${a.codigo} · ${a.nombre}` : ins.area_libre ?? "Instrumento sin área asignada";
+    const modulo = MODULO_POR_TIPO[ins.tipo] ?? "presiones";
+    m.set(`catalogo|${ins.id}`, {
+      key: `catalogo|${ins.id}`,
+      registro: { id: "", modulo, semanas: [], created_at: "" } as unknown as Registro,
+      codigo: ins.codigo,
+      nombre: ins.parametro,
+      tipo: TIPO_LABEL[ins.tipo] ?? ins.tipo,
+      modulo,
+      area: etiqueta,
+      sinArea: !a && !ins.area_libre,
+      sinDatos: true,
+      semanas: new Map(),
+    });
+  }
+  return Array.from(m.values()).sort((a, b) =>
+    Number(a.sinDatos) - Number(b.sinDatos) ||
+    a.codigo.localeCompare(b.codigo) || a.nombre.localeCompare(b.nombre));
 }
 
 function lunesDelPeriodo(desde: Date, hasta: Date): string[] {
@@ -145,6 +173,9 @@ function useFiltro(filas: Fila[]) {
 }
 
 function EditarLink({ f, children, className }: { f: Fila; children: React.ReactNode; className?: string }) {
+  if (f.sinDatos || !f.registro.id) {
+    return <span className={cn(className, "pointer-events-none opacity-80")}>{children}</span>;
+  }
   return (
     <Link to="/modulo/$slug" params={{ slug: MODULO_SLUG[f.modulo] ?? f.modulo }} search={{ registroId: f.registro.id }} className={className}>
       {children}
