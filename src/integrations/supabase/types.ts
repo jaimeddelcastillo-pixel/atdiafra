@@ -298,6 +298,7 @@ export type Database = {
         Row: {
           anio: string
           created_at: string
+          foto_path: string | null
           id: string
           lecturas: Json
           lecturas_hr: Json | null
@@ -314,6 +315,7 @@ export type Database = {
         Insert: {
           anio: string
           created_at?: string
+          foto_path?: string | null
           id?: string
           lecturas?: Json
           lecturas_hr?: Json | null
@@ -330,6 +332,7 @@ export type Database = {
         Update: {
           anio?: string
           created_at?: string
+          foto_path?: string | null
           id?: string
           lecturas?: Json
           lecturas_hr?: Json | null

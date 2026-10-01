@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { detectarLunesFoto, subirFotoBitacora } from "@/lib/fotos-bitacora";
 import { Semana, semanaVacia, lunesDe, nombreMes, DIAS, TURNOS, type Dia, type Turno } from "@/lib/semanas";
 
 interface Props {
@@ -61,6 +62,7 @@ interface IALectura {
 }
 interface IAResponse {
   mes?: string; anio?: string; instrumento?: string; area?: string;
+  fechas_columnas?: { dia?: string; fecha?: string }[];
   // Nuevo formato: ambas variables en una sola respuesta
   lecturas_t?: IALectura[]; lecturas_hr?: IALectura[];
   // Compatibilidad con respuesta legada (una sola variable)
@@ -170,7 +172,14 @@ export function ImageImporter({ context, semanaInicio, onExtracted, extra }: Pro
       }
 
       // Construir semana base usando la fecha elegida por el usuario (normalizada a lunes)
-      const lunes = lunesDe(new Date(fechaSemana + "T00:00:00"));
+      const lunesLeido = detectarLunesFoto(parsed);
+      const lunesElegido = lunesDe(new Date(fechaSemana + "T00:00:00"));
+      const lunes = lunesLeido || lunesElegido;
+      if (lunesLeido && lunesLeido !== lunesElegido) {
+        toast.info(`La IA leyó la fecha de la hoja: semana del lunes ${lunesLeido}. Si no es correcta, cámbiala en "Semana seleccionada".`, { duration: 7000 });
+      } else if (!lunesLeido) {
+        toast.info(`No se leyó la fecha en la hoja; se usó la semana del ${lunesElegido}.`, { duration: 6000 });
+      }
       const fecha = new Date(lunes + "T00:00:00");
       const s = semanaVacia({
         semana_inicio: lunes,
@@ -185,6 +194,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted, extra }: Pro
       if (lecturasT.length) aplicarLecturas(s, "lecturas", lecturasT);
       if (lecturasHR.length) aplicarLecturas(s, "lecturas_hr", lecturasHR);
 
+      s.foto_path = await subirFotoBitacora(base64, mediaType);
       onExtracted(s);
 
       // Log de uso (tokens y costo) que devuelve la edge function
@@ -252,7 +262,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted, extra }: Pro
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs font-medium text-muted-foreground whitespace-nowrap flex items-center gap-1">
-            <CalendarDays className="h-3.5 w-3.5" /> Semana de la foto:
+            <CalendarDays className="h-3.5 w-3.5" /> Semana de la foto (si la IA no lee la fecha):
           </label>
           <input
             type="date"

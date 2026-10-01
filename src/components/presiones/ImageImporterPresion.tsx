@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Loader2, AlertCircle, Sparkles, CalendarDays, Camera } from "lucide-react";
 import { toast } from "sonner";
+import { detectarLunesFoto, subirFotoBitacora } from "@/lib/fotos-bitacora";
 import { Semana, semanaVacia, lunesDe, nombreMes, DIAS, TURNOS, type Dia, type Turno } from "@/lib/semanas";
 
 interface Props {
@@ -54,7 +55,7 @@ interface IALectura {
 }
 interface IAResponse {
   mes?: string; anio?: string; instrumento?: string; area?: string; unidad?: string;
-  lecturas?: IALectura[]; observaciones?: string;
+  lecturas?: IALectura[]; observaciones?: string; fechas_columnas?: { dia?: string; fecha?: string }[];
 }
 
 const DIA_MAP: Record<string, Dia> = {
@@ -123,7 +124,14 @@ export function ImageImporterPresion({ context, semanaInicio, onExtracted, extra
         return;
       }
 
-      const lunes = lunesDe(new Date(fechaSemana + "T00:00:00"));
+      const lunesLeido = detectarLunesFoto(parsed);
+      const lunesElegido = lunesDe(new Date(fechaSemana + "T00:00:00"));
+      const lunes = lunesLeido || lunesElegido;
+      if (lunesLeido && lunesLeido !== lunesElegido) {
+        toast.info(`La IA leyó la fecha de la hoja: semana del lunes ${lunesLeido}. Si no es correcta, cámbiala en "Semana seleccionada".`, { duration: 7000 });
+      } else if (!lunesLeido) {
+        toast.info(`No se leyó la fecha en la hoja; se usó la semana del ${lunesElegido}.`, { duration: 6000 });
+      }
       const fecha = new Date(lunes + "T00:00:00");
       const s = semanaVacia({
         semana_inicio: lunes,
@@ -136,6 +144,7 @@ export function ImageImporterPresion({ context, semanaInicio, onExtracted, extra
       s.observaciones = parsed?.observaciones ?? "";
       aplicarLecturas(s, lecturas);
 
+      s.foto_path = await subirFotoBitacora(base64, mediaType);
       onExtracted(s);
 
       if (data?.uso) console.log("[extract-bitacora] uso:", data.uso);
@@ -170,7 +179,7 @@ export function ImageImporterPresion({ context, semanaInicio, onExtracted, extra
 
       <div className="mb-3 flex items-center gap-2 flex-wrap">
         <label className="text-xs font-medium text-muted-foreground whitespace-nowrap flex items-center gap-1">
-          <CalendarDays className="h-3.5 w-3.5" /> Semana de la foto:
+          <CalendarDays className="h-3.5 w-3.5" /> Semana de la foto (si la IA no lee la fecha):
         </label>
         <input
           type="date"

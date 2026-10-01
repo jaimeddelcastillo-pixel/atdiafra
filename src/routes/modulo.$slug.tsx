@@ -8,6 +8,7 @@ import { MODULOS } from "@/lib/diafra-data";
 import { PresionesModule } from "@/components/presiones/PresionesModule";
 import { ImageImporter } from "@/components/temp-hr/ImageImporter";
 import { LoteFotosImporter } from "@/components/LoteFotosImporter";
+import { FotoSemana } from "@/components/FotoSemana";
 import { InstrumentoSelector } from "@/components/InstrumentoSelector";
 import { AreaSelector } from "@/components/AreaSelector";
 import { WeeklyReadingsTable } from "@/components/temp-hr/WeeklyReadingsTable";
@@ -410,6 +411,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
         observaciones: [existing.observaciones, s.observaciones].filter(Boolean).join("\n"),
         source: "imagen",
         saved_at: new Date().toISOString(),
+        foto_path: s.foto_path ?? existing.foto_path ?? null,
       };
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
@@ -620,6 +622,7 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+        {activeWeek && <FotoSemana path={activeWeek.foto_path} semana={activeWeek.semana_inicio} />}
         {activeWeek && canWriteRecords && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-foreground mr-1">Semana seleccionada:</span>

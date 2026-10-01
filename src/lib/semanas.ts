@@ -36,6 +36,7 @@ export interface Semana {
   observaciones: string;
   source: "imagen" | "manual";
   saved_at: string;
+  foto_path?: string | null;
 }
 
 export type Modulo = "filtros" | "temphr" | "presiones" | "agua";
@@ -117,7 +118,7 @@ type DbSemana = {
   id: string; registro_id: string; semana_inicio: string;
   mes: string; anio: string; unidad: string;
   lecturas: PuntoLectura[]; lecturas_hr: PuntoLectura[] | null;
-  observaciones: string; source: string; saved_at: string;
+  observaciones: string; source: string; saved_at: string; foto_path?: string | null;
 };
 
 function rowToRegistro(r: DbRegistro, semanas: Semana[]): Registro {
@@ -154,6 +155,7 @@ function semanaToRow(s: Semana, registroId: string): Omit<DbSemana, "id"> & { id
     observaciones: s.observaciones,
     source: s.source,
     saved_at: s.saved_at,
+    foto_path: s.foto_path ?? null,
   };
 }
 
@@ -185,6 +187,7 @@ export async function listRegistros(modulo?: Modulo): Promise<Registro[]> {
       observaciones: s.observaciones,
       source: (s.source as "imagen" | "manual") ?? "manual",
       saved_at: s.saved_at,
+      foto_path: s.foto_path ?? null,
     });
     byReg.set(s.registro_id, arr);
   }
@@ -203,6 +206,7 @@ export async function getRegistro(id: string): Promise<Registro | null> {
     lecturas: (s.lecturas ?? []) as PuntoLectura[],
     lecturas_hr: (s.lecturas_hr ?? undefined) as PuntoLectura[] | undefined,
     observaciones: s.observaciones, source: (s.source as "imagen" | "manual") ?? "manual", saved_at: s.saved_at,
+    foto_path: s.foto_path ?? null,
   }));
   return rowToRegistro(r as DbRegistro, semanas);
 }
