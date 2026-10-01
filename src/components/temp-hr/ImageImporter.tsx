@@ -87,7 +87,7 @@ function normTurno(s?: string): Turno | null {
 
 type Modo = "AUTO" | "T" | "HR";
 
-function aplicarLecturas(
+export function aplicarLecturas(
   s: Semana,
   arrName: "lecturas" | "lecturas_hr",
   fuente: IALectura[],

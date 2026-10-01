@@ -67,7 +67,7 @@ const TURNO_MAP: Record<string, Turno> = {
 const normDia = (s?: string): Dia | null => s ? DIA_MAP[s.toLowerCase().trim()] ?? null : null;
 const normTurno = (s?: string): Turno | null => s ? TURNO_MAP[s.toLowerCase().trim()] ?? null : null;
 
-function aplicarLecturas(s: Semana, fuente: IALectura[]) {
+export function aplicarLecturas(s: Semana, fuente: IALectura[]) {
   const arr = s.lecturas.slice();
   for (const r of fuente) {
     const d = normDia(r.dia);
