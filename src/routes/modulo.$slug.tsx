@@ -149,6 +149,12 @@ function TempHRModule() {
     // (ej. un registro por trimestre). Lo único que se considera duplicado es cuando
     // dos registros comparten alguna semana (mismo lunes) — eso lo detecta el banner
     // de duplicados en /reporte.
+    const yaExiste = registros.find((x) => x.activo && x.area_id === draft.area_id && x.instrumento_id === draft.instrumento_id);
+    if (yaExiste) {
+      setActiveId(yaExiste.id);
+      toast.info("Ya existe un registro para esta área e instrumento — se abrió el existente");
+      return;
+    }
     const area = areas.find((a) => a.id === draft.area_id);
     const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
     const iso = (area?.iso ?? draft.iso) as IsoClase;
@@ -614,8 +620,34 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
       />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+        {activeWeek && canWriteRecords && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-foreground mr-1">Semana seleccionada:</span>
+            <input
+              type="date"
+              value={activeWeek.semana_inicio}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              onChange={(e) => {
+                const valor = e.target.value;
+                if (!valor) return;
+                const lunes = lunesDe(new Date(valor + "T00:00:00"));
+                if (lunes === activeWeek.semana_inicio) return;
+                const existing = draft.semanas.find((s) => s.semana_inicio === lunes);
+                if (existing) { setActiveWeekId(existing.id); toast.info(`Semana ${lunes} seleccionada`); return; }
+                const base = new Date(lunes + "T00:00:00");
+                mutate((r) => ({
+                  ...r,
+                  semanas: r.semanas.map((x) => x.id === activeWeek.id
+                    ? { ...x, semana_inicio: lunes, mes: nombreMes(base), anio: String(base.getFullYear()) } : x),
+                }));
+                toast.success(`Semana movida al ${lunes} — recuerda Guardar`);
+              }}
+            />
+            <span className="text-[10px] text-muted-foreground">Elige una semana existente o corrige la fecha de ésta sin perder lecturas. Se ajusta al lunes.</span>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground mr-1">Elegir semana (cualquier fecha):</span>
+          <span className="text-xs font-medium text-muted-foreground mr-1">Agregar semana (cualquier fecha):</span>
           <input
             type="date"
             className="rounded-md border border-input bg-background px-2 py-1 text-xs"
@@ -628,7 +660,6 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
               e.target.value = "";
             }}
           />
-          <span className="text-[10px] text-muted-foreground">Se ajusta automáticamente al lunes de esa semana.</span>
         </div>
         {draft.semanas.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
