@@ -62,6 +62,7 @@ interface IALectura {
 }
 interface IAResponse {
   mes?: string; anio?: string; instrumento?: string; area?: string;
+  fechas_columnas?: { dia?: string; fecha?: string }[];
   // Nuevo formato: ambas variables en una sola respuesta
   lecturas_t?: IALectura[]; lecturas_hr?: IALectura[];
   // Compatibilidad con respuesta legada (una sola variable)

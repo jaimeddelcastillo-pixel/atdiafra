@@ -32,6 +32,7 @@ import { ObjetivoPresionSelector, type SeleccionPresion } from "./ObjetivoPresio
 import { WeeklyReadingsTablePresion } from "./WeeklyReadingsTablePresion";
 import { ImageImporterPresion } from "./ImageImporterPresion";
 import { LoteFotosImporter } from "@/components/LoteFotosImporter";
+import { FotoSemana } from "@/components/FotoSemana";
 import { PresionAnalysis } from "./PresionAnalysis";
 
 export function PresionesModule() {
@@ -378,6 +379,7 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
         observaciones: [existing.observaciones, s.observaciones].filter(Boolean).join("\n"),
         source: "imagen",
         saved_at: new Date().toISOString(),
+        foto_path: s.foto_path ?? existing.foto_path ?? null,
       };
       semanas = draft.semanas.map((x) => (x.id === existing.id ? merged : x));
       setActiveWeekId(existing.id);
@@ -576,6 +578,7 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
       />
 
       <div className="rounded-xl border border-border bg-card p-3 space-y-3">
+        {activeWeek && <FotoSemana path={activeWeek.foto_path} semana={activeWeek.semana_inicio} />}
         {activeWeek && canWriteRecords && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-foreground mr-1 flex items-center gap-1">
