@@ -609,13 +609,13 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
                       {vacia ? "vacía" : completa ? "✓" : `${cap}/${esp}`}
                     </span>
                   </button>
-                  {canDelete && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteWeek(s.id); }}
-                      className={`px-1.5 text-xs border-l ${isActive ? "border-primary-foreground/30 text-primary-foreground hover:bg-destructive" : "border-border text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"}`}>
+                  <button
+                      onClick={(e) => { e.stopPropagation(); if (!canDelete) { toast.info("Solo el super admin puede eliminar semanas"); return; } deleteWeek(s.id); }}
+                      title={canDelete ? `Eliminar semana del ${s.semana_inicio}` : "Solo el super admin puede eliminar semanas"}
+                      aria-label={`Eliminar semana del ${s.semana_inicio}`}
+                      className={`px-1.5 text-xs border-l ${canDelete ? "" : "opacity-40 cursor-not-allowed"} ${isActive ? "border-primary-foreground/30 text-primary-foreground hover:bg-destructive" : "border-border text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"}`}>
                       ✕
                     </button>
-                  )}
                 </div>
               );
             })}
