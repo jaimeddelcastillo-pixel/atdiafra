@@ -183,8 +183,8 @@ function EditarLink({ f, children, className }: { f: Fila; children: React.React
   );
 }
 
-export function VistaInstrumentos({ registros, areaDe, instrMap, desde, hasta }: Props) {
-  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap), [registros, areaDe, instrMap]);
+export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
+  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
 
@@ -255,8 +255,8 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, desde, hasta }:
   );
 }
 
-export function VistaAvance({ registros, areaDe, instrMap, desde, hasta }: Props) {
-  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap), [registros, areaDe, instrMap]);
+export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
+  const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
   const ultima = lunes[lunes.length - 1];
