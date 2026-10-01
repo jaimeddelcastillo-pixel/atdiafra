@@ -99,6 +99,14 @@ export function PresionesModule() {
       lse = inst.lse_pa;
     }
 
+    const yaExiste = registros.find((x) => x.activo &&
+      (x.par_cuartos_id ?? null) === par_cuartos_id &&
+      (par_cuartos_id ? true : (x.instrumento_id ?? null) === instrumento_id));
+    if (yaExiste) {
+      setActiveId(yaExiste.id); setDraftSel(null);
+      toast.info("Este instrumento ya tiene registro — se abrió el existente");
+      return;
+    }
     const r: Registro = {
       id: crypto.randomUUID(),
       modulo: "presiones",

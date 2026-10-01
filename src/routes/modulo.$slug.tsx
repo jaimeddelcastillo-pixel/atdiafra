@@ -149,6 +149,12 @@ function TempHRModule() {
     // (ej. un registro por trimestre). Lo único que se considera duplicado es cuando
     // dos registros comparten alguna semana (mismo lunes) — eso lo detecta el banner
     // de duplicados en /reporte.
+    const yaExiste = registros.find((x) => x.activo && x.area_id === draft.area_id && x.instrumento_id === draft.instrumento_id);
+    if (yaExiste) {
+      setActiveId(yaExiste.id);
+      toast.info("Ya existe un registro para esta área e instrumento — se abrió el existente");
+      return;
+    }
     const area = areas.find((a) => a.id === draft.area_id);
     const instr = termohigrometros.find((i) => i.id === draft.instrumento_id);
     const iso = (area?.iso ?? draft.iso) as IsoClase;
