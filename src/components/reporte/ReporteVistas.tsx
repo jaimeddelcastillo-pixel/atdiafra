@@ -52,6 +52,8 @@ interface Fila {
   modulo: string;
   area: string;
   sinArea: boolean;
+  /** true si el instrumento existe en catálogo pero aún no tiene ninguna captura */
+  sinDatos: boolean;
   semanas: Map<string, Semana>;
 }
 
@@ -102,6 +104,7 @@ function estadoSemana(f: Fila, lunes: string, instrMap: Map<string, Instrumento>
   const s = f.semanas.get(lunes);
   const esTHR = f.modulo === "temphr";
   if (!s) return { estado: "vacia" as Estado, cap: 0, esp: 0, fuera: 0 };
+  if (f.sinDatos) return { estado: "vacia" as Estado, cap: 0, esp: 0, fuera: 0 };
   const cap = lecturasCapturadas(s, esTHR);
   const esp = lecturasEsperadas(s, esTHR);
   const fuera = fueraDeLimites(f.registro, s, f.registro.instrumento_id ? instrMap.get(f.registro.instrumento_id) : undefined);
