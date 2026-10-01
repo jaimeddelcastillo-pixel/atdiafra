@@ -302,7 +302,7 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
   return (
     <section className="mt-3">
       <Leyenda>
-        Una fila por instrumento y una columna por semana (lunes) del periodo. Cada celda muestra lecturas capturadas / esperadas.
+        Una fila por instrumento del catálogo (incluye los que aún no tienen capturas, marcados como <b className="text-warning">Sin capturas</b>) y una columna por semana (lunes) del periodo. Cada celda muestra lecturas capturadas / esperadas.
         <div className="mt-2 flex flex-wrap gap-3">
           <span className={cn("rounded border px-2", CELDA.completa)}>Completa</span>
           <span className={cn("rounded border px-2", CELDA.parcial)}>Parcial</span>
@@ -348,7 +348,10 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
             {filtradas.map((f) => (
               <tr key={f.key} className="border-t border-border">
                 <td className="sticky left-0 bg-card px-3 py-1.5">
-                  <div className="font-medium text-foreground">{f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span></div>
+                  <div className="font-medium text-foreground">
+                    {f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span>
+                    {f.sinDatos && <span className="ml-1 rounded border border-warning/40 bg-warning/15 px-1 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
+                  </div>
                   <div className={cn("text-[11px] truncate max-w-[260px]", f.sinArea ? "text-warning" : "text-muted-foreground")}>{f.area}</div>
                 </td>
                 {lunes.map((l) => {
