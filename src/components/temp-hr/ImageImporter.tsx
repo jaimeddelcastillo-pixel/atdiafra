@@ -1,3 +1,4 @@
+import type React from "react";
 import { useRef, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ interface Props {
   context: { codigoArea: string; nombreArea: string; instrumento: string; iso: string };
   semanaInicio: string; // YYYY-MM-DD lunes (sugerido por el editor)
   onExtracted: (s: Semana) => void;
+  extra?: React.ReactNode;
 }
 
 /** Redimensiona y comprime una imagen a JPEG (máx ~4MB, lado mayor 2800px) para encajar en el límite de 5MB de Anthropic. */
@@ -87,7 +89,7 @@ function normTurno(s?: string): Turno | null {
 
 type Modo = "AUTO" | "T" | "HR";
 
-function aplicarLecturas(
+export function aplicarLecturas(
   s: Semana,
   arrName: "lecturas" | "lecturas_hr",
   fuente: IALectura[],
@@ -116,7 +118,8 @@ function aplicarLecturas(
   (s as Semana)[arrName] = arr;
 }
 
-export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
+export function ImageImporter({ context, semanaInicio, onExtracted, extra }: Props) {
+  const [drag, setDrag] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -228,6 +231,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
             Una foto = una semana (Lunes–Domingo, 3 turnos). La IA extrae sólo los valores escritos al pie, ignora la cuadrícula gráfica.
           </p>
         </div>
+        {extra && <div className="shrink-0">{extra}</div>}
       </div>
 
       <div className="mb-3 grid gap-3 sm:grid-cols-2">
@@ -282,7 +286,11 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </label>
 
-          <label htmlFor="bitacora-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
+          <label htmlFor="bitacora-file"
+            onDragOver={(e) => { e.preventDefault(); if (!loading) setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f && !loading) handleFile(f); }}
+            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-5 cursor-pointer transition-colors min-h-36 ${drag ? "border-primary bg-primary/10" : "border-border hover:border-primary hover:bg-primary/5"}`}>
             {loading ? (
               <>
                 <Loader2 className="h-7 w-7 animate-spin text-primary mb-2" />
@@ -291,7 +299,7 @@ export function ImageImporter({ context, semanaInicio, onExtracted }: Props) {
             ) : (
               <>
                 <Upload className="h-7 w-7 text-muted-foreground mb-2" />
-                <span className="text-sm font-medium text-foreground">Subir archivo</span>
+                <span className="text-sm font-medium text-foreground">{drag ? "Suelta la foto aquí" : "Subir o arrastrar archivo"}</span>
                 <span className="text-[11px] text-muted-foreground mt-0.5 text-center">JPG / PNG / WEBP · máx 10 MB</span>
               </>
             )}

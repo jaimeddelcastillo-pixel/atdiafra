@@ -1,3 +1,4 @@
+import type React from "react";
 // Importador de bitácora de PRESIONES diferenciales (Pa) — versión adaptada del de T/HR.
 // Una sola variable. Llama a la edge function extract-bitacora con module="presiones".
 import { useEffect, useRef, useState } from "react";
@@ -10,9 +11,10 @@ interface Props {
   context: { codigoArea: string; nombreArea: string; instrumento: string; iso: string; limiteMinPa: number };
   semanaInicio: string;
   onExtracted: (s: Semana) => void;
+  extra?: React.ReactNode;
 }
 
-async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
+export async function compressImage(file: File, maxDim = 2800, targetBytes = 4_000_000): Promise<{ base64: string; mediaType: string }> {
   const dataUrl: string = await new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => resolve(r.result as string);
@@ -67,7 +69,7 @@ const TURNO_MAP: Record<string, Turno> = {
 const normDia = (s?: string): Dia | null => s ? DIA_MAP[s.toLowerCase().trim()] ?? null : null;
 const normTurno = (s?: string): Turno | null => s ? TURNO_MAP[s.toLowerCase().trim()] ?? null : null;
 
-function aplicarLecturas(s: Semana, fuente: IALectura[]) {
+export function aplicarLecturas(s: Semana, fuente: IALectura[]) {
   const arr = s.lecturas.slice();
   for (const r of fuente) {
     const d = normDia(r.dia);
@@ -88,7 +90,8 @@ function aplicarLecturas(s: Semana, fuente: IALectura[]) {
   s.lecturas = arr;
 }
 
-export function ImageImporterPresion({ context, semanaInicio, onExtracted }: Props) {
+export function ImageImporterPresion({ context, semanaInicio, onExtracted, extra }: Props) {
+  const [drag, setDrag] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -162,6 +165,7 @@ export function ImageImporterPresion({ context, semanaInicio, onExtracted }: Pro
             Una foto = una semana (Lunes–Domingo, 3 turnos). La IA extrae los valores escritos al pie de la tabla en Pa.
           </p>
         </div>
+        {extra && <div className="shrink-0">{extra}</div>}
       </div>
 
       <div className="mb-3 flex items-center gap-2 flex-wrap">
@@ -195,13 +199,17 @@ export function ImageImporterPresion({ context, semanaInicio, onExtracted }: Pro
               onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
           </label>
 
-          <label htmlFor="bitacora-pres-file" className="flex flex-col items-center justify-center border-2 border-dashed border-border rounded-lg p-5 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors min-h-36">
+          <label htmlFor="bitacora-pres-file"
+            onDragOver={(e) => { e.preventDefault(); if (!loading) setDrag(true); }}
+            onDragLeave={() => setDrag(false)}
+            onDrop={(e) => { e.preventDefault(); setDrag(false); const f = e.dataTransfer.files?.[0]; if (f && !loading) handleFile(f); }}
+            className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-5 cursor-pointer transition-colors min-h-36 ${drag ? "border-primary bg-primary/10" : "border-border hover:border-primary hover:bg-primary/5"}`}>
             {loading ? (
               <><Loader2 className="h-7 w-7 animate-spin text-primary mb-2" /><span className="text-xs text-muted-foreground">Procesando…</span></>
             ) : (
               <>
                 <Upload className="h-7 w-7 text-muted-foreground mb-2" />
-                <span className="text-sm font-medium text-foreground">Subir archivo</span>
+                <span className="text-sm font-medium text-foreground">{drag ? "Suelta la foto aquí" : "Subir o arrastrar archivo"}</span>
                 <span className="text-[11px] text-muted-foreground mt-0.5 text-center">JPG / PNG / WEBP</span>
               </>
             )}
