@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Semana, semanaVacia, lunesDe, nombreMes } from "@/lib/semanas";
 import { compressImage, aplicarLecturas as aplicarPresion } from "@/components/presiones/ImageImporterPresion";
 import { aplicarLecturas as aplicarTHR } from "@/components/temp-hr/ImageImporter";
+import { detectarLunesFoto, subirFotoBitacora } from "@/lib/fotos-bitacora";
 
 type Modulo = "presiones" | "temp_hr";
 
@@ -44,16 +45,7 @@ interface Parsed {
 
 const ACCEPT = ["image/jpeg", "image/png", "image/webp"];
 
-function detectarLunes(p: Parsed | null): string {
-  const fechas = (p?.fechas_columnas ?? [])
-    .map((f) => f.fecha)
-    .filter((f): f is string => !!f && /^\d{4}-\d{2}-\d{2}$/.test(f))
-    .sort();
-  if (!fechas.length) return "";
-  const d = new Date(fechas[0] + "T00:00:00");
-  if (isNaN(d.getTime()) || d.getFullYear() < 2015 || d.getFullYear() > 2100) return "";
-  return lunesDe(d);
-}
+const detectarLunes = (p: Parsed | null) => detectarLunesFoto(p);
 
 function construir(modulo: Modulo, p: Parsed, lunes: string): Semana {
   const fecha = new Date(lunes + "T00:00:00");
@@ -125,6 +117,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
           const valores = todas.filter((x) => x.valor != null).length;
           const dudosos = todas.filter((x) => x._dudoso).length;
           if (valores === 0) throw new Error("No se reconocieron valores");
+          s.foto_path = await subirFotoBitacora(base64, mediaType);
           upd(it.id, { estado: "listo", semana: s, lunes, fechaDetectada: !!lunes, valores, dudosos, incluir: !!lunes });
           break;
         }
@@ -223,7 +216,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
                               ? <span className="text-warning"><AlertTriangle className="inline h-3 w-3 mr-1" />{it.valores} lecturas · {it.dudosos} dudosa(s)</span>
                               : <span className="text-success"><CheckCircle2 className="inline h-3 w-3 mr-1" />{it.valores} lecturas</span>}
                             {!it.fechaDetectada && <span className="ml-2 text-warning">· No se leyó la fecha, elígela</span>}
-                            {repetida && <span className="ml-2 text-destructive">· Semana repetida en el lote</span>}
+                            {repetida && <span className="ml-2 text-destructive">· Semana repetida en el lote: revisa la foto y corrige la fecha a la derecha</span>}
                             {yaExiste && !repetida && <span className="ml-2 text-muted-foreground">· Reemplazará la semana ya capturada</span>}
                           </p>
                         )}
