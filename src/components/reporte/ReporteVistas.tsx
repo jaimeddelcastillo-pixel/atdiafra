@@ -191,8 +191,8 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
   return (
     <section className="mt-3">
       <Leyenda>
-        Lista de <b className="text-foreground">todos los instrumentos con datos</b>, sin importar el módulo. "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A).
-        "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Da clic en "Abrir" para capturar o corregir.
+        Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Da clic en "Abrir" para capturar o corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
@@ -222,7 +222,10 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
               return (
                 <tr key={f.key} className="border-t border-border">
                   <td className="px-3 py-2">
-                    <div className="font-medium text-foreground">{f.codigo}</div>
+                    <div className="font-medium text-foreground">
+                      {f.codigo}
+                      {f.sinDatos && <span className="ml-2 rounded border border-warning/40 bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
+                    </div>
                     <div className="text-[11px] text-muted-foreground">{f.nombre}</div>
                   </td>
                   <td className="px-3 py-2 text-xs">{f.tipo}</td>
