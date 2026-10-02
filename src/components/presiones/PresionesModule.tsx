@@ -86,32 +86,24 @@ export function PresionesModule() {
     let lie: number | null = null;
     let lse: number | null = null;
 
-    if (draftSel.tipo === "par_cuartos") {
-      const obj = objetivos.find((o) => o.id === draftSel.id);
-      if (!obj) return;
-      const xCod = areas.find((a) => a.id === obj.cuarto_x_id)?.codigo ?? "X";
-      const yCod = areas.find((a) => a.id === obj.cuarto_y_id)?.codigo ?? "Y";
-      const instCod = manometros.find((m) => m.id === obj.instrumento_id)?.codigo ?? "";
-      nombre = `${xCod} vs ${yCod}${instCod ? ` · ${instCod}` : ""}`;
-      par_cuartos_id = obj.id;
-      instrumento_id = obj.instrumento_id ?? null;
-      iso = obj.iso ?? null;
-      lie = obj.limite_normativo_pa;
-      lse = obj.lse_pa;
-    } else {
-      // instrumento o filtro_hepa: la fuente de verdad ES el catálogo de instrumentos
+    {
+      // Todo se captura por instrumento; el par de cuartos es solo información de lo que mide
       const inst = manometros.find((m) => m.id === draftSel.id);
       if (!inst) return;
+      const par = objetivos.find((o) => o.activo && o.instrumento_id === inst.id);
       const tag = draftSel.tipo === "filtro_hepa" ? "Filtro HEPA" : "Instrumento";
-      nombre = `${tag} · ${inst.codigo}${inst.especificacion ? ` · ${inst.especificacion.split("|")[0].trim()}` : ""}`;
+      const mide = par
+        ? ` · ${areas.find((a) => a.id === par.cuarto_x_id)?.codigo ?? "X"} vs ${areas.find((a) => a.id === par.cuarto_y_id)?.codigo ?? "Y"}`
+        : "";
+      nombre = `${tag} · ${inst.codigo}${mide}${inst.especificacion ? ` · ${inst.especificacion.split("|")[0].trim()}` : ""}`;
       instrumento_id = inst.id;
-      lie = inst.lie_pa;
-      lse = inst.lse_pa;
+      par_cuartos_id = par?.id ?? null;
+      iso = par?.iso ?? null;
+      lie = inst.lie_pa ?? par?.limite_normativo_pa ?? null;
+      lse = inst.lse_pa ?? par?.lse_pa ?? null;
     }
 
-    const yaExiste = registros.find((x) => x.activo &&
-      (x.par_cuartos_id ?? null) === par_cuartos_id &&
-      (par_cuartos_id ? true : (x.instrumento_id ?? null) === instrumento_id));
+    const yaExiste = registros.find((x) => x.activo && (x.instrumento_id ?? null) === instrumento_id);
     if (yaExiste) {
       setActiveId(yaExiste.id); setDraftSel(null);
       toast.info("Este instrumento ya tiene registro — se abrió el existente");
@@ -160,7 +152,7 @@ export function PresionesModule() {
         </Link>
         <h1 className="text-2xl font-semibold text-foreground">Presiones diferenciales</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Captura semanal (Lunes–Domingo × 3 turnos, según aplique) para pares de cuartos, instrumentos (equipos) y filtros HEPA.
+          Captura semanal (Lunes–Domingo × 3 turnos, según aplique). Todas las presiones se capturan por su instrumento (manómetro o filtro HEPA).
         </p>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -189,7 +181,7 @@ export function PresionesModule() {
                 <div>
                   <h3 className="text-sm font-semibold">Nuevo registro</h3>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Elige Par de cuartos, Instrumento (manómetro) o Filtro HEPA y luego selecciona el ítem. El catálogo se administra en{" "}
+                    Elige Instrumento (manómetro) o Filtro HEPA y selecciona el instrumento. Si mide un par de cuartos, se indica como "Mide X vs Y". El catálogo se administra en{" "}
                     <Link to="/configuracion" className="text-primary hover:underline">Configuración</Link>.
                   </p>
                 </div>
