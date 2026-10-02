@@ -2,15 +2,33 @@
 import { supabase } from "@/integrations/supabase/client";
 import { lunesDe } from "@/lib/semanas";
 
+/** Corrige años mal leídos por la IA (escritura a mano: 2016→2026, 2075→2025). Devuelve "" si no hay año plausible. */
+function corregirAnio(fecha: string): string {
+  const [y, m, d] = fecha.split("-").map(Number);
+  const now = new Date().getFullYear();
+  if (y >= now - 3 && y <= now + 1) return fecha;
+  // Intenta corregir un solo dígito del año (errores típicos de lectura manuscrita)
+  for (const delta of [10, -10, 50, -50, 100, -100, 1, -1]) {
+    const cand = y + delta;
+    if (cand >= now - 3 && cand <= now + 1) {
+      const test = new Date(cand, m - 1, d);
+      if (test.getMonth() === m - 1) return `${cand}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  return "";
+}
+
 /** Lunes de la semana según las fechas escritas en el encabezado de la bitácora ("" si no se leyó). */
 export function detectarLunesFoto(p: { fechas_columnas?: { fecha?: string }[] } | null | undefined): string {
   const fechas = (p?.fechas_columnas ?? [])
     .map((f) => f.fecha)
     .filter((f): f is string => !!f && /^\d{4}-\d{2}-\d{2}$/.test(f))
+    .map(corregirAnio)
+    .filter(Boolean)
     .sort();
   if (!fechas.length) return "";
   const d = new Date(fechas[0] + "T00:00:00");
-  if (isNaN(d.getTime()) || d.getFullYear() < 2015 || d.getFullYear() > 2100) return "";
+  if (isNaN(d.getTime())) return "";
   return lunesDe(d);
 }
 
