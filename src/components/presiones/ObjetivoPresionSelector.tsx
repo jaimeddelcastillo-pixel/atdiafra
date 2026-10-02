@@ -23,44 +23,24 @@ interface Props {
   onChange: (sel: SeleccionPresion | null) => void;
 }
 
-const TIPO_LABEL: Record<SeleccionPresionTipo, string> = {
-  par_cuartos: "Par de cuartos",
+const TIPO_LABEL: Record<"instrumento" | "filtro_hepa", string> = {
   instrumento: "Instrumento (manómetro)",
   filtro_hepa: "Filtro HEPA",
 };
 
 export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos, onChange }: Props) {
-  const [tipo, setTipo] = useState<SeleccionPresionTipo>(value?.tipo ?? "par_cuartos");
+  const [tipo, setTipo] = useState<"instrumento" | "filtro_hepa">(
+    value?.tipo === "filtro_hepa" ? "filtro_hepa" : "instrumento",
+  );
 
   const areaCodigo = (id: string | null) => (id ? areas.find((a) => a.id === id)?.codigo ?? "?" : "?");
-  const instCodigo = (id: string | null) => (id ? instrumentos.find((x) => x.id === id)?.codigo ?? "—" : "—");
-
-  const areaNombreInst = (instId: string | null) => {
-    if (!instId) return null;
-    const i = instrumentos.find((x) => x.id === instId);
-    if (!i) return null;
-    if (i.area_id) return areas.find((a) => a.id === i.area_id)?.nombre ?? null;
-    return i.area_libre ?? null;
-  };
 
   const opciones = useMemo(() => {
-    if (tipo === "par_cuartos") {
-      return objetivos.filter((o) => o.activo).map((o) => {
-        const inst = instCodigo(o.instrumento_id);
-        const areaInst = areaNombreInst(o.instrumento_id);
-        const instLabel = areaInst ? `${inst} · ${areaInst}` : inst;
-        return {
-          id: o.id,
-          label: `${areaCodigo(o.cuarto_x_id)} vs ${areaCodigo(o.cuarto_y_id)} · ${instLabel} · ${describirLimite(o)}`,
-        };
-      });
-    }
     const filtroTipo = tipo === "filtro_hepa" ? "manometro_filtro" : null;
     return instrumentos
       .filter((i) => {
         if (!i.activo) return false;
         if (filtroTipo) return i.tipo === filtroTipo;
-        // instrumento (manómetro) → diferenciales y otros, NO los de filtro HEPA
         return i.tipo === "manometro_diferencial" || i.tipo === "otro";
       })
       .map((i) => {
@@ -72,7 +52,9 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
           ? (areas.find((a) => a.id === i.area_id)?.nombre ?? null)
           : (i.area_libre ?? null);
         const areaTxt = areaNombre ? ` · ${areaNombre}` : "";
-        return { id: i.id, label: `${i.codigo}${areaTxt}${lim}` };
+        const par = objetivos.find((o) => o.activo && o.instrumento_id === i.id);
+        const mide = par ? ` · Mide ${areaCodigo(par.cuarto_x_id)} vs ${areaCodigo(par.cuarto_y_id)}` : "";
+        return { id: i.id, label: `${i.codigo}${mide}${areaTxt}${lim}` };
       });
   }, [tipo, objetivos, instrumentos, areas]);
 
@@ -80,8 +62,8 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-1 rounded-md border border-input bg-background p-1">
-        {(Object.keys(TIPO_LABEL) as SeleccionPresionTipo[]).map((t) => (
+      <div className="grid grid-cols-2 gap-1 rounded-md border border-input bg-background p-1">
+        {(Object.keys(TIPO_LABEL) as ("instrumento" | "filtro_hepa")[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -94,6 +76,7 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
           </button>
         ))}
       </div>
+
 
       <select
         value={selectedId}
@@ -112,7 +95,7 @@ export function ObjetivoPresionSelector({ value, objetivos, areas, instrumentos,
       {opciones.length === 0 && (
         <p className="text-[11px] text-muted-foreground">
           No hay {TIPO_LABEL[tipo].toLowerCase()} cargados.{" "}
-          {tipo === "par_cuartos" ? "Da de alta pares en " : "Da de alta instrumentos en "}
+          Da de alta instrumentos en{" "}
           <Link to="/configuracion" className="text-primary hover:underline">Configuración</Link>.
         </p>
       )}
