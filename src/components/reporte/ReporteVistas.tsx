@@ -339,7 +339,39 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
         </Button>
       </div>
 
-      <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
+      <div className="relative mt-3">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-1">
+          <button
+            type="button"
+            aria-label="Desplazar a la izquierda"
+            onClick={() => desplazar(-1)}
+            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-1">
+          <button
+            type="button"
+            aria-label="Desplazar a la derecha"
+            onClick={() => desplazar(1)}
+            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div
+          ref={scrollRef}
+          className="rounded-xl border border-border bg-card overflow-x-auto"
+          onWheel={(e) => {
+            const el = scrollRef.current;
+            if (!el) return;
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+              el.scrollLeft += e.deltaY;
+              e.preventDefault();
+            }
+          }}
+        >
         <table className="text-xs">
           <thead className="bg-muted/40 text-muted-foreground">
             <tr>
