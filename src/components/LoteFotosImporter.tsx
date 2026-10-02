@@ -1,7 +1,7 @@
 // Carga masiva de fotos (lote) de un mismo instrumento.
 // La IA lee la fecha del encabezado de cada bitácora para ubicar la semana;
 // el usuario revisa la bandeja y las integra al borrador (luego presiona Guardar).
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -77,13 +77,29 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
   const [drag, setDrag] = useState(false);
+  // Ref espejo de items para que el ciclo de procesamiento vea fotos agregadas a mitad de la carga
+  const itemsRef = useRef<Item[]>([]);
+  const runningRef = useRef(false);
+  const setItemsSync = (fn: (prev: Item[]) => Item[]) => {
+    setItems((prev) => {
+      const next = fn(prev);
+      itemsRef.current = next;
+      return next;
+    });
+  };
 
   const upd = (id: string, patch: Partial<Item>) =>
-    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setItemsSync((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
-  async function procesar(lista: Item[]) {
+  async function procesar() {
+    if (runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
-    for (const it of lista) {
+    // Procesa en ciclo: si el usuario agrega más fotos mientras se leen, también entran
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const it = itemsRef.current.find((x) => x.estado === "pendiente");
+      if (!it) break;
       upd(it.id, { estado: "procesando" });
       try {
         const { base64, mediaType } = await compressImage(it.file);
@@ -103,6 +119,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
             if (/créditos|402/i.test(String(msg))) {
               upd(it.id, { estado: "error", error: String(msg) });
               toast.error(String(msg));
+              runningRef.current = false;
               setRunning(false);
               return;
             }
@@ -125,6 +142,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
         upd(it.id, { estado: "error", error: e instanceof Error ? e.message : "Error", incluir: false });
       }
     }
+    runningRef.current = false;
     setRunning(false);
   }
 
@@ -138,8 +156,8 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
     const omitidos = Array.from(files).length - nuevos.length;
     if (omitidos > 0) toast.warning(`${omitidos} archivo(s) omitido(s): solo se aceptan JPG, PNG o WEBP.`);
     if (!nuevos.length) return;
-    setItems((prev) => [...prev, ...nuevos]);
-    if (!running) void procesar(nuevos);
+    setItemsSync((prev) => [...prev, ...nuevos]);
+    void procesar();
   }
 
   const ordenados = items.slice().sort((a, b) => (a.lunes || "9999").localeCompare(b.lunes || "9999"));
@@ -156,7 +174,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
     }
     onApply(semanas);
     setOpen(false);
-    setItems([]);
+    setItemsSync(() => []);
   }
 
   return (
@@ -234,7 +252,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
                         </div>
                       )}
                       <button type="button" disabled={it.estado === "procesando"} aria-label="Quitar foto"
-                        onClick={() => setItems((p) => p.filter((x) => x.id !== it.id))}
+                        onClick={() => setItemsSync((p) => p.filter((x) => x.id !== it.id))}
                         className="p-1 text-muted-foreground hover:text-destructive disabled:opacity-40">
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -246,7 +264,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
           )}
 
           <DialogFooter>
-            <Button variant="ghost" disabled={running} onClick={() => { setOpen(false); setItems([]); }}>Cancelar</Button>
+            <Button variant="ghost" disabled={running} onClick={() => { setOpen(false); setItemsSync(() => []); }}>Cancelar</Button>
             <Button disabled={running || aprobados.length === 0} onClick={integrar}>
               Integrar {aprobados.length} semana(s)
             </Button>

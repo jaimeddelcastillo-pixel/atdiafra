@@ -2,7 +2,7 @@ import { EliminarRegistroZona } from "@/components/EliminarRegistroZona";
 // Módulo Presiones diferenciales — bitácora semanal Pa por par de cuartos.
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { CalendarDays, ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
 import { toast } from "sonner";
 
@@ -58,6 +58,14 @@ export function PresionesModule() {
   }, []);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Abrir un registro directo desde el reporte consolidado (?registroId=...)
+  const search = useSearch({ strict: false }) as { registroId?: string };
+  const registroIdFromUrl = search?.registroId;
+  useEffect(() => {
+    if (registroIdFromUrl && registros.some((r) => r.id === registroIdFromUrl)) {
+      setActiveId(registroIdFromUrl);
+    }
+  }, [registroIdFromUrl, registros]);
   const active = useMemo(
     () => registros.find((r) => r.id === activeId) ?? null,
     [registros, activeId],
