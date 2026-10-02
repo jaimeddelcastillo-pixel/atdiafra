@@ -1,3 +1,4 @@
+import { EliminarRegistroZona } from "@/components/EliminarRegistroZona";
 // Módulo Presiones diferenciales — bitácora semanal Pa por par de cuartos.
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
@@ -132,8 +133,8 @@ export function PresionesModule() {
     }
   };
 
+  const { canDelete: isSuperAdminParent } = useAuth();
   const removeRegistro = async (id: string) => {
-    if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
     try {
       await deleteRegistro(id);
       if (activeId === id) setActiveId(null);
@@ -226,7 +227,7 @@ export function PresionesModule() {
               <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
                 Crea un registro nuevo o ábrelo de la lista para empezar a capturar.
               </div>
-            ) : (
+            ) : (<>
               <RegistroEditorPresion
                 key={active.id}
                 registro={active}
@@ -237,7 +238,8 @@ export function PresionesModule() {
                 }}
                 onDelete={() => removeRegistro(active.id)}
               />
-            )}
+              {isSuperAdminParent && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
+            </>)}
           </div>
         </div>
       </main>
@@ -537,11 +539,6 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
           {canWriteRecords && (
             <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
               <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          )}
-          {canDelete && (
-            <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
-              <Trash className="h-4 w-4" /> Eliminar registro
             </Button>
           )}
           {!canWriteRecords && (

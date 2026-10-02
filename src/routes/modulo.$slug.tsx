@@ -1,3 +1,4 @@
+import { EliminarRegistroZona } from "@/components/EliminarRegistroZona";
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
@@ -188,8 +189,8 @@ function TempHRModule() {
     }
   };
 
+  const { canDelete: isSuperAdminParent } = useAuth();
   const removeRegistro = async (id: string) => {
-    if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
     try {
       await deleteRegistro(id);
       if (activeId === id) setActiveId(null);
@@ -291,7 +292,7 @@ function TempHRModule() {
                 <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>{" "}
                 para empezar a capturar.
               </div>
-            ) : (
+            ) : (<>
               <RegistroEditor
                 key={active.id}
                 registro={active}
@@ -301,7 +302,8 @@ function TempHRModule() {
                 }}
                 onDelete={() => removeRegistro(active.id)}
               />
-            )}
+              {isSuperAdminParent && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
+            </>)}
           </div>
         </div>
       </main>
@@ -584,11 +586,6 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
           {canWriteRecords && (
             <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
               <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          )}
-          {canDelete && (
-            <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
-              <Trash className="h-4 w-4" /> Eliminar registro
             </Button>
           )}
           {!canWriteRecords && (
