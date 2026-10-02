@@ -358,15 +358,28 @@ function ReportePage() {
             </Popover>
           </div>
           <div className="flex flex-wrap gap-1">
-            <Button size="sm" variant="ghost" onClick={() => { const a = new Date(); const b = new Date(); b.setDate(a.getDate() - 90); setDesde(b); setHasta(a); }}>
-              Últimos 90 días
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { const y = new Date().getFullYear(); setDesde(new Date(y, 0, 1)); setHasta(new Date()); }}>
-              Año actual
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => { const a = new Date(); const m = a.getMonth(); const q = Math.floor(m / 3); setDesde(new Date(a.getFullYear(), q * 3, 1)); setHasta(new Date(a.getFullYear(), q * 3 + 3, 0)); }}>
-              Trimestre actual
-            </Button>
+            {(() => {
+              const a = new Date(); const y = a.getFullYear(); const m = a.getMonth();
+              const q = Math.floor(m / 3); const s = m < 6 ? 0 : 6;
+              const hace = (d: number) => { const b = new Date(); b.setDate(a.getDate() - d); return b; };
+              const presets: { label: string; d: Date; h: Date }[] = [
+                { label: "Últimos 90 días", d: hace(90), h: a },
+                { label: "Trimestre actual", d: new Date(y, q * 3, 1), h: new Date(y, q * 3 + 3, 0) },
+                { label: "Semestre actual", d: new Date(y, s, 1), h: new Date(y, s + 6, 0) },
+                { label: "Año actual", d: new Date(y, 0, 1), h: new Date(y, 11, 31) },
+                { label: "Últimos 12 meses", d: hace(365), h: a },
+                { label: `Año ${y - 1}`, d: new Date(y - 1, 0, 1), h: new Date(y - 1, 11, 31) },
+              ];
+              const k = (x: Date) => format(x, "yyyy-MM-dd");
+              return presets.map((p) => {
+                const on = k(p.d) === k(desde) && k(p.h) === k(hasta);
+                return (
+                  <Button key={p.label} size="sm" variant={on ? "secondary" : "ghost"} onClick={() => { setDesde(p.d); setHasta(p.h); }}>
+                    {p.label}
+                  </Button>
+                );
+              });
+            })()}
           </div>
           <div className="ml-auto text-xs text-muted-foreground">
             Exportar usará la selección actual: <span className="font-medium text-foreground">{registrosParaExportar.length}</span> registro(s) · mínimo recomendado <span className="font-medium text-foreground">≥{MINIMO_NORMATIVO}</span> lecturas
