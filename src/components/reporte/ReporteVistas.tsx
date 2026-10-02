@@ -396,7 +396,7 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
           <tbody>
             {filtradas.map((f) => (
               <tr key={f.key} className="border-t border-border">
-                <td className="sticky left-0 z-10 bg-card px-3 py-1.5 shadow-[1px_0_0_0_hsl(var(--border))]">
+                <td className="sticky left-0 z-10 border-r border-border bg-card px-3 py-1.5">
                   <div className="font-medium text-foreground">
                     {f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span>
                     {f.sinDatos && <span className="ml-1 rounded border border-warning/40 bg-warning/15 px-1 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
