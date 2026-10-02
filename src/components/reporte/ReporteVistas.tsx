@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-import { FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -263,6 +263,11 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
   const ultima = lunes[lunes.length - 1];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const desplazar = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (el) el.scrollBy({ left: dir * Math.max(300, el.clientWidth * 0.8), behavior: "smooth" });
+  };
 
   const resumen = useMemo(() => {
     let alDia = 0, pendientes = 0, fuera = 0;
@@ -334,7 +339,39 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
         </Button>
       </div>
 
-      <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
+      <div className="relative mt-3">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-1">
+          <button
+            type="button"
+            aria-label="Desplazar a la izquierda"
+            onClick={() => desplazar(-1)}
+            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-1">
+          <button
+            type="button"
+            aria-label="Desplazar a la derecha"
+            onClick={() => desplazar(1)}
+            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div
+          ref={scrollRef}
+          className="rounded-xl border border-border bg-card overflow-x-auto"
+          onWheel={(e) => {
+            const el = scrollRef.current;
+            if (!el) return;
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
+              el.scrollLeft += e.deltaY;
+              e.preventDefault();
+            }
+          }}
+        >
         <table className="text-xs">
           <thead className="bg-muted/40 text-muted-foreground">
             <tr>
@@ -371,6 +408,7 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );
