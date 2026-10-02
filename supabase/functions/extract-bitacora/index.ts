@@ -50,6 +50,8 @@ Columnas Lunes a Domingo, 3 sub-columnas: Mañana, Media Tarde, Tarde. Hay una c
 Extrae los valores numéricos de las filas de texto Presión escritas al pie de cada columna. Lee también código de instrumento, área, mes y año del encabezado.
 
 En el encabezado de cada día suele estar escrita la FECHA (ej. "03-feb-25"): devuélvela en "fechas_columnas" en formato YYYY-MM-DD, sólo para los días que tengan fecha escrita.
+
+📅 REGLA DE AÑO PLAUSIBLE (escritura a mano): el año debe estar dentro de los últimos 3 años o como máximo 1 año adelante. Si lees un año fuera de ese rango (ej. 2016, 2075), es un dígito manuscrito mal leído: corrígelo cambiando UN solo dígito (2016→2026, 2075→2025). Todas las fechas de la hoja son de la MISMA semana: si una cae en otro año o a meses de distancia, corrígela para que sea consecutiva con las demás.
 Responde SOLO en JSON, 21 combinaciones, vacíos como null:
 {"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}`;
   }
