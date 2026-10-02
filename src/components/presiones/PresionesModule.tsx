@@ -2,7 +2,7 @@ import { EliminarRegistroZona } from "@/components/EliminarRegistroZona";
 // Módulo Presiones diferenciales — bitácora semanal Pa por par de cuartos.
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { CalendarDays, ChevronLeft, Plus, Save, Trash, FileText } from "lucide-react";
 import { toast } from "sonner";
 
