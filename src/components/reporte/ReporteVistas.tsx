@@ -408,6 +408,7 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </section>
   );
