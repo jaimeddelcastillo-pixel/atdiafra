@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
@@ -264,10 +264,27 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
   const ultima = lunes[lunes.length - 1];
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollPos, setScrollPos] = useState(0);
+  const [scrollMax, setScrollMax] = useState(0);
   const desplazar = (dir: 1 | -1) => {
     const el = scrollRef.current;
     if (el) el.scrollBy({ left: dir * Math.max(300, el.clientWidth * 0.8), behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const actualizar = () => {
+      setScrollMax(Math.max(0, el.scrollWidth - el.clientWidth));
+      setScrollPos(el.scrollLeft);
+    };
+    actualizar();
+    const observer = new ResizeObserver(actualizar);
+    observer.observe(el);
+    const table = el.querySelector("table");
+    if (table) observer.observe(table);
+    return () => observer.disconnect();
+  }, [lunes.length, filtradas.length]);
 
   const resumen = useMemo(() => {
     let alDia = 0, pendientes = 0, fuera = 0;
@@ -339,43 +356,38 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
         </Button>
       </div>
 
-      <div className="relative mt-3">
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-1">
-          <button
-            type="button"
-            aria-label="Desplazar a la izquierda"
-            onClick={() => desplazar(-1)}
-            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
-          >
+      <div className="mt-3 rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-2 py-2">
+          <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Semanas anteriores" onClick={() => desplazar(-1)} disabled={scrollPos <= 0}>
             <ChevronLeft className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 flex items-center pr-1">
-          <button
-            type="button"
-            aria-label="Desplazar a la derecha"
-            onClick={() => desplazar(1)}
-            className="pointer-events-auto rounded-full border border-border bg-card/95 p-1.5 shadow-sm hover:bg-muted"
-          >
+          </Button>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Semanas</span>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(1, scrollMax)}
+            value={Math.min(scrollPos, Math.max(1, scrollMax))}
+            onChange={(e) => {
+              const el = scrollRef.current;
+              if (el) el.scrollLeft = Number(e.target.value);
+            }}
+            disabled={scrollMax === 0}
+            aria-label="Desplazar semanas"
+            className="h-2 min-w-0 flex-1 cursor-ew-resize accent-primary disabled:cursor-default disabled:opacity-40"
+          />
+          <Button type="button" size="icon" variant="outline" className="h-8 w-8 shrink-0" aria-label="Semanas siguientes" onClick={() => desplazar(1)} disabled={scrollPos >= scrollMax - 1}>
             <ChevronRight className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <div
           ref={scrollRef}
-          className="rounded-xl border border-border bg-card overflow-x-auto"
-          onWheel={(e) => {
-            const el = scrollRef.current;
-            if (!el) return;
-            if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && el.scrollWidth > el.clientWidth) {
-              el.scrollLeft += e.deltaY;
-              e.preventDefault();
-            }
-          }}
+          className="max-h-[65vh] overflow-auto"
+          onScroll={(e) => setScrollPos(e.currentTarget.scrollLeft)}
         >
         <table className="text-xs">
-          <thead className="bg-muted/40 text-muted-foreground">
+          <thead className="sticky top-0 z-20 bg-muted text-muted-foreground shadow-sm">
             <tr>
-              <th className="sticky left-0 bg-card px-3 py-2 text-left font-medium min-w-[220px]">Instrumento · Área</th>
+              <th className="sticky left-0 z-30 min-w-[220px] bg-muted px-3 py-2 text-left font-medium">Instrumento · Área</th>
               {lunes.map((l) => (
                 <th key={l} className="px-1 py-2 font-medium whitespace-nowrap">{format(new Date(l + "T00:00:00"), "dd/MM")}</th>
               ))}
@@ -384,7 +396,7 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
           <tbody>
             {filtradas.map((f) => (
               <tr key={f.key} className="border-t border-border">
-                <td className="sticky left-0 bg-card px-3 py-1.5">
+                <td className="sticky left-0 z-10 bg-card px-3 py-1.5 shadow-[1px_0_0_0_hsl(var(--border))]">
                   <div className="font-medium text-foreground">
                     {f.codigo} <span className="text-muted-foreground font-normal">· {MODULO_LABEL[f.modulo] ?? f.modulo}</span>
                     {f.sinDatos && <span className="ml-1 rounded border border-warning/40 bg-warning/15 px-1 py-0.5 text-[10px] font-medium text-warning">Sin capturas</span>}
