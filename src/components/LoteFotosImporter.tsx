@@ -91,9 +91,15 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
   const upd = (id: string, patch: Partial<Item>) =>
     setItemsSync((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
-  async function procesar(lista: Item[]) {
+  async function procesar() {
+    if (runningRef.current) return;
+    runningRef.current = true;
     setRunning(true);
-    for (const it of lista) {
+    // Procesa en ciclo: si el usuario agrega más fotos mientras se leen, también entran
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const it = itemsRef.current.find((x) => x.estado === "pendiente");
+      if (!it) break;
       upd(it.id, { estado: "procesando" });
       try {
         const { base64, mediaType } = await compressImage(it.file);
