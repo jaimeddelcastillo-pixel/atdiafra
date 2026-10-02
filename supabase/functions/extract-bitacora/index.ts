@@ -26,7 +26,7 @@ Hay DOS cuadrículas gráficas (una para Temperatura °C, otra para Humedad Rela
 - Si ves 4 fechas escritas (ej. 07,08,09,10-ene), entonces sólo 4 días de esa semana tienen lecturas; los otros 3 quedan en null.
 
 📅 REGLA DE AÑO PLAUSIBLE (escritura a mano):
-- Las bitácoras son recientes: el año escrito debe estar dentro de los últimos 3 años respecto al año actual o como máximo 1 año adelante.
+- El año NUNCA es 2024 o anterior: sólo 2025 en adelante (máximo 1 año adelante del actual). Si lees 2023 es un 5 mal leído: escribe 2025.
 - Si lees un año fuera de ese rango (ej. 2016, 2075, 2002), casi seguro es un dígito manuscrito mal leído: corrígelo al año plausible más cercano cambiando UN solo dígito (2016→2026, 2075→2025, 2002→2025 si el contexto lo indica).
 - Todas las fechas de una misma hoja pertenecen a la MISMA semana: si una fecha cae en otro año o a meses de distancia de las demás, corrígela para que sea consecutiva con el resto.
 
@@ -51,7 +51,7 @@ Extrae los valores numéricos de las filas de texto Presión escritas al pie de 
 
 En el encabezado de cada día suele estar escrita la FECHA (ej. "03-feb-25"): devuélvela en "fechas_columnas" en formato YYYY-MM-DD, sólo para los días que tengan fecha escrita.
 
-📅 REGLA DE AÑO PLAUSIBLE (escritura a mano): el año debe estar dentro de los últimos 3 años o como máximo 1 año adelante. Si lees un año fuera de ese rango (ej. 2016, 2075), es un dígito manuscrito mal leído: corrígelo cambiando UN solo dígito (2016→2026, 2075→2025). Todas las fechas de la hoja son de la MISMA semana: si una cae en otro año o a meses de distancia, corrígela para que sea consecutiva con las demás.
+📅 REGLA DE AÑO PLAUSIBLE (escritura a mano): el año NUNCA es 2024 o anterior: sólo 2025 en adelante (máximo 1 año adelante del actual). Si lees 2023 es un 5 mal leído: escribe 2025. Si lees otro año fuera de rango (ej. 2016, 2075), corrígelo cambiando UN solo dígito (2016→2026, 2075→2025). Todas las fechas de la hoja son de la MISMA semana: si una cae en otro año o a meses de distancia, corrígela para que sea consecutiva con las demás.
 Responde SOLO en JSON, 21 combinaciones, vacíos como null:
 {"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}`;
   }

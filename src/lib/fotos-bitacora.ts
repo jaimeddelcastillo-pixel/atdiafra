@@ -6,11 +6,13 @@ import { lunesDe } from "@/lib/semanas";
 function corregirAnio(fecha: string): string {
   const [y, m, d] = fecha.split("-").map(Number);
   const now = new Date().getFullYear();
-  if (y >= now - 3 && y <= now + 1) return fecha;
+  const MIN = 2025; // no se aceptan bitácoras de 2024 o anteriores
+  if (y >= MIN && y <= now + 1) return fecha;
+  if (y === 2023) return `2025-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   // Intenta corregir un solo dígito del año (errores típicos de lectura manuscrita)
-  for (const delta of [10, -10, 50, -50, 100, -100, 1, -1]) {
+  for (const delta of [10, -10, 50, -50, 100, -100, 2, 1, -1]) {
     const cand = y + delta;
-    if (cand >= now - 3 && cand <= now + 1) {
+    if (cand >= MIN && cand <= now + 1) {
       const test = new Date(cand, m - 1, d);
       if (test.getMonth() === m - 1) return `${cand}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     }
