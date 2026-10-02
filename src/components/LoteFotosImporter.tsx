@@ -1,7 +1,7 @@
 // Carga masiva de fotos (lote) de un mismo instrumento.
 // La IA lee la fecha del encabezado de cada bitácora para ubicar la semana;
 // el usuario revisa la bandeja y las integra al borrador (luego presiona Guardar).
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -77,9 +77,19 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
   const [items, setItems] = useState<Item[]>([]);
   const [running, setRunning] = useState(false);
   const [drag, setDrag] = useState(false);
+  // Ref espejo de items para que el ciclo de procesamiento vea fotos agregadas a mitad de la carga
+  const itemsRef = useRef<Item[]>([]);
+  const runningRef = useRef(false);
+  const setItemsSync = (fn: (prev: Item[]) => Item[]) => {
+    setItems((prev) => {
+      const next = fn(prev);
+      itemsRef.current = next;
+      return next;
+    });
+  };
 
   const upd = (id: string, patch: Partial<Item>) =>
-    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setItemsSync((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   async function procesar(lista: Item[]) {
     setRunning(true);
