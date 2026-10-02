@@ -174,7 +174,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
     }
     onApply(semanas);
     setOpen(false);
-    setItems([]);
+    setItemsSync(() => []);
   }
 
   return (
@@ -252,7 +252,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
                         </div>
                       )}
                       <button type="button" disabled={it.estado === "procesando"} aria-label="Quitar foto"
-                        onClick={() => setItems((p) => p.filter((x) => x.id !== it.id))}
+                        onClick={() => setItemsSync((p) => p.filter((x) => x.id !== it.id))}
                         className="p-1 text-muted-foreground hover:text-destructive disabled:opacity-40">
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -264,7 +264,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
           )}
 
           <DialogFooter>
-            <Button variant="ghost" disabled={running} onClick={() => { setOpen(false); setItems([]); }}>Cancelar</Button>
+            <Button variant="ghost" disabled={running} onClick={() => { setOpen(false); setItemsSync(() => []); }}>Cancelar</Button>
             <Button disabled={running || aprobados.length === 0} onClick={integrar}>
               Integrar {aprobados.length} semana(s)
             </Button>
