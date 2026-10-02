@@ -1,3 +1,4 @@
+import { EliminarRegistroZona } from "@/components/EliminarRegistroZona";
 // Módulo Presiones diferenciales — bitácora semanal Pa por par de cuartos.
 // Inspirado en TempHRModule pero con 1 sola variable (Pa) y catálogo de pares precargado.
 import { useEffect, useMemo, useState } from "react";
@@ -133,7 +134,6 @@ export function PresionesModule() {
   };
 
   const removeRegistro = async (id: string) => {
-    if (!confirm("¿Eliminar este registro y todas sus semanas?")) return;
     try {
       await deleteRegistro(id);
       if (activeId === id) setActiveId(null);
@@ -237,6 +237,7 @@ export function PresionesModule() {
                 }}
                 onDelete={() => removeRegistro(active.id)}
               />
+              {canDelete && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
             )}
           </div>
         </div>
@@ -537,11 +538,6 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
           {canWriteRecords && (
             <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="gap-1">
               <Save className="h-4 w-4" /> {saving ? "Guardando…" : "Guardar"}
-            </Button>
-          )}
-          {canDelete && (
-            <Button size="sm" variant="outline" onClick={onDelete} className="gap-1 text-destructive hover:text-destructive">
-              <Trash className="h-4 w-4" /> Eliminar registro
             </Button>
           )}
           {!canWriteRecords && (
