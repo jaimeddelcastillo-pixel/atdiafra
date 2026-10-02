@@ -58,6 +58,14 @@ export function PresionesModule() {
   }, []);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Abrir un registro directo desde el reporte consolidado (?registroId=...)
+  const search = useSearch({ strict: false }) as { registroId?: string };
+  const registroIdFromUrl = search?.registroId;
+  useEffect(() => {
+    if (registroIdFromUrl && registros.some((r) => r.id === registroIdFromUrl)) {
+      setActiveId(registroIdFromUrl);
+    }
+  }, [registroIdFromUrl, registros]);
   const active = useMemo(
     () => registros.find((r) => r.id === activeId) ?? null,
     [registros, activeId],
