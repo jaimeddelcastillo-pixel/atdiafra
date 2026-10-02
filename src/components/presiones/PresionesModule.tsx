@@ -133,6 +133,7 @@ export function PresionesModule() {
     }
   };
 
+  const { canDelete: isSuperAdminParent } = useAuth();
   const removeRegistro = async (id: string) => {
     try {
       await deleteRegistro(id);
@@ -237,7 +238,7 @@ export function PresionesModule() {
                 }}
                 onDelete={() => removeRegistro(active.id)}
               />
-              {canDelete && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
+              {isSuperAdminParent && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
             )}
           </div>
         </div>
