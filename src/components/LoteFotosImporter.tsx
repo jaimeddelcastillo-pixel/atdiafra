@@ -119,6 +119,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
             if (/créditos|402/i.test(String(msg))) {
               upd(it.id, { estado: "error", error: String(msg) });
               toast.error(String(msg));
+              runningRef.current = false;
               setRunning(false);
               return;
             }
@@ -141,6 +142,7 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
         upd(it.id, { estado: "error", error: e instanceof Error ? e.message : "Error", incluir: false });
       }
     }
+    runningRef.current = false;
     setRunning(false);
   }
 
@@ -154,8 +156,8 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
     const omitidos = Array.from(files).length - nuevos.length;
     if (omitidos > 0) toast.warning(`${omitidos} archivo(s) omitido(s): solo se aceptan JPG, PNG o WEBP.`);
     if (!nuevos.length) return;
-    setItems((prev) => [...prev, ...nuevos]);
-    if (!running) void procesar(nuevos);
+    setItemsSync((prev) => [...prev, ...nuevos]);
+    void procesar();
   }
 
   const ordenados = items.slice().sort((a, b) => (a.lunes || "9999").localeCompare(b.lunes || "9999"));
