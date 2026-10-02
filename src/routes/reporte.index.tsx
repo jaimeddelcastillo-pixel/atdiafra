@@ -368,7 +368,6 @@ function ReportePage() {
                 { label: "Semestre actual", d: new Date(y, s, 1), h: new Date(y, s + 6, 0) },
                 { label: "Año actual", d: new Date(y, 0, 1), h: new Date(y, 11, 31) },
                 { label: "Últimos 12 meses", d: hace(365), h: a },
-                { label: `Año ${y - 1}`, d: new Date(y - 1, 0, 1), h: new Date(y - 1, 11, 31) },
               ];
               const k = (x: Date) => format(x, "yyyy-MM-dd");
               return presets.map((p) => {
