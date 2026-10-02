@@ -263,6 +263,11 @@ export function VistaAvance({ registros, areaDe, instrMap, catalogo, areasMap, d
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
   const ultima = lunes[lunes.length - 1];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const desplazar = (dir: 1 | -1) => {
+    const el = scrollRef.current;
+    if (el) el.scrollBy({ left: dir * Math.max(300, el.clientWidth * 0.8), behavior: "smooth" });
+  };
 
   const resumen = useMemo(() => {
     let alDia = 0, pendientes = 0, fuera = 0;
