@@ -227,7 +227,7 @@ export function PresionesModule() {
               <div className="rounded-xl border border-dashed border-border bg-card p-10 text-center text-sm text-muted-foreground">
                 Crea un registro nuevo o ábrelo de la lista para empezar a capturar.
               </div>
-            ) : (
+            ) : (<>
               <RegistroEditorPresion
                 key={active.id}
                 registro={active}
@@ -239,7 +239,7 @@ export function PresionesModule() {
                 onDelete={() => removeRegistro(active.id)}
               />
               {isSuperAdminParent && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
-            )}
+            </>)}
           </div>
         </div>
       </main>

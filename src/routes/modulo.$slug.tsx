@@ -292,7 +292,7 @@ function TempHRModule() {
                 <Link to="/reporte" className="text-primary hover:underline">Reportes</Link>{" "}
                 para empezar a capturar.
               </div>
-            ) : (
+            ) : (<>
               <RegistroEditor
                 key={active.id}
                 registro={active}
@@ -303,7 +303,7 @@ function TempHRModule() {
                 onDelete={() => removeRegistro(active.id)}
               />
               {isSuperAdminParent && <EliminarRegistroZona key={'z'+active.id} nombre={active.nombre} onConfirm={() => removeRegistro(active.id)} />}
-            )}
+            </>)}
           </div>
         </div>
       </main>
