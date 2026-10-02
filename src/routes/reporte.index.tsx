@@ -49,19 +49,26 @@ function areaEfectiva(
     const a = areasMap.get(id);
     return { key: id, etiqueta: a ? `${a.codigo} · ${a.nombre}` : "Área desconocida", sinArea: false };
   };
+  // Textos libres tipo "DCC-04 vs DCC-03" o "DSE-11 HVAC…": se agrupa por el área del primer código.
+  const porCodigo = (txt: string) => {
+    const cod = txt.match(/^\s*([A-Z]{2,4}-\d+)/)?.[1];
+    if (!cod) return null;
+    for (const a of areasMap.values()) if (a.codigo === cod) return deArea(a.id);
+    return null;
+  };
   if (r.area_id) return deArea(r.area_id);
   const libre = r.nombre_area_libre || r.codigo_area_libre;
-  if (libre) return { key: `libre:${libre}`, etiqueta: libre, sinArea: false };
+  if (libre) return porCodigo(libre) ?? { key: `libre:${libre}`, etiqueta: libre, sinArea: false };
   const ins = r.instrumento_id ? instrMap.get(r.instrumento_id) : undefined;
   if (ins?.area_id) return deArea(ins.area_id);
-  if (ins?.area_libre) return { key: `libre:${ins.area_libre}`, etiqueta: ins.area_libre, sinArea: false };
+  if (ins?.area_libre) return porCodigo(ins.area_libre) ?? { key: `libre:${ins.area_libre}`, etiqueta: ins.area_libre, sinArea: false };
   return { key: "sin-area", etiqueta: "Instrumento sin área asignada", sinArea: true };
 }
 
 function etiquetaInstrumento(r: Registro, instrMap: Map<string, Instrumento>): string {
   if (r.instrumento_id) {
     const i = instrMap.get(r.instrumento_id);
-    return i ? `${i.codigo} · ${i.parametro}` : "Instrumento desconocido";
+    return i ? `${i.codigo} · ${i.parametro}${/ vs /.test(i.area_libre ?? "") ? ` · Mide ${i.area_libre}` : ""}` : "Instrumento desconocido";
   }
   if (r.par_cuartos_id) return `Par cuartos`;
   if (r.hvac_id) return r.etapa ? `HVAC · ${r.etapa}` : "HVAC";
@@ -136,7 +143,7 @@ function ReportePage() {
     setLoading(true);
     try {
       const [regs, ar, ins, hv] = await Promise.all([listRegistros(), listAreas(), listInstrumentos(), listSistemasHVAC()]);
-      setRegistros(regs); setAreas(ar); setInstrumentos(ins);
+      setRegistros(regs.filter((r) => r.activo !== false)); setAreas(ar); setInstrumentos(ins);
       setHvacMap(new Map(hv.map((h) => [h.id, `${h.codigo} · ${h.nombre_uma}`])));
     } catch (e: any) {
       toast.error("No se pudieron cargar datos: " + e.message);
