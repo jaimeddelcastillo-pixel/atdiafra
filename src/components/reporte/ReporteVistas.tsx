@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-import { ChevronLeft, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText } from "lucide-react";
+import { toast } from "sonner";
+import { analizarRegistro, type Periodo } from "@/lib/normativo";
+import { exportarNormativoPDF, exportarNormativoExcel } from "@/lib/export-normativo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -183,6 +186,29 @@ function EditarLink({ f, children, className }: { f: Fila; children: React.React
   );
 }
 
+function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "excel") {
+  const d = format(desde, "yyyy-MM-dd");
+  const h = format(hasta, "yyyy-MM-dd");
+  const conDatos = f.registro.semanas.some((s) => s.semana_inicio >= format(lunesDe(desde), "yyyy-MM-dd") && s.semana_inicio <= h);
+  if (!conDatos) {
+    toast.info(`${f.codigo} no tiene lecturas en este periodo. Cambia el periodo arriba (por ejemplo "Últimos 12 meses").`);
+    return;
+  }
+  const t = toast.loading(`Generando reporte de ${f.codigo}…`);
+  setTimeout(() => {
+    try {
+      const periodo: Periodo = { tipo: "custom", desde: d, hasta: h };
+      const analisis = [analizarRegistro(f.registro, periodo)];
+      const cat = { areas: new Map(), hvac: new Map() };
+      if (formato === "pdf") exportarNormativoPDF(analisis, "registro", cat, { incluirGraficas: true });
+      else exportarNormativoExcel(analisis, "registro", cat);
+      toast.success("Reporte descargado", { id: t });
+    } catch (e: any) {
+      toast.error("No se pudo generar: " + e.message, { id: t });
+    }
+  }, 30);
+}
+
 export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
   const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
@@ -243,7 +269,23 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
                   </td>
                   <td className={cn("px-3 py-2 text-center tabular-nums", fuera > 0 ? "text-destructive font-semibold" : "text-muted-foreground")}>{fuera}</td>
                   <td className="px-3 py-2 text-right">
-                    <EditarLink f={f} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Abrir</EditarLink>
+                    <div className="flex justify-end gap-1 whitespace-nowrap">
+                      {!f.sinDatos && (
+                        <>
+                          <button type="button" onClick={() => descargarReporte(f, desde, hasta, "pdf")}
+                            title="Descargar el reporte de este instrumento en PDF, con el periodo elegido arriba"
+                            className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90">
+                            <FileText className="h-3.5 w-3.5" /> PDF
+                          </button>
+                          <button type="button" onClick={() => descargarReporte(f, desde, hasta, "excel")}
+                            title="Descargar el reporte de este instrumento en Excel, con el periodo elegido arriba"
+                            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+                            <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
+                          </button>
+                        </>
+                      )}
+                      <EditarLink f={f} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Ver bitácora</EditarLink>
+                    </div>
                   </td>
                 </tr>
               );
