@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { listRegistros, type Registro, type Modulo } from "@/lib/semanas";
-import { listAreas, listSistemasHVAC } from "@/lib/catalogos";
+import { listAreas, listSistemasHVAC, listInstrumentos } from "@/lib/catalogos";
 import {
   analizarRegistro, claveGrupo, etiquetaGrupo, MINIMO_NORMATIVO, CPK_WARN, CPK_FAIL,
   tipoRegistroReporte, etiquetaTipoRegistro,
