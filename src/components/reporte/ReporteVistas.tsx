@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
-import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText, LineChart } from "lucide-react";
 import { toast } from "sonner";
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF, exportarNormativoExcel } from "@/lib/export-normativo";
+import { exportarTendenciasExcel } from "@/lib/export-tendencias";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -209,6 +210,21 @@ function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "e
   }, 30);
 }
 
+async function descargarTendencias(f: Fila, instrMap: Map<string, Instrumento>, desde: Date, hasta: Date) {
+  const instrumento = f.registro.instrumento_id ? instrMap.get(f.registro.instrumento_id) : undefined;
+  const t = toast.loading(`Preparando tendencias de ${f.codigo}…`);
+  try {
+    const hojas = await exportarTendenciasExcel({ registro: f.registro, instrumento, area: f.area, desde, hasta });
+    if (hojas === 0) {
+      toast.info(`${f.codigo} no tiene lecturas válidas de temperatura, humedad o presión en este periodo.`, { id: t });
+      return;
+    }
+    toast.success(`Excel de tendencias descargado (${hojas} gráfica${hojas === 1 ? "" : "s"})`, { id: t });
+  } catch (e: unknown) {
+    toast.error(`No se pudo generar el Excel: ${e instanceof Error ? e.message : "error desconocido"}`, { id: t });
+  }
+}
+
 export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
   const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
   const { filtradas, ui } = useFiltro(filas);
@@ -218,7 +234,7 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
     <section className="mt-3">
       <Leyenda>
         Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
-        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">PDF</b> o <b className="text-foreground">Excel</b> para descargar el reporte de un instrumento con el periodo elegido arriba; "Ver bitácora" abre la captura para corregir.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">Tendencias Excel</b> para obtener las tablas diarias y gráficas editables del periodo elegido; "Ver bitácora" abre la captura para corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
@@ -272,16 +288,23 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
                     <div className="flex justify-end gap-1 whitespace-nowrap">
                       {!f.sinDatos && (
                         <>
-                          <button type="button" onClick={() => descargarReporte(f, desde, hasta, "pdf")}
+                          {(f.modulo === "temphr" || f.modulo === "presiones" || f.modulo === "filtros") && (
+                            <Button type="button" size="sm" variant="outline" onClick={() => descargarTendencias(f, instrMap, desde, hasta)}
+                              title="Descargar promedios diarios, límites y gráficas editables en Excel"
+                              className="h-7 gap-1 px-2 text-xs">
+                              <LineChart className="h-3.5 w-3.5" /> Tendencias Excel
+                            </Button>
+                          )}
+                          <Button type="button" size="sm" onClick={() => descargarReporte(f, desde, hasta, "pdf")}
                             title="Descargar el reporte de este instrumento en PDF, con el periodo elegido arriba"
-                            className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90">
+                            className="h-7 gap-1 px-2 text-xs">
                             <FileText className="h-3.5 w-3.5" /> PDF
-                          </button>
-                          <button type="button" onClick={() => descargarReporte(f, desde, hasta, "excel")}
+                          </Button>
+                          <Button type="button" size="sm" variant="outline" onClick={() => descargarReporte(f, desde, hasta, "excel")}
                             title="Descargar el reporte de este instrumento en Excel, con el periodo elegido arriba"
-                            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">
+                            className="h-7 gap-1 px-2 text-xs">
                             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
-                          </button>
+                          </Button>
                         </>
                       )}
                       <EditarLink f={f} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Ver bitácora</EditarLink>
