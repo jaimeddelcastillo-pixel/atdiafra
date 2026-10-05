@@ -218,7 +218,7 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
     <section className="mt-3">
       <Leyenda>
         Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
-        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Da clic en "Abrir" para capturar o corregir.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">PDF</b> o <b className="text-foreground">Excel</b> para descargar el reporte de un instrumento con el periodo elegido arriba; "Ver bitácora" abre la captura para corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
