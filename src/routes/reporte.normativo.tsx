@@ -146,6 +146,7 @@ function NormativoPage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [areasMap, setAreasMap] = useState<Map<string, string>>(new Map());
   const [hvacMap, setHvacMap] = useState<Map<string, string>>(new Map());
+  const [instrArea, setInstrArea] = useState<Map<string, string | null>>(new Map());
   const [loading, setLoading] = useState(true);
   const [incluirGraficas, setIncluirGraficas] = useState(true);
   const [expandidos, setExpandidos] = useState<Set<string>>(new Set());
@@ -155,8 +156,9 @@ function NormativoPage() {
   const reload = async () => {
     setLoading(true);
     try {
-      const [regs, areas, hvac] = await Promise.all([listRegistros(), listAreas(), listSistemasHVAC()]);
+      const [regs, areas, hvac, instrs] = await Promise.all([listRegistros(), listAreas(), listSistemasHVAC(), listInstrumentos({})]);
       setRegistros(regs);
+      setInstrArea(new Map(instrs.map((i: any) => [i.id, i.area_id ?? null])));
       setAreasMap(new Map(areas.map((a) => [a.id, `${a.codigo} · ${a.nombre}`])));
       setHvacMap(new Map(hvac.map((h) => [h.id, `${h.codigo} · ${h.nombre_uma}`])));
     } catch (e: any) {
@@ -180,11 +182,11 @@ function NormativoPage() {
   const filtrados = useMemo(() => {
     return registros.filter((r) => {
       if (modulo && r.modulo !== modulo) return false;
-      if (filtroArea && r.area_id !== filtroArea) return false;
+      if (filtroArea && (r.area_id ?? (r.instrumento_id ? instrArea.get(r.instrumento_id) : null)) !== filtroArea) return false;
       if (filtroHvac && r.hvac_id !== filtroHvac) return false;
       return true;
     });
-  }, [registros, modulo, filtroArea, filtroHvac]);
+  }, [registros, modulo, filtroArea, filtroHvac, instrArea]);
 
   const filtradosFinal = useMemo(
     () => (seleccionManual ? filtrados.filter((r) => seleccionados.has(r.id)) : filtrados),
