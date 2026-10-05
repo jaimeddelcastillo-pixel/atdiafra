@@ -167,12 +167,21 @@ export async function listRegistros(modulo?: Modulo): Promise<Registro[]> {
   if (error) throw error;
   const ids = (regs ?? []).map((r) => r.id);
   if (ids.length === 0) return [];
-  const { data: sems, error: e2 } = await supabase
-    .from("registro_semanas")
-    .select("*")
-    .in("registro_id", ids)
-    .order("semana_inicio");
-  if (e2) throw e2;
+  // Paginado: el backend limita a 1000 filas por consulta.
+  const sems: unknown[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error: e2 } = await supabase
+      .from("registro_semanas")
+      .select("*")
+      .in("registro_id", ids)
+      .order("semana_inicio")
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (e2) throw e2;
+    sems.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
   const byReg = new Map<string, Semana[]>();
   for (const s of (sems ?? []) as unknown as DbSemana[]) {
     const arr = byReg.get(s.registro_id) ?? [];

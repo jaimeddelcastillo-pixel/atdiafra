@@ -138,6 +138,7 @@ function ReportePage() {
   const hace90 = new Date(); hace90.setDate(hoy.getDate() - 90);
   const [desde, setDesde] = useState<Date>(hace90);
   const [hasta, setHasta] = useState<Date>(hoy);
+  const [anioPreset, setAnioPreset] = useState<number>(hoy.getFullYear());
 
   const reload = async () => {
     setLoading(true);
@@ -357,27 +358,44 @@ function ReportePage() {
               </PopoverContent>
             </Popover>
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {(() => {
-              const a = new Date(); const y = a.getFullYear(); const m = a.getMonth();
-              const q = Math.floor(m / 3); const s = m < 6 ? 0 : 6;
+              const a = new Date();
+              const y = anioPreset;
               const hace = (d: number) => { const b = new Date(); b.setDate(a.getDate() - d); return b; };
               const presets: { label: string; d: Date; h: Date }[] = [
+                { label: `Año ${y}`, d: new Date(y, 0, 1), h: new Date(y, 11, 31) },
+                { label: "1er semestre", d: new Date(y, 0, 1), h: new Date(y, 5, 30) },
+                { label: "2º semestre", d: new Date(y, 6, 1), h: new Date(y, 11, 31) },
+                { label: "T1", d: new Date(y, 0, 1), h: new Date(y, 2, 31) },
+                { label: "T2", d: new Date(y, 3, 1), h: new Date(y, 5, 30) },
+                { label: "T3", d: new Date(y, 6, 1), h: new Date(y, 8, 30) },
+                { label: "T4", d: new Date(y, 9, 1), h: new Date(y, 11, 31) },
                 { label: "Últimos 90 días", d: hace(90), h: a },
-                { label: "Trimestre actual", d: new Date(y, q * 3, 1), h: new Date(y, q * 3 + 3, 0) },
-                { label: "Semestre actual", d: new Date(y, s, 1), h: new Date(y, s + 6, 0) },
-                { label: "Año actual", d: new Date(y, 0, 1), h: new Date(y, 11, 31) },
                 { label: "Últimos 12 meses", d: hace(365), h: a },
               ];
               const k = (x: Date) => format(x, "yyyy-MM-dd");
-              return presets.map((p) => {
-                const on = k(p.d) === k(desde) && k(p.h) === k(hasta);
-                return (
-                  <Button key={p.label} size="sm" variant={on ? "secondary" : "ghost"} onClick={() => { setDesde(p.d); setHasta(p.h); }}>
-                    {p.label}
-                  </Button>
-                );
-              });
+              const anios = Array.from({ length: a.getFullYear() - 2024 + 1 }, (_, i) => 2024 + i);
+              return (
+                <>
+                  <select
+                    aria-label="Año de los periodos rápidos"
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm"
+                    value={y}
+                    onChange={(e) => setAnioPreset(Number(e.target.value))}
+                  >
+                    {anios.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                  {presets.map((p) => {
+                    const on = k(p.d) === k(desde) && k(p.h) === k(hasta);
+                    return (
+                      <Button key={p.label} size="sm" variant={on ? "secondary" : "ghost"} onClick={() => { setDesde(p.d); setHasta(p.h); }}>
+                        {p.label}
+                      </Button>
+                    );
+                  })}
+                </>
+              );
             })()}
           </div>
           <div className="ml-auto text-xs text-muted-foreground">
