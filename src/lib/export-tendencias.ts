@@ -159,6 +159,10 @@ async function agregarGraficas(buffer: ArrayBuffer, specs: { sheetName: string; 
     const overrides = specs.map((_, i) => `<Override PartName="/xl/drawings/drawing${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/><Override PartName="/xl/charts/chart${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>`).join("");
     zip.file("[Content_Types].xml", contentTypes.replace("</Types>", `${overrides}</Types>`));
   }
+  const workbookXml = await zip.file("xl/workbook.xml")?.async("string");
+  if (workbookXml && !workbookXml.includes("<calcPr")) {
+    zip.file("xl/workbook.xml", workbookXml.replace("</workbook>", '<calcPr calcMode="auto" fullCalcOnLoad="1" forceFullCalc="1"/></workbook>'));
+  }
   return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
@@ -207,7 +211,6 @@ export async function exportarTendenciasExcel(args: {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     specs.push({ sheetName, serie, lastRow });
   }
-  wb.Workbook = { CalcPr: { calcMode: "auto", fullCalcOnLoad: "1", forceFullCalc: "1" } };
   const raw = XLSX.write(wb, { type: "array", bookType: "xlsx", cellStyles: true }) as ArrayBuffer;
   const blob = await agregarGraficas(raw, specs);
   const url = URL.createObjectURL(blob);
