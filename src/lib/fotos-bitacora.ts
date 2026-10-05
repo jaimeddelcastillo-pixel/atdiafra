@@ -20,18 +20,54 @@ function corregirAnio(fecha: string): string {
   return "";
 }
 
-/** Lunes de la semana según las fechas escritas en el encabezado de la bitácora ("" si no se leyó). */
-export function detectarLunesFoto(p: { fechas_columnas?: { fecha?: string }[] } | null | undefined): string {
-  const fechas = (p?.fechas_columnas ?? [])
-    .map((f) => f.fecha)
-    .filter((f): f is string => !!f && /^\d{4}-\d{2}-\d{2}$/.test(f))
-    .map(corregirAnio)
-    .filter(Boolean)
-    .sort();
-  if (!fechas.length) return "";
-  const d = new Date(fechas[0] + "T00:00:00");
-  if (isNaN(d.getTime())) return "";
-  return lunesDe(d);
+const IDX_DIA: Record<string, number> = {
+  lunes: 0, martes: 1, miercoles: 2, "miércoles": 2, jueves: 3, viernes: 4,
+  sabado: 5, "sábado": 5, domingo: 6,
+};
+const idxDia = (s?: string) => (s ? IDX_DIA[s.toLowerCase().trim()] : undefined);
+/** 0=Lunes … 6=Domingo */
+const idxSemana = (d: Date) => (d.getDay() + 6) % 7;
+
+/** Si el año leído no cuadra con el día de la columna, busca un año plausible donde sí cuadre. */
+function anioQueCuadra(fecha: string, dia: number): string | null {
+  const [, m, d] = fecha.split("-").map(Number);
+  const now = new Date().getFullYear();
+  for (let y = now + 1; y >= 2025; y--) {
+    const t = new Date(y, m - 1, d);
+    if (t.getMonth() === m - 1 && idxSemana(t) === dia) {
+      return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Lunes de la semana según las fechas escritas en el encabezado de la bitácora ("" si no se leyó).
+ * Usa el par día+fecha (incluye sábado y domingo trabajados) y vota por el lunes más consistente,
+ * para que una fecha de fin de semana no mande la captura a otra semana u otro año.
+ */
+export function detectarLunesFoto(
+  p: { fechas_columnas?: { dia?: string; fecha?: string }[] } | null | undefined,
+): string {
+  const votos = new Map<string, number>();
+  for (const f of p?.fechas_columnas ?? []) {
+    if (!f.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha)) continue;
+    const di = idxDia(f.dia);
+    let fecha = corregirAnio(f.fecha);
+    if (di !== undefined) {
+      const ok = fecha && idxSemana(new Date(fecha + "T00:00:00")) === di;
+      if (!ok) fecha = anioQueCuadra(fecha || f.fecha, di) ?? fecha;
+    }
+    if (!fecha) continue;
+    const d = new Date(fecha + "T00:00:00");
+    if (isNaN(d.getTime())) continue;
+    const lunes = lunesDe(d);
+    // Pares cuyo día coincide con la fecha pesan más
+    const peso = di !== undefined && idxSemana(d) === di ? 2 : 1;
+    votos.set(lunes, (votos.get(lunes) ?? 0) + peso);
+  }
+  if (!votos.size) return "";
+  return [...votos.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
 }
 
 export async function subirFotoBitacora(base64: string, mediaType = "image/jpeg"): Promise<string | null> {
