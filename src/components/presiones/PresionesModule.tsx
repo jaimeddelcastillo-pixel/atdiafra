@@ -263,11 +263,20 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
   const [newWeekOpen, setNewWeekOpen] = useState(false);
   const [manualWeekDate, setManualWeekDate] = useState<string>("");
 
-  // Export PDF normativo
+  // Export PDF normativo — por defecto: todo el historial real del instrumento
   const today = new Date().toISOString().slice(0, 10);
-  const yearStart = `${new Date().getFullYear()}-01-01`;
-  const [exportDesde, setExportDesde] = useState<string>(yearStart);
-  const [exportHasta, setExportHasta] = useState<string>(today);
+  const rangoDatos = () => {
+    const fechas = registro.semanas.map((s) => s.semana_inicio).sort();
+    if (!fechas.length) return { d: `${new Date().getFullYear()}-01-01`, h: today };
+    const ult = new Date(fechas[fechas.length - 1] + "T00:00:00");
+    ult.setDate(ult.getDate() + 6);
+    return { d: fechas[0], h: ult.toISOString().slice(0, 10) };
+  };
+  const [exportDesde, setExportDesde] = useState<string>(() => rangoDatos().d);
+  const [exportHasta, setExportHasta] = useState<string>(() => rangoDatos().h);
+  useEffect(() => { const r = rangoDatos(); setExportDesde(r.d); setExportHasta(r.h); }, [registro.id]);
+  const aniosConDatos = Array.from(new Set(registro.semanas.map((s) => s.semana_inicio.slice(0, 4)))).sort();
+  const atajo = (d: string, h: string) => { setExportDesde(d); setExportHasta(h); };
   const [exportOpen, setExportOpen] = useState(false);
   const [exportingPDF, setExportingPDF] = useState(false);
 
@@ -507,7 +516,15 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
             <PopoverContent align="end" className="w-72 space-y-3">
               <div>
                 <h4 className="text-sm font-semibold">PDF normativo</h4>
-                <p className="text-xs text-muted-foreground mt-0.5">Solo este registro, en el rango que elijas.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Ya viene con las fechas donde este instrumento tiene lecturas. Solo da clic en «Generar PDF».</p>
+              </div>
+              <div className="flex flex-wrap gap-1">
+                <button type="button" onClick={() => { const r = rangoDatos(); atajo(r.d, r.h); }}
+                  className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Todo el historial</button>
+                {aniosConDatos.map((a) => (
+                  <button key={a} type="button" onClick={() => atajo(`${a}-01-01`, `${a}-12-31`)}
+                    className="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted">Año {a}</button>
+                ))}
               </div>
               <div className="space-y-2">
                 <div>
