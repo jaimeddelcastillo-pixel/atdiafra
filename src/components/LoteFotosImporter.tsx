@@ -81,11 +81,10 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
   const itemsRef = useRef<Item[]>([]);
   const runningRef = useRef(false);
   const setItemsSync = (fn: (prev: Item[]) => Item[]) => {
-    setItems((prev) => {
-      const next = fn(prev);
-      itemsRef.current = next;
-      return next;
-    });
+    // Actualiza el ref de inmediato (no depende de cuándo React ejecute el updater)
+    const next = fn(itemsRef.current);
+    itemsRef.current = next;
+    setItems(next);
   };
 
   const upd = (id: string, patch: Partial<Item>) =>
@@ -209,7 +208,18 @@ export function LoteFotosImporter({ modulo, context, disabled, semanasExistentes
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>{running ? <><Loader2 className="inline h-3 w-3 animate-spin mr-1" />Leyendo foto {Math.min(procesados + 1, items.length)} de {items.length}…</> : `${procesados} de ${items.length} fotos leídas`}</span>
-                <span>{aprobados.length} lista(s) para integrar</span>
+                <span className="flex items-center gap-2">
+                  {!running && items.some((x) => x.estado === "pendiente" || x.estado === "error") && (
+                    <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setItemsSync((p) => p.map((x) => (x.estado === "error" ? { ...x, estado: "pendiente", error: undefined } : x)));
+                        void procesar();
+                      }}>
+                      Procesar pendientes
+                    </Button>
+                  )}
+                  {aprobados.length} lista(s) para integrar
+                </span>
               </div>
               <div className="divide-y divide-border rounded-md border border-border">
                 {ordenados.map((it) => {
