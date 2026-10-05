@@ -50,7 +50,6 @@ export function detectarLunesFoto(
   p: { fechas_columnas?: { dia?: string; fecha?: string }[] } | null | undefined,
 ): string {
   const votos = new Map<string, number>();
-  const sueltas: string[] = [];
   for (const f of p?.fechas_columnas ?? []) {
     if (!f.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha)) continue;
     const di = idxDia(f.dia);
@@ -66,7 +65,6 @@ export function detectarLunesFoto(
     // Pares cuyo día coincide con la fecha pesan más
     const peso = di !== undefined && idxSemana(d) === di ? 2 : 1;
     votos.set(lunes, (votos.get(lunes) ?? 0) + peso);
-    sueltas.push(fecha);
   }
   if (!votos.size) return "";
   return [...votos.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];

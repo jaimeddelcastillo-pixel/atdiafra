@@ -30,6 +30,8 @@ Hay DOS cuadrículas gráficas (una para Temperatura °C, otra para Humedad Rela
 - Si lees un año fuera de ese rango (ej. 2016, 2075, 2002), casi seguro es un dígito manuscrito mal leído: corrígelo al año plausible más cercano cambiando UN solo dígito (2016→2026, 2075→2025, 2002→2025 si el contexto lo indica).
 - Todas las fechas de una misma hoja pertenecen a la MISMA semana: si una fecha cae en otro año o a meses de distancia de las demás, corrígela para que sea consecutiva con el resto.
 
+📆 SÁBADO Y DOMINGO TRABAJADOS: en validación de procesos y otros casos la semana NO se interrumpe y sí hay lecturas en sábado y domingo. Lee las 7 columnas por igual: si sábado o domingo tienen fecha o valores escritos, extráelos (no los dejes en null ni los pases a otro día). NUNCA cambies el año o el día de una fecha para que caiga entre semana: el día de la columna (Lunes…Domingo) debe coincidir con la fecha real del calendario.
+
 Debes extraer AMBAS variables al mismo tiempo:
   • TEMPERATURA (°C): valores en la fila de texto "TEMPERATURA °C" al pie de la primera cuadrícula (típicamente 16-27 °C).
   • HUMEDAD RELATIVA (%): valores en la fila de texto "HUMEDAD RELATIVA" al pie de la segunda cuadrícula (típicamente 30-65 %).
@@ -52,6 +54,7 @@ Extrae los valores numéricos de las filas de texto Presión escritas al pie de 
 En el encabezado de cada día suele estar escrita la FECHA (ej. "03-feb-25"): devuélvela en "fechas_columnas" en formato YYYY-MM-DD, sólo para los días que tengan fecha escrita.
 
 📅 REGLA DE AÑO PLAUSIBLE (escritura a mano): el año NUNCA es 2024 o anterior: sólo 2025 en adelante (máximo 1 año adelante del actual). Si lees 2023 es un 5 mal leído: escribe 2025. Si lees otro año fuera de rango (ej. 2016, 2075), corrígelo cambiando UN solo dígito (2016→2026, 2075→2025). Todas las fechas de la hoja son de la MISMA semana: si una cae en otro año o a meses de distancia, corrígela para que sea consecutiva con las demás.
+📆 SÁBADO Y DOMINGO TRABAJADOS: en validación de procesos y otros casos la semana NO se interrumpe y sí hay lecturas en sábado y domingo. Lee las 7 columnas por igual: si sábado o domingo tienen fecha o valores escritos, extráelos (no los dejes en null ni los pases a otro día). NUNCA cambies el año o el día de una fecha para que caiga entre semana: el día de la columna (Lunes…Domingo) debe coincidir con la fecha real del calendario.
 Responde SOLO en JSON, 21 combinaciones, vacíos como null:
 {"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}`;
   }
