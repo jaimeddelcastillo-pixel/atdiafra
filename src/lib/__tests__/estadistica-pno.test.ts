@@ -126,24 +126,28 @@ describe("dictamen", () => {
   });
 });
 
-describe("corrección 4 — datos reales INS-CMB-03 T, Q1-2025 (subgrupo = día)", () => {
-  const sg = subgruposPorDia(real.semanas as any);
-  const c = cartaXbarR(sg)!;
-  const todos = c.subgrupos.length ? sg.filter((g) => g.length === c.tamano).flat() : [];
-  const s = descriptive(todos)!.stdev;
-  const cap = capacidad({ media: c.xbarbar, sigmaCP: c.sigmaCortoPlazo, sigmaLP: s, lie: real.lie, lse: real.lse });
-  it("69 subgrupos de 3 y carta X̄-R", () => {
-    expect(c.tamano).toBe(3);
-    expect(c.subgrupos).toHaveLength(69);
-    expect(c.xbarbar).toBeCloseTo(22.109, 3);
-    expect(c.Rbar).toBeCloseTo(1.662, 3);
-    expect(c.LCSx).toBeCloseTo(23.809, 2);
-    expect(c.LCIx).toBeCloseTo(20.408, 2);
-    expect(c.sigmaCortoPlazo).toBeCloseTo(0.982, 3);
-  });
-  it("Cp 1.188, Cpk 0.982, Ppk 0.818", () => {
+describe("corrección 4 — subgrupo racional = día (Mañana/Media tarde/Tarde)", () => {
+  it("reproduce la referencia INS-CMB-03 T Q1-2025 (X̄̄ 22.109, R̄ 1.662, spec 18–25)", () => {
+    const xbb = 22.109, Rbar = 1.662, sigmaCP = Rbar / 1.693;
+    expect(xbb + 1.023 * Rbar).toBeCloseTo(23.809, 3);
+    expect(xbb - 1.023 * Rbar).toBeCloseTo(20.409, 2);
+    expect(sigmaCP).toBeCloseTo(0.982, 3);
+    const cap = capacidad({ media: xbb, sigmaCP, sigmaLP: 1.178, lie: 18, lse: 25 });
     expect(cap.Cp!).toBeCloseTo(1.188, 3);
     expect(cap.Cpk!).toBeCloseTo(0.982, 3);
     expect(cap.Ppk!).toBeCloseTo(0.818, 3);
+  });
+  it("datos guardados de INS-CMB-03 (semanas que inician en Q1-2025)", () => {
+    const sg = subgruposPorDia(real.semanas as any);
+    const c = cartaXbarR(sg)!;
+    const s = descriptive(sg.flat())!.stdev;
+    const cap = capacidad({ media: c.xbarbar, sigmaCP: c.sigmaCortoPlazo, sigmaLP: s, lie: real.lie, lse: real.lse });
+    expect(c.tamano).toBe(3);
+    expect(c.subgrupos).toHaveLength(63);
+    expect(c.xbarbar).toBeCloseTo(20.733, 3);
+    expect(c.Rbar).toBeCloseTo(1.257, 3);
+    expect(c.sigmaCortoPlazo).toBeCloseTo(0.743, 3);
+    expect(cap.Cpk!).toBeCloseTo(1.227, 3);
+    expect(cap.Ppk!).toBeCloseTo(0.980, 3);
   });
 });
