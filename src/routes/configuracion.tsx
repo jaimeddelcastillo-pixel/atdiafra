@@ -4,6 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Switch } from "@/components/ui/switch";
 import { FormatoForVal16Tab } from "@/components/FormatoForVal16Tab";
+import { PendientesValidacionTab } from "@/components/PendientesValidacionTab";
 import { supabase } from "@/integrations/supabase/client";
 import { CambiosFiltroEditor } from "@/components/CambiosFiltroEditor";
 import { useAuth } from "@/lib/auth-context";
@@ -80,6 +81,7 @@ function ConfiguracionPage() {
             <TabsTrigger value="areas">Áreas</TabsTrigger>
             <TabsTrigger value="instr">Instrumentos</TabsTrigger>
             <TabsTrigger value="pares">Objetivos de presión</TabsTrigger>
+            <TabsTrigger value="pendientes">Pendientes de validación</TabsTrigger>
             <TabsTrigger value="formato">Formato FOR-VAL-16-02</TabsTrigger>
           </TabsList>
 
@@ -87,6 +89,7 @@ function ConfiguracionPage() {
           <TabsContent value="areas" className="mt-6"><AreasTab /></TabsContent>
           <TabsContent value="instr" className="mt-6"><InstrumentosTab /></TabsContent>
           <TabsContent value="pares" className="mt-6"><ObjetivosTab /></TabsContent>
+          <TabsContent value="pendientes" className="mt-6"><PendientesValidacionTab /></TabsContent>
           <TabsContent value="formato" className="mt-6"><FormatoForVal16Tab /></TabsContent>
         </Tabs>
       </main>
