@@ -17,16 +17,16 @@ import { esLecturaUtil, fechaRealISO, recortarSemanasPorFecha } from "./fechas-l
 type Tipo = "presion" | "filtro" | "thr";
 type Fila = (string | number | null)[];
 
-interface SerieGrafica {
+export interface SerieGrafica {
   nombre: string; col: string; color: string;
   linea: "solid" | "dash" | "sysDot" | "none"; ancho?: number;
   /** Valores literales (p. ej. línea vertical de cambio de filtro) en lugar de rango de celdas. */
   lit?: { x: number[]; y: number[] };
   marcador?: { simbolo: "circle" | "square" | "diamond" | "triangle"; color: string; tam: number };
 }
-interface Grafica {
+export interface Grafica {
   hoja: string; filaIni: number; filaFin: number; colX: string; series: SerieGrafica[];
-  titulo: string[]; tituloY: string; yMin: number; yMax: number; xMin: number; xMax: number;
+  titulo: string[]; tituloY: string; yMin: number; yMax: number; yStep: number; xMin: number; xMax: number;
   cy: number;
 }
 
@@ -69,11 +69,11 @@ const CY_R = 5 * EMU_CM;
 const ROW_EMU = 190500; // 15 pt
 
 const xml = (v: string) => v.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-const serial = (iso: string) => {
+export const serial = (iso: string) => {
   const [y, m, d] = iso.split("-").map(Number);
   return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000;
 };
-const fmtDMY = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+export const fmtDMY = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 const r3 = (v: number | null | undefined) => (v == null || !Number.isFinite(v) ? null : Math.round(v * 1000) / 1000);
 const col = (i: number) => { let s = ""; i++; while (i) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
 
@@ -85,12 +85,20 @@ function nombreHoja(base: string, usadas: Set<string>) {
   return n;
 }
 
-function escala(vals: (number | null)[]): { min: number; max: number } {
+/** Paso "redondo" (1, 2, 2.5, 5 × 10^k) para ~5 divisiones. */
+export function pasoRedondo(rango: number): number {
+  if (!(rango > 0)) return 1;
+  const bruto = rango / 5, e = 10 ** Math.floor(Math.log10(bruto)), f = bruto / e;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e;
+}
+/** Escala Y: [mín − 5 %, máx + 5 %] llevada a múltiplos de un paso redondo. */
+export function escala(vals: (number | null)[]): { min: number; max: number; paso: number } {
   const v = vals.filter((x): x is number => x != null && Number.isFinite(x));
-  if (!v.length) return { min: 0, max: 1 };
+  if (!v.length) return { min: 0, max: 1, paso: 0.2 };
   const lo = Math.min(...v), hi = Math.max(...v);
   const pad = hi > lo ? (hi - lo) * 0.05 : Math.max(Math.abs(hi) * 0.05, 1);
-  return { min: r3(lo - pad)!, max: r3(hi + pad)! };
+  const paso = pasoRedondo(hi - lo + 2 * pad);
+  return { min: r3(Math.floor((lo - pad) / paso) * paso)!, max: r3(Math.ceil((hi + pad) / paso) * paso)!, paso: r3(paso) || paso };
 }
 
 export function etiquetaPeriodo(desde: string, hasta: string): string {
@@ -140,10 +148,10 @@ function isoDe(r: Registro, ins: Instrumento | undefined, areasMap: Map<string, 
   const a = (ins?.area_id && areasMap.get(ins.area_id)) || (r.area_id && areasMap.get(r.area_id)) || undefined;
   return a?.iso ?? r.iso ?? "No clasificada";
 }
-const specTxt = (lie: number | null, lse: number | null, u: string) =>
+export const specTxt = (lie: number | null, lse: number | null, u: string) =>
   lie != null && lse != null ? `${lie} – ${lse} ${u}` : lse != null ? `≤ ${lse} ${u}` : lie != null ? `≥ ${lie} ${u}` : "Sin especificación";
 
-const dictTxt = (d: DictamenPNO | null) => (d ? `${d.estadoControl} · ${d.cumplimientoEspecificacion}` : "Sin datos");
+export const dictTxt = (d: DictamenPNO | null) => (d ? `${d.estadoControl} · ${d.cumplimientoEspecificacion}` : "Sin datos");
 
 // ---------------------------------------------------------------- bloques
 const reglasDe = (sen: Senal[], i: number) => sen.filter((x) => x.index === i).map((x) => `Regla ${x.rule}: ${x.description}`);
@@ -266,7 +274,7 @@ function bloquePresion(base: BaseBloque,
     graficas: filas.length ? [{
       hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series,
       titulo: [base.codigo, base.ubicacion, `${base.iso} · ${rango}`],
-      tituloY: "Presión diferencial (Pa)", yMin: esc.min, yMax: esc.max,
+      tituloY: "Presión diferencial (Pa)", yMin: esc.min, yMax: esc.max, yStep: esc.paso,
       xMin: serial(fechas[0]), xMax: serial(fechas[fechas.length - 1]), cy: CY,
     }] : [],
   };
@@ -341,8 +349,8 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
       return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };
     }),
     graficas: filas.length && c ? [
-      { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sX, titulo: tit, tituloY, yMin: eX.min, yMax: eX.max, xMin: x0, xMax: x1, cy: CY },
-      { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sR, titulo: [`${base.codigo} — Rangos (R)`], tituloY: `R ${esHR ? "(%HR)" : "(°C)"}`, yMin: Math.max(0, eR.min), yMax: eR.max, xMin: x0, xMax: x1, cy: CY_R },
+      { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sX, titulo: tit, tituloY, yMin: eX.min, yMax: eX.max, yStep: eX.paso, xMin: x0, xMax: x1, cy: CY },
+      { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sR, titulo: [`${base.codigo} — Rangos (R)`], tituloY: `R ${esHR ? "(%HR)" : "(°C)"}`, yMin: Math.max(0, eR.min), yMax: eR.max, yStep: eR.paso, xMin: x0, xMax: x1, cy: CY_R },
     ] : [],
   };
 }
@@ -369,7 +377,7 @@ function chartXml(g: Grafica): string {
   const axTitle = (t: string, rot = false) => `<c:title><c:tx><c:rich><a:bodyPr${rot ? ' rot="-5400000" vert="horz"' : ""}/><a:lstStyle/><a:p><a:pPr>${font(900)}</a:pPr><a:r><a:rPr lang="es-MX" sz="900" b="0"><a:latin typeface="Calibri"/></a:rPr><a:t>${xml(t)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title>`;
   const gris = `<c:spPr><a:ln w="6350"><a:solidFill><a:srgbClr val="BFBFBF"/></a:solidFill></a:ln></c:spPr>`;
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:date1904 val="0"/><c:lang val="es-MX"/><c:roundedCorners val="0"/><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>${titulo}</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea>${g.cy === CY ? '<c:layout><c:manualLayout><c:layoutTarget val="inner"/><c:xMode val="edge"/><c:yMode val="edge"/><c:x val="0.1"/><c:y val="0.24"/><c:w val="0.86"/><c:h val="0.42"/></c:manualLayout></c:layout>' : "<c:layout/>"}<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${series}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart><c:valAx><c:axId val="510001"/><c:scaling><c:orientation val="minMax"/><c:max val="${g.xMax}"/><c:min val="${g.xMin}"/></c:scaling><c:delete val="0"/><c:axPos val="b"/>${axTitle("Días")}<c:numFmt formatCode="dd/mmm" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="low"/>${gris}${txPr(900)}<c:crossAx val="510002"/><c:crosses val="min"/><c:crossBetween val="midCat"/></c:valAx><c:valAx><c:axId val="510002"/><c:scaling><c:orientation val="minMax"/><c:max val="${g.yMax}"/><c:min val="${g.yMin}"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines><c:spPr><a:ln w="3175"><a:solidFill><a:srgbClr val="E5E7EB"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>${axTitle(g.tituloY, true)}<c:numFmt formatCode="0.0" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>${gris}${txPr(900)}<c:crossAx val="510001"/><c:crosses val="min"/><c:crossBetween val="midCat"/></c:valAx><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txPr(900)}</c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="6350"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr>${txPr(900)}</c:chartSpace>`;
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:date1904 val="0"/><c:lang val="es-MX"/><c:roundedCorners val="0"/><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle/>${titulo}</c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea>${g.cy === CY ? '<c:layout><c:manualLayout><c:layoutTarget val="inner"/><c:xMode val="edge"/><c:yMode val="edge"/><c:x val="0.1"/><c:y val="0.24"/><c:w val="0.86"/><c:h val="0.42"/></c:manualLayout></c:layout>' : "<c:layout/>"}<c:scatterChart><c:scatterStyle val="lineMarker"/><c:varyColors val="0"/>${series}<c:axId val="510001"/><c:axId val="510002"/></c:scatterChart><c:valAx><c:axId val="510001"/><c:scaling><c:orientation val="minMax"/><c:max val="${g.xMax}"/><c:min val="${g.xMin}"/></c:scaling><c:delete val="0"/><c:axPos val="b"/>${axTitle("Días")}<c:numFmt formatCode="dd/mmm" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="low"/>${gris}${txPr(900)}<c:crossAx val="510002"/><c:crosses val="min"/><c:crossBetween val="midCat"/></c:valAx><c:valAx><c:axId val="510002"/><c:scaling><c:orientation val="minMax"/><c:max val="${g.yMax}"/><c:min val="${g.yMin}"/></c:scaling><c:delete val="0"/><c:axPos val="l"/><c:majorGridlines><c:spPr><a:ln w="3175"><a:solidFill><a:srgbClr val="E5E7EB"/></a:solidFill></a:ln></c:spPr></c:majorGridlines>${axTitle(g.tituloY, true)}<c:numFmt formatCode="0.0" sourceLinked="0"/><c:majorTickMark val="out"/><c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/>${gris}${txPr(900)}<c:crossAx val="510001"/><c:crosses val="min"/><c:crossBetween val="midCat"/><c:majorUnit val="${g.yStep}"/></c:valAx><c:spPr><a:noFill/><a:ln><a:noFill/></a:ln></c:spPr></c:plotArea><c:legend><c:legendPos val="b"/><c:overlay val="0"/>${txPr(900)}</c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart><c:spPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:ln w="6350"><a:solidFill><a:srgbClr val="D9D9D9"/></a:solidFill></a:ln></c:spPr>${txPr(900)}</c:chartSpace>`;
 }
 
 function drawingXml(anclas: { col: number; row: number; cy: number; rid: string; id: number }[]): string {
