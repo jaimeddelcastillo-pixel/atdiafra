@@ -22,7 +22,7 @@ export interface SerieGrafica {
   linea: "solid" | "dash" | "sysDot" | "none"; ancho?: number;
   /** Valores literales (p. ej. línea vertical de cambio de filtro) en lugar de rango de celdas. */
   lit?: { x: number[]; y: number[] };
-  marcador?: { simbolo: "circle" | "square" | "diamond" | "triangle"; color: string; tam: number };
+  marcador?: { simbolo: "circle" | "square" | "diamond" | "triangle"; color: string; tam: number; hueco?: boolean; borde?: string };
 }
 export interface Grafica {
   hoja: string; filaIni: number; filaFin: number; colX: string; series: SerieGrafica[];
@@ -40,7 +40,7 @@ export interface Bloque {
   LAS: number | null; LAI: number | null; LAcS: number | null; LAcI: number | null;
   Cp: number | null; Cpk: number | null; Pp: number | null; Ppk: number | null;
   normalidad: string; nSenales: number; dict: DictamenPNO | null;
-  tablaLimites: Fila[]; filas: Fila[]; encabezado: string[]; graficas: Grafica[];
+  tablaLimites: Fila[]; notaTabla?: string; filas: Fila[]; encabezado: string[]; graficas: Grafica[];
   saturacion?: number | null; cambios?: CambioFiltro[];
   puntos: PuntoTendencia[]; calidad: CalidadDatos; registroId: string; instrumentoId: string | null;
 }
@@ -238,11 +238,16 @@ function bloquePresion(base: BaseBloque,
       base.lse, base.lie, fuera ? r3(v) : null, idxSen.has(i) ? r3(v) : null,
       ...(tend ? [x >= desdeTend ? r3(tend(x)) : null] : []), ...(sat != null ? [sat] : [])];
   });
-  const tablaLimites: Fila[] = esFiltro
-    ? [["Alerta sup", "Alerta inf", "Acción sup", "Acción inf", "Pendiente (" + base.unidad + "/mes)", "Días estimados a saturación"],
-       [r3(lim?.LAS), r3(lim?.LAI), r3(lim?.LAcS), r3(lim?.LAcI), r3(pendienteDia != null ? pendienteDia * 30.4375 : null),
-        diasSat != null ? Math.round(diasSat) : sat == null ? "Sin ΔP fabricante" : pendienteDia == null ? "Datos insuficientes" : "Sin tendencia ascendente"]]
-    : [["Alerta sup", "Alerta inf", "Acción sup", "Acción inf"], [r3(lim?.LAS), r3(lim?.LAI), r3(lim?.LAcS), r3(lim?.LAcI)]];
+  const espTxt = specTxt(base.lie, base.lse, base.unidad);
+  const tablaLimites: Fila[] = [
+    ["Media", "s", "LAS", "LAI", "LAcS", "LAcI", "Especificación", "Ppk"],
+    [r3(media), r3(s), r3(lim?.LAS), r3(lim?.LAI), r3(lim?.LAcS), r3(lim?.LAcI), espTxt, r3(cap?.Ppk)],
+    ...(esFiltro ? [
+      [`Pendiente (${base.unidad}/mes)`, "Días a saturación"],
+      [r3(pendienteDia != null ? pendienteDia * 30.4375 : null),
+        diasSat != null ? Math.round(diasSat) : sat == null ? "Sin ΔP fabricante" : pendienteDia == null ? "Datos insuficientes" : "Sin tendencia ascendente"],
+    ] as Fila[] : []),
+  ];
 
   const series: SerieGrafica[] = [
     { nombre: "Medias", col: "B", color: "1A56DB", linea: "solid", ancho: 15875, marcador: { simbolo: "circle", color: "1A56DB", tam: 4 } },
@@ -253,8 +258,8 @@ function bloquePresion(base: BaseBloque,
     { nombre: "LAcI", col: "G", color: "DC2626", linea: "dash" },
     ...(base.lse != null ? [{ nombre: "Especificación", col: "H", color: "374151", linea: "solid" as const }] : []),
     ...(base.lie != null ? [{ nombre: base.lse != null ? "Especificación inf" : "Especificación", col: "I", color: "374151", linea: "solid" as const }] : []),
-    { nombre: "Fuera de spec", col: "J", color: "DC2626", linea: "none", marcador: { simbolo: "circle", color: "DC2626", tam: 7 } },
-    { nombre: "Señal W.E.", col: "K", color: "EA580C", linea: "none", marcador: { simbolo: "diamond", color: "EA580C", tam: 7 } },
+    { nombre: "Fuera de spec", col: "J", color: "DC2626", linea: "none", marcador: { simbolo: "circle", color: "DC2626", tam: 7, borde: "FFFFFF" } },
+    { nombre: "Señal W.E.", col: "K", color: "F59E0B", linea: "none", marcador: { simbolo: "circle", color: "F59E0B", tam: 6, hueco: true } },
     ...(tend ? [{ nombre: "Tendencia", col: "L", color: "6B7280", linea: "sysDot" as const }] : []),
     ...(sat != null ? [{ nombre: "Saturación (fabricante)", col: col(11 + (tend ? 1 : 0)), color: "7C3AED", linea: "solid" as const, ancho: 15875 }] : []),
   ];
@@ -273,7 +278,7 @@ function bloquePresion(base: BaseBloque,
     puntos: vals.map((v, i) => ({ fecha: fechas[i], valor: v, lecturas: dias[i].valores, reglas: reglasDe(sen, i), fuera: dias[i].valores.some(fueraLectura) })),
     graficas: filas.length ? [{
       hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series,
-      titulo: [base.codigo, base.ubicacion, `${base.iso} · ${rango}`],
+      titulo: [`${base.codigo} — ${base.variable}`, base.ubicacion, `${base.iso} · ${rango}`],
       tituloY: "Presión diferencial (Pa)", yMin: esc.min, yMax: esc.max, yStep: esc.paso,
       xMin: serial(fechas[0]), xMax: serial(fechas[fechas.length - 1]), cy: CY,
     }] : [],
@@ -313,11 +318,12 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
       fuera ? r3(g.xbar) : null, idxSen.has(i) ? r3(g.xbar) : null, r3(carta!.Rbar), r3(LCSr)];
   });
   const tablaLimites: Fila[] = [
-    ["X̄", "R̄", "MR̄", "σ global", "σ corto plazo (R̄/d2)", "σ entre días (MR̄/1.128)", "LSE", "LIE", "LCS", "LCI"],
-    [r3(carta?.xbarbar), r3(carta?.Rbar), r3(carta?.MRbar), r3(s), r3(carta?.sigmaCortoPlazo), r3(carta?.sigmaEntreDias), base.lse, base.lie, r3(carta?.LCSxMR), r3(carta?.LCIxMR)],
-    ["Pp", "Ppk (dictamen)", "Capacidad (Ppk)", "Cp ref.", "Cps ref.", "Cpi ref.", "Cpk ref.", "Referencia", "", ""],
-    [r3(cap?.Pp), r3(cap?.Ppk), cap?.etiquetaPpk ?? "N/D", r3(cap?.Cp), r3(cap?.Cps), r3(cap?.Cpi), r3(cap?.Cpk), "Cp/Cpk: variación dentro del día", null, null],
+    ["X̄̄", "R̄", "MR̄", "σ global", "σ corto plazo", "σ entre días", "LSE", "LIE"],
+    [r3(carta?.xbarbar), r3(carta?.Rbar), r3(carta?.MRbar), r3(s), r3(carta?.sigmaCortoPlazo), r3(carta?.sigmaEntreDias), base.lse, base.lie],
+    ["LCS", "LCI", "Pp", "Ppk", "Cp ref.", "Cpk ref.", "Capacidad", "Dictamen"],
+    [r3(carta?.LCSxMR), r3(carta?.LCIxMR), r3(cap?.Pp), r3(cap?.Ppk), r3(cap?.Cp), r3(cap?.Cpk), cap?.etiquetaPpk ?? "N/D", dict?.cumplimientoEspecificacion ?? "N/D"],
   ];
+  const notaTabla = "σ corto plazo = R̄/d₂; σ entre días = MR̄/1.128. Cp/Cpk: referencia de la variación dentro del día. Dictamen de capacidad con Ppk.";
   const sX: SerieGrafica[] = [
     { nombre: "X̄", col: "B", color: "1A56DB", linea: "solid", ancho: 15875, marcador: { simbolo: "circle", color: "1A56DB", tam: 4 } },
     { nombre: "LC", col: "D", color: "0D9488", linea: "solid" },
@@ -325,8 +331,8 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
     { nombre: "LCI", col: "F", color: "DC2626", linea: "dash" },
     ...(base.lse != null ? [{ nombre: "LSE", col: "G", color: "374151", linea: "solid" as const }] : []),
     ...(base.lie != null ? [{ nombre: "LIE", col: "H", color: "374151", linea: "solid" as const }] : []),
-    { nombre: "Fuera de spec", col: "I", color: "DC2626", linea: "none", marcador: { simbolo: "circle", color: "DC2626", tam: 7 } },
-    { nombre: "Señal W.E.", col: "J", color: "EA580C", linea: "none", marcador: { simbolo: "diamond", color: "EA580C", tam: 7 } },
+    { nombre: "Fuera de spec", col: "I", color: "DC2626", linea: "none", marcador: { simbolo: "circle", color: "DC2626", tam: 7, borde: "FFFFFF" } },
+    { nombre: "Señal W.E.", col: "J", color: "F59E0B", linea: "none", marcador: { simbolo: "circle", color: "F59E0B", tam: 6, hueco: true } },
   ];
   const sR: SerieGrafica[] = [
     { nombre: "R", col: "C", color: "1A56DB", linea: "solid", ancho: 12700, marcador: { simbolo: "circle", color: "1A56DB", tam: 3 } },
@@ -337,13 +343,13 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
   const eX = escala(num([1, 3, 4, 5, 6, 7])), eR = escala([0, ...num([2, 10, 11])]);
   const tituloY = esHR ? "% Humedad relativa" : "Temperatura (°C)";
   const x0 = fechas.length ? serial(fechas[0]) : 0, x1 = fechas.length ? serial(fechas[fechas.length - 1]) : 1;
-  const tit = [base.codigo, base.ubicacion, `${base.iso} · ${rango}`];
+  const tit = [`${base.codigo} — ${base.variable}`, base.ubicacion, `${base.iso} · ${rango}`];
   return {
     ...base, n: todos.length, media: r3(d?.mean), s: r3(s), min: r3(d?.min), max: r3(d?.max),
     LAS: r3(lim?.LAS), LAI: r3(lim?.LAI), LAcS: r3(lim?.LAcS), LAcI: r3(lim?.LAcI),
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
-    nSenales: idxSen.size, dict, tablaLimites, filas, encabezado,
+    nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado,
     puntos: (carta?.subgrupos ?? []).map((g, i) => {
       const vs = dias[g.indice].valores;
       return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };
@@ -366,7 +372,7 @@ function chartXml(g: Grafica): string {
       ? `<a:ln><a:noFill/></a:ln>`
       : `<a:ln w="${s.ancho ?? 12700}" cap="flat"><a:solidFill><a:srgbClr val="${s.color}"/></a:solidFill>${s.linea !== "solid" ? `<a:prstDash val="${s.linea}"/>` : ""}</a:ln>`;
     const mk = s.marcador
-      ? `<c:marker><c:symbol val="${s.marcador.simbolo}"/><c:size val="${s.marcador.tam}"/><c:spPr><a:solidFill><a:srgbClr val="${s.marcador.color}"/></a:solidFill><a:ln w="6350"><a:solidFill><a:srgbClr val="${s.marcador.color}"/></a:solidFill></a:ln></c:spPr></c:marker>`
+      ? `<c:marker><c:symbol val="${s.marcador.simbolo}"/><c:size val="${s.marcador.tam}"/><c:spPr>${s.marcador.hueco ? "<a:noFill/>" : `<a:solidFill><a:srgbClr val="${s.marcador.color}"/></a:solidFill>`}<a:ln w="${s.marcador.hueco ? 15875 : 6350}"><a:solidFill><a:srgbClr val="${s.marcador.borde ?? s.marcador.color}"/></a:solidFill></a:ln></c:spPr></c:marker>`
       : `<c:marker><c:symbol val="none"/></c:marker>`;
     const lit = (v: number[]) => `<c:numLit><c:formatCode>General</c:formatCode><c:ptCount val="${v.length}"/>${v.map((x, k) => `<c:pt idx="${k}"><c:v>${x}</c:v></c:pt>`).join("")}</c:numLit>`;
     const xv = s.lit ? lit(s.lit.x) : `<c:numRef><c:f>${xml(rng(g.colX))}</c:f></c:numRef>`;
@@ -509,6 +515,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
     b.set(0, 0, `${k.codigo} — ${k.variable}`, ST.titulo);
     b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad)}`, ST.nota);
     k.tablaLimites.forEach((f, i) => b.fila(3 + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
+    if (k.notaTabla) b.set(3 + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
     const hRow = 3 + k.tablaLimites.length + 1; // 0-based
     b.fila(hRow, 0, k.encabezado, ST.head);
     k.filas.forEach((f, i) => b.fila(hRow + 1 + i, 0, f, (_, j) => (j === 0 ? ST.fecha : ST.num)));
@@ -536,6 +543,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
         row += Math.ceil(g.cy / ROW_EMU) + 1;
       }
       k.tablaLimites.forEach((f, i) => b.fila(row + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
+      if (k.notaTabla) b.set(row + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
       row += k.tablaLimites.length + 3;
     }
     hojas.push({ nombre: "Gráficas", b, anclas, cols: Array(8).fill(13) });

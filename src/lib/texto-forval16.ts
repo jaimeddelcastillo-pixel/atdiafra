@@ -62,6 +62,25 @@ function lecturasFuera(b: Bloque) {
   return out;
 }
 
+const MESES_LARGOS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/**
+ * Si más del 60 % de los puntos con señal caen en un mismo mes y ese mes es el primero o el último
+ * del periodo, devuelve la frase de posible influencia estacional (PNO-VAL-16 8.8). Si no, null.
+ */
+export function fraseEstacional(puntos: { fecha: string; reglas: string[] }[]): string | null {
+  const conSenal = puntos.filter((p) => p.reglas.length);
+  if (conSenal.length < 2 || !puntos.length) return null;
+  const mes = (f: string) => f.slice(0, 7);
+  const cuenta = new Map<string, number>();
+  for (const p of conSenal) cuenta.set(mes(p.fecha), (cuenta.get(mes(p.fecha)) ?? 0) + 1);
+  const [top, n] = [...cuenta.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (n / conSenal.length <= 0.6) return null;
+  const extremos = [mes(puntos[0].fecha), mes(puntos[puntos.length - 1].fecha)];
+  if (!extremos.includes(top)) return null;
+  return `Se observa un desplazamiento de la media en ${MESES_LARGOS[Number(top.slice(5, 7)) - 1]}; evaluar influencia estacional (PNO-VAL-16 8.8).`;
+}
+
 function parrafo(b: Bloque): string {
   const u = b.unidad;
   const ppkEt = etiquetaCapacidad(b.Ppk).toLowerCase();
@@ -82,6 +101,8 @@ function parrafo(b: Bloque): string {
   } else {
     t += ` Todas las lecturas se encuentran dentro de especificación y no se detectaron señales de las reglas de Western Electric/Nelson en ${carta}.`;
   }
+  const est = fraseEstacional(b.puntos);
+  if (est) t += ` ${est}`;
   if (b.calidad.suficiencia.startsWith("Insuficiente")) t += ` El tamaño de muestra es insuficiente (n = ${b.calidad.nSuficiencia}) según PNO-VAL-16 Tabla 2.`;
   return t;
 }

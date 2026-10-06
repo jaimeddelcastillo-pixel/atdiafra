@@ -73,3 +73,16 @@ describe("generarTexto — alcance", () => {
     expect(t.alcance).toContain("Variables analizadas: ninguna.");
   });
 });
+
+import { fraseEstacional } from "../texto-forval16";
+describe("fraseEstacional", () => {
+  const P = (fecha: string, sen = false) => ({ fecha, reglas: sen ? ["Regla 2"] : [] });
+  it("detecta concentración al final del periodo", () => {
+    const pts = [P("2025-01-10"), P("2025-02-10", true), P("2025-03-03", true), P("2025-03-10", true), P("2025-03-20", true)];
+    expect(fraseEstacional(pts)).toBe("Se observa un desplazamiento de la media en marzo; evaluar influencia estacional (PNO-VAL-16 8.8).");
+  });
+  it("no aplica si el mes está a mitad del periodo o no supera 60 %", () => {
+    expect(fraseEstacional([P("2025-01-10"), P("2025-02-03", true), P("2025-02-10", true), P("2025-03-20")])).toBeNull();
+    expect(fraseEstacional([P("2025-01-10", true), P("2025-02-10", true), P("2025-03-20")])).toBeNull();
+  });
+});

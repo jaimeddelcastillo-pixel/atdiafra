@@ -1,4 +1,6 @@
 import { useRef } from "react";
+import { createRoot } from "react-dom/client";
+import { flushSync } from "react-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -9,7 +11,7 @@ import { cn } from "@/lib/utils";
 import type { Bloque, Grafica, PuntoTendencia } from "@/lib/export-forval16";
 import { fmtDMY, specTxt } from "@/lib/export-forval16";
 import { etiquetaCapacidad } from "@/lib/estadistica-pno";
-import { PX_16x5, PX_16x9, copiarHTML, copiarImagen, descargarBlob, graficaPNG, type LeyendaItem } from "@/lib/imagen-grafica";
+import { ESCALA_PNG, PX_16x5, PX_16x9, copiarHTML, copiarImagen, descargarBlob, graficaPNG, layoutPNG, type LeyendaItem } from "@/lib/imagen-grafica";
 
 const MS0 = Date.UTC(1899, 11, 30);
 const aMs = (serial: number) => MS0 + serial * 86400000;
@@ -21,23 +23,56 @@ export const leyendaDe = (g: Grafica): LeyendaItem[] => {
   return g.series.filter((s) => {
     const k = s.lit ? "Cambio de filtro" : s.nombre;
     if (vistos.has(k)) return false; vistos.add(k); return true;
-  }).map((s) => ({ nombre: s.lit ? "Cambio de filtro" : s.nombre, color: `#${s.color}`, linea: s.linea, marcador: !!s.marcador }));
+  }).map((s) => ({ nombre: s.lit ? "Cambio de filtro" : s.nombre, color: `#${s.color}`, linea: s.linea, marcador: !!s.marcador, hueco: s.marcador?.hueco, borde: s.marcador?.borde ? `#${s.marcador.borde}` : undefined }));
 };
 
 export const nombreArchivo = (b: Bloque, sufijo = "") => `${b.hoja.replace(/[^\w.-]+/g, "_")}${sufijo}.png`;
 
-/** Renderiza a PNG (300 dpi) cada gráfica de una tarjeta. */
-export async function pngsDeTarjeta(root: HTMLElement, b: Bloque): Promise<{ nombre: string; blob: Blob }[]> {
-  const svgs = root.querySelectorAll<SVGSVGElement>("[data-grafica] svg.recharts-surface");
+/** Dibuja la gráfica fuera de pantalla al tamaño final (16 cm) para que ejes y textos midan 9 pt. */
+async function svgFijo(b: Bloque, g: Grafica, w: number, h: number): Promise<{ svg: SVGSVGElement; limpiar: () => void }> {
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed;left:-10000px;top:0;width:${w}px;height:${h}px;background:#fff`;
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  flushSync(() => root.render(<Grafico b={b} g={g} fijo={{ w, h }} />));
+  let svg: SVGSVGElement | null = null;
+  for (let k = 0; k < 20 && !svg; k++) {
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
+    svg = host.querySelector<SVGSVGElement>("svg.recharts-surface");
+  }
+  const limpiar = () => { root.unmount(); host.remove(); };
+  if (!svg) { limpiar(); throw new Error("No se pudo dibujar la gráfica"); }
+  return { svg, limpiar };
+}
+
+/** Renderiza a PNG (300 dpi, 16 × 9 cm; R: 16 × 5 cm) cada gráfica de un bloque. */
+export async function pngsDeTarjeta(_root: HTMLElement | null, b: Bloque): Promise<{ nombre: string; blob: Blob }[]> {
   const out: { nombre: string; blob: Blob }[] = [];
-  for (let i = 0; i < b.graficas.length && i < svgs.length; i++) {
+  for (let i = 0; i < b.graficas.length; i++) {
     const g = b.graficas[i];
-    out.push({ nombre: nombreArchivo(b, i === 1 ? "_R" : ""), blob: await graficaPNG(svgs[i], g.titulo, leyendaDe(g), i === 1 ? PX_16x5 : PX_16x9) });
+    const size = i === 1 ? PX_16x5 : PX_16x9;
+    const ley = leyendaDe(g);
+    const L = layoutPNG(g.titulo, ley, size);
+    const { svg, limpiar } = await svgFijo(b, g, size.w / ESCALA_PNG, L.chartH / ESCALA_PNG);
+    try { out.push({ nombre: nombreArchivo(b, i === 1 ? "_R" : ""), blob: await graficaPNG(svg, g.titulo, ley, size) }); }
+    finally { limpiar(); }
   }
   return out;
 }
 
-function Grafico({ b, g, ratio }: { b: Bloque; g: Grafica; ratio: string }) {
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const etiquetaSemana = (ms: number) => { const d = new Date(ms); return `${String(d.getUTCDate()).padStart(2, "0")} ${MESES[d.getUTCMonth()]}`; };
+/** Un tick por semana (lunes) dentro del rango. */
+function ticksSemana(xMin: number, xMax: number): number[] {
+  const out: number[] = [];
+  let s = Math.ceil(xMin);
+  while ((((s - 2) % 7) + 7) % 7 !== 0) s++;
+  for (; s <= xMax; s += 7) out.push(aMs(s));
+  if (!out.length) out.push(aMs(xMin));
+  return out;
+}
+
+function Grafico({ b, g, ratio, fijo }: { b: Bloque; g: Grafica; ratio?: string; fijo?: { w: number; h: number } }) {
   const datos = b.filas.map((f, i) => {
     const row: Record<string, unknown> = { x: aMs(f[0] as number), _p: b.puntos[i] };
     f.forEach((v, j) => { if (j > 0) row[`c${j}`] = v; });
@@ -45,29 +80,38 @@ function Grafico({ b, g, ratio }: { b: Bloque; g: Grafica; ratio: string }) {
   });
   const ticks: number[] = [];
   for (let y = g.yMin; y <= g.yMax + 1e-9; y += g.yStep) ticks.push(Math.round(y * 1000) / 1000);
+  const fs = fijo ? 12 : 10; // 12 px CSS = 9 pt a 16 cm
+  const xt = ticksSemana(g.xMin, g.xMax);
+  const girar = xt.length > (fijo ? 9 : 14);
+  const r = (t: number) => (t * 1.333) / 2;
+  const grafica = (
+    <LineChart width={fijo?.w} height={fijo?.h} data={datos} margin={{ top: 6, right: 14, bottom: girar ? 4 : 14, left: 4 }}>
+      <CartesianGrid vertical={false} stroke="#E5E7EB" />
+      <XAxis dataKey="x" type="number" scale="time" domain={[aMs(g.xMin), aMs(g.xMax)]} ticks={xt} interval={0}
+        tick={{ fontSize: fs, fill: "#374151" }} angle={girar ? -45 : 0} textAnchor={girar ? "end" : "middle"} height={girar ? fs * 4.2 : fs * 2.6}
+        tickFormatter={(v) => etiquetaSemana(v as number)}
+        label={{ value: "Días", position: "insideBottom", offset: 0, fontSize: fs, fill: "#374151" }} />
+      <YAxis domain={[g.yMin, g.yMax]} ticks={ticks} allowDataOverflow tick={{ fontSize: fs, fill: "#374151" }} width={fs * 5.2}
+        tickFormatter={(v) => (+v).toFixed(g.yStep < 1 ? 1 : 0)}
+        label={{ value: g.tituloY, angle: -90, position: "insideLeft", fontSize: fs, fill: "#374151", style: { textAnchor: "middle" } }} />
+      {!fijo && <Tooltip content={<Punto b={b} />} />}
+      {g.series.filter((s) => !s.lit).map((s) => (
+        <Line key={s.nombre} dataKey={`c${letraAIndice(s.col)}`} name={s.nombre} isAnimationActive={false}
+          stroke={s.linea === "none" ? "none" : `#${s.color}`} strokeDasharray={dash(s.linea)} strokeWidth={s.ancho ? 1.8 : 1.2}
+          dot={s.marcador ? (s.marcador.hueco
+            ? { r: r(s.marcador.tam), fill: "none", stroke: `#${s.marcador.color}`, strokeWidth: 1.5 }
+            : { r: r(s.marcador.tam), fill: `#${s.marcador.color}`, stroke: s.marcador.borde ? `#${s.marcador.borde}` : `#${s.marcador.color}`, strokeWidth: s.marcador.borde ? 1 : 0.5 }) : false}
+          activeDot={s.marcador && !fijo ? { r: 4 } : false} connectNulls={false} />
+      ))}
+      {g.series.filter((s) => s.lit).map((s) => (
+        <ReferenceLine key={s.nombre} x={aMs(s.lit!.x[0])} stroke={`#${s.color}`} strokeDasharray="2 3" />
+      ))}
+    </LineChart>
+  );
+  if (fijo) return grafica;
   return (
     <div data-grafica className={cn("w-full bg-card", ratio)}>
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={datos} margin={{ top: 8, right: 16, bottom: 18, left: 8 }}>
-          <CartesianGrid vertical={false} stroke="#E5E7EB" />
-          <XAxis dataKey="x" type="number" scale="time" domain={[aMs(g.xMin), aMs(g.xMax)]} tick={{ fontSize: 10 }}
-            tickFormatter={(v) => format(new Date(v as number), "dd MMM", { locale: es })}
-            label={{ value: "Días", position: "insideBottom", offset: -10, fontSize: 10 }} />
-          <YAxis domain={[g.yMin, g.yMax]} ticks={ticks} allowDataOverflow tick={{ fontSize: 10 }} width={52}
-            tickFormatter={(v) => (+v).toFixed(g.yStep < 1 ? 1 : 0)}
-            label={{ value: g.tituloY, angle: -90, position: "insideLeft", fontSize: 10, style: { textAnchor: "middle" } }} />
-          <Tooltip content={<Punto b={b} />} />
-          {g.series.filter((s) => !s.lit).map((s) => (
-            <Line key={s.nombre} dataKey={`c${letraAIndice(s.col)}`} name={s.nombre} isAnimationActive={false}
-              stroke={s.linea === "none" ? "none" : `#${s.color}`} strokeDasharray={dash(s.linea)} strokeWidth={s.ancho ? 1.8 : 1.2}
-              dot={s.marcador ? { r: s.marcador.tam / 2 + 0.5, fill: `#${s.marcador.color}`, stroke: `#${s.marcador.color}` } : false}
-              activeDot={s.marcador ? { r: 4 } : false} connectNulls={false} />
-          ))}
-          {g.series.filter((s) => s.lit).map((s) => (
-            <ReferenceLine key={s.nombre} x={aMs(s.lit!.x[0])} stroke={`#${s.color}`} strokeDasharray="2 3" />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+      <ResponsiveContainer width="100%" height="100%">{grafica}</ResponsiveContainer>
     </div>
   );
 }
@@ -86,15 +130,29 @@ function Punto({ b, active, payload }: { b: Bloque; active?: boolean; payload?: 
   );
 }
 
-function tablaHTML(b: Bloque): { html: string; texto: string } {
-  const celda = (v: unknown, head: boolean) => {
-    const t = v == null ? "" : typeof v === "number" ? v.toFixed(3) : String(v);
-    return head
-      ? `<th style="background:#DEEAF6;border:1px solid #9DC3E6;font-family:Calibri;font-size:9pt;padding:2px 4px">${t}</th>`
-      : `<td style="border:1px solid #9DC3E6;font-family:Calibri;font-size:9pt;text-align:center;padding:2px 4px">${t}</td>`;
-  };
-  const html = `<table style="border-collapse:collapse">${b.tablaLimites.map((f, i) => `<tr>${f.map((v) => celda(v, i % 2 === 0)).join("")}</tr>`).join("")}</table>`;
-  const texto = b.tablaLimites.map((f) => f.map((v) => (v == null ? "" : typeof v === "number" ? v.toFixed(3) : v)).join("\t")).join("\n");
+const fmtCelda = (v: unknown) => (v == null ? "" : typeof v === "number" ? v.toFixed(3) : String(v));
+const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** Tabla para Word: 16 cm, ancho fijo, columnas de 2 cm, Calibri 9 pt, encabezado #DCE6F2, bordes 0.5 pt. */
+export function tablaHTML(b: Bloque): { html: string; texto: string } {
+  const nCols = Math.max(...b.tablaLimites.map((f) => f.length));
+  const anchoCol = 16 / nCols;
+  const borde = "border:0.5pt solid #7F7F7F";
+  const filas = b.tablaLimites.map((f, i) => {
+    const head = i % 2 === 0;
+    const span = Math.floor(nCols / f.length);
+    return `<tr>${f.map((v, j) => {
+      const cs = j === f.length - 1 ? nCols - span * (f.length - 1) : span;
+      const t = esc(fmtCelda(v));
+      return head
+        ? `<th${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};background:#DCE6F2;font-family:Calibri;font-size:9pt;font-weight:bold;text-align:center;vertical-align:middle;padding:1pt 2pt">${t}</th>`
+        : `<td${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};font-family:Calibri;font-size:9pt;text-align:center;vertical-align:middle;white-space:nowrap;padding:1pt 2pt">${t}</td>`;
+    }).join("")}</tr>`;
+  }).join("");
+  const cols = Array.from({ length: nCols }, () => `<col style="width:${anchoCol}cm">`).join("");
+  const nota = b.notaTabla ? `<p style="font-family:Calibri;font-size:8pt;margin:2pt 0 0 0">${esc(b.notaTabla)}</p>` : "";
+  const html = `<table style="table-layout:fixed;width:16cm;border-collapse:collapse">${cols}${filas}</table>${nota}`;
+  const texto = b.tablaLimites.map((f) => f.map(fmtCelda).join("\t")).join("\n") + (b.notaTabla ? `\n${b.notaTabla}` : "");
   return { html, texto };
 }
 
@@ -137,7 +195,7 @@ export function TendenciaCard({ b }: { b: Bloque }) {
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             {leyendaDe(g).map((l) => (
               <span key={l.nombre} className="inline-flex items-center gap-1">
-                <svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke={l.linea === "none" ? "transparent" : l.color} strokeDasharray={dash(l.linea)} strokeWidth="1.5" />{(l.marcador || l.linea === "none") && <circle cx="9" cy="4" r="2.5" fill={l.color} />}</svg>
+                <svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke={l.linea === "none" ? "transparent" : l.color} strokeDasharray={dash(l.linea)} strokeWidth="1.5" />{(l.marcador || l.linea === "none") && <circle cx="9" cy="4" r="2.5" fill={l.hueco ? "none" : l.color} stroke={l.hueco ? l.color : l.borde ?? "none"} strokeWidth={l.hueco ? 1.2 : 0.6} />}</svg>
                 {l.nombre}
               </span>
             ))}
@@ -148,15 +206,23 @@ export function TendenciaCard({ b }: { b: Bloque }) {
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
           <tbody>
-            {b.tablaLimites.map((f, i) => (
-              <tr key={i}>
-                {f.map((v, j) => i % 2 === 0
-                  ? <th key={j} className="border border-border bg-accent px-2 py-1 font-medium">{v}</th>
-                  : <td key={j} className="border border-border px-2 py-1 text-center tabular-nums">{v == null ? "" : typeof v === "number" ? v.toFixed(3) : v}</td>)}
-              </tr>
-            ))}
+            {b.tablaLimites.map((f, i) => {
+              const nCols = Math.max(...b.tablaLimites.map((x) => x.length));
+              const span = Math.floor(nCols / f.length);
+              return (
+                <tr key={i}>
+                  {f.map((v, j) => {
+                    const cs = j === f.length - 1 ? nCols - span * (f.length - 1) : span;
+                    return i % 2 === 0
+                      ? <th key={j} colSpan={cs} className="border border-border bg-accent px-2 py-1 font-medium">{v}</th>
+                      : <td key={j} colSpan={cs} className="border border-border px-2 py-1 text-center tabular-nums whitespace-nowrap">{fmtCelda(v)}</td>;
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
+        {b.notaTabla && <p className="mt-1 text-[11px] text-muted-foreground">{b.notaTabla}</p>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
