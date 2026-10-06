@@ -58,6 +58,7 @@ const TABLE_LABELS: Record<string, string> = {
   instrumentos: "Instrumentos",
   objetivos_presion: "Objetivos de presión",
   user_roles: "Roles de usuario",
+  registro_analisis_tendencias: "Registros AT (tendencias)",
 };
 
 const OPERATION_VARIANTS: Record<AuditEntry["operation"], { label: string; cls: string }> = {
@@ -246,6 +247,7 @@ function AuditoriaContent() {
             </div>
           </CardContent>
         </Card>
+        <HistorialAT />
       </main>
 
       <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
@@ -303,5 +305,63 @@ function AuditoriaContent() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+interface VersionAT {
+  id: string; registro_id: string; codigo: string; version: number;
+  datos: Record<string, unknown>; usuario_email: string | null; fecha: string;
+}
+
+function HistorialAT() {
+  const [filas, setFilas] = useState<VersionAT[]>([]);
+  const [q, setQ] = useState("");
+  const [ver, setVer] = useState<VersionAT | null>(null);
+  useEffect(() => {
+    supabase.from("registro_analisis_tendencias_historial").select("*").order("fecha", { ascending: false }).limit(500)
+      .then(({ data, error }) => { if (error) toast.error("No se pudo cargar el historial AT: " + error.message); else setFilas((data ?? []) as VersionAT[]); });
+  }, []);
+  const vis = filas.filter((f) => !q || `${f.codigo} ${f.usuario_email ?? ""}`.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <Card className="mt-6">
+      <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardTitle className="text-base">Historial de versiones · Registros AT ({vis.length})</CardTitle>
+        <Input className="max-w-xs" placeholder="Buscar código AT o usuario…" value={q} onChange={(e) => setQ(e.target.value)} />
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Código</TableHead><TableHead>Versión anterior</TableHead><TableHead>Sustituida el</TableHead>
+              <TableHead>Modificó</TableHead><TableHead>Sistema · periodo</TableHead><TableHead className="text-right">Ver</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {vis.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">Sin versiones anteriores.</TableCell></TableRow>
+            ) : vis.map((f) => (
+              <TableRow key={f.id}>
+                <TableCell className="font-medium">{f.codigo}</TableCell>
+                <TableCell>v{f.version}</TableCell>
+                <TableCell className="text-xs whitespace-nowrap">{new Date(f.fecha).toLocaleString("es-MX")}</TableCell>
+                <TableCell className="text-xs">{f.usuario_email ?? "—"}</TableCell>
+                <TableCell className="text-xs">{String(f.datos.sistema ?? "")} · {String(f.datos.periodo_etiqueta ?? "")}</TableCell>
+                <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => setVer(f)}><Eye className="h-4 w-4" /></Button></TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+      <Dialog open={!!ver} onOpenChange={(o) => !o && setVer(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>{ver?.codigo} · versión {ver?.version}</DialogTitle></DialogHeader>
+          {ver && (
+            <ScrollArea className="h-96 rounded border bg-muted/30 p-2">
+              <pre className="text-[10px] font-mono whitespace-pre-wrap break-all">{JSON.stringify(ver.datos, null, 2)}</pre>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

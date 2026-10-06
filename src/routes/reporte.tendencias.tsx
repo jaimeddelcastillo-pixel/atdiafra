@@ -57,7 +57,18 @@ function periodosDe(y: number) {
   ];
 }
 
-interface RegistroAT { id: string; codigo: string; justificaciones: Record<string, string>; texto: Partial<TextoForVal16> }
+interface RegistroAT {
+  id: string; codigo: string; justificaciones: Record<string, string>; texto: Partial<TextoForVal16>;
+  sistema: string; periodo_desde: string; periodo_hasta: string; periodo_etiqueta: string | null;
+  created_at: string; created_by_email: string | null; updated_at: string; updated_by_email: string | null; version: number;
+}
+const COLS_AT = "id,codigo,justificaciones,texto,sistema,periodo_desde,periodo_hasta,periodo_etiqueta,created_at,created_by_email,usuario_email,updated_at,updated_by_email,version";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const aRegistroAT = (d: any): RegistroAT => ({
+  ...d, justificaciones: (d.justificaciones ?? {}) as Record<string, string>, texto: (d.texto ?? {}) as Partial<TextoForVal16>,
+  created_by_email: d.created_by_email ?? d.usuario_email ?? null,
+});
+const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
 
 function TendenciasPage() {
   const search = Route.useSearch();
@@ -115,14 +126,17 @@ function TendenciasPage() {
   // Cargar registro AT existente si el código ya existe
   useEffect(() => {
     if (!/^AT-\d{4}-\d{3}$/.test(at)) { setRegistroAT(null); return; }
-    supabase.from("registro_analisis_tendencias").select("id,codigo,justificaciones,texto").eq("codigo", at).maybeSingle()
-      .then(({ data }) => setRegistroAT(data ? { id: data.id, codigo: data.codigo, justificaciones: (data.justificaciones ?? {}) as Record<string, string>, texto: (data.texto ?? {}) as Partial<TextoForVal16> } : null));
+    supabase.from("registro_analisis_tendencias").select(COLS_AT).eq("codigo", at).maybeSingle()
+      .then(({ data }) => setRegistroAT(data ? aRegistroAT(data) : null));
   }, [at]);
 
   const elegidos = modo === "hvac" ? unidos.filter((r) => hvacId && hvacDe(r, instrMap, areasMap) === hvacId) : unidos.filter((r) => sel.has(r.id));
   const hvac = hvacs.find((h) => h.id === hvacId);
   const sistema = modo === "hvac" ? (hvac ? `${hvac.codigo} ${hvac.nombre_uma}` : "")
     : elegidos.length === 1 ? codigoRegistro(elegidos[0], instrMap) : elegidos.length ? "Instrumentos seleccionados" : "";
+  // Integridad: un código existente solo se edita si coincide sistema y periodo.
+  const conflicto = !!registroAT && (registroAT.sistema !== (sistema || "Sin sistema") || registroAT.periodo_desde !== desde || registroAT.periodo_hasta !== hasta);
+  const registroEditable = conflicto ? null : registroAT;
   const alcance: AlcanceTexto = modo === "hvac"
     ? { tipo: "hvac", codigo: hvac?.codigo ?? "", nombreUma: hvac?.nombre_uma ?? "", descripcion: hvac?.descripcion ?? "" }
     : { tipo: "instrumentos", codigos: [...new Set(elegidos.map((r) => codigoRegistro(r, instrMap)))].sort() };
@@ -142,11 +156,11 @@ function TendenciasPage() {
 
   // Texto: el guardado del registro AT gana; si no, el generado (mientras no se edite).
   useEffect(() => {
-    if (registroAT && Object.keys(registroAT.texto).length) { setTexto({ ...textoAuto, ...registroAT.texto }); setEditado(true); }
+    if (registroEditable && Object.keys(registroEditable.texto).length) { setTexto({ ...textoAuto, ...registroEditable.texto }); setEditado(true); }
     else if (!editado) setTexto(textoAuto);
-    if (registroAT) setJustif(registroAT.justificaciones);
+    if (registroEditable) setJustif(registroEditable.justificaciones);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [registroAT, textoAuto]);
+  }, [registroEditable, textoAuto]);
 
   const insuficientes = bloques.filter((b) => b.calidad.suficiencia.startsWith("Insuficiente"));
   const faltaJustif = insuficientes.filter((b) => !justif[b.hoja]?.trim());
@@ -156,6 +170,7 @@ function TendenciasPage() {
   const guardar = async (): Promise<boolean> => {
     if (!puedeEditar) { toast.error("Tu rol solo permite consultar. Pide a un editor que guarde el registro."); return false; }
     if (!atValido) { toast.error("Escribe un código con formato AT-AAAA-NNN."); return false; }
+    if (conflicto && registroAT) { toast.error(`El código ${at} ya está registrado para ${registroAT.sistema} ${registroAT.periodo_etiqueta ?? ""}. Cambia el código.`); return false; }
     if (faltaJustif.length) { toast.error(`Falta la justificación técnica de: ${faltaJustif.map((b) => b.hoja).join(", ")}`); return false; }
     const fila = {
       codigo: at, sistema: sistema || "Sin sistema", periodo_desde: desde, periodo_hasta: hasta,
@@ -166,16 +181,20 @@ function TendenciasPage() {
       justificaciones: Object.fromEntries(insuficientes.map((b) => [b.hoja, justif[b.hoja].trim()])),
       texto: texto ?? {},
     };
-    if (registroAT) {
-      const { error } = await supabase.from("registro_analisis_tendencias").update({ ...fila, updated_at: new Date().toISOString() }).eq("id", registroAT.id);
+    if (registroEditable) {
+      const quien = registroEditable.created_by_email ?? "otro usuario";
+      if (!window.confirm(`Vas a modificar el registro existente ${at} (creado por ${quien} el ${fechaHora(registroEditable.created_at)}).\nLa versión anterior se conservará en el historial. ¿Guardar los cambios?`)) return false;
+      const { usuario_id: _u, usuario_email: _e, ...cambios } = fila;
+      const { data, error } = await supabase.from("registro_analisis_tendencias").update(cambios).eq("id", registroEditable.id).select(COLS_AT).single();
       if (error) { toast.error(`No se pudo guardar: ${error.message}`); return false; }
+      setRegistroAT(aRegistroAT(data));
     } else {
-      const { data, error } = await supabase.from("registro_analisis_tendencias").insert(fila).select("id").single();
+      const { data, error } = await supabase.from("registro_analisis_tendencias").insert(fila).select(COLS_AT).single();
       if (error) {
         toast.error(error.code === "23505" ? `El código ${at} ya está registrado. Usa otro.` : `No se pudo guardar: ${error.message}`);
         return false;
       }
-      setRegistroAT({ id: data.id, codigo: at, justificaciones: fila.justificaciones, texto: fila.texto });
+      setRegistroAT(aRegistroAT(data));
     }
     toast.success(`Registro ${at} guardado`);
     return true;
@@ -234,8 +253,19 @@ function TendenciasPage() {
               <Label htmlFor="at">Código de reporte</Label>
               <Input id="at" value={at} onChange={(e) => setAt(e.target.value.toUpperCase().trim())} placeholder="AT-2026-001" />
               <p className="text-xs text-muted-foreground">
-                {!atValido ? "Formato: AT-AAAA-NNN." : registroAT ? "Este código ya está registrado: se actualizará al guardar." : "Código nuevo (siguiente consecutivo sugerido)."}
+                {!atValido ? "Formato: AT-AAAA-NNN." : registroAT ? "" : "Código nuevo (siguiente consecutivo sugerido)."}
               </p>
+              {atValido && conflicto && registroAT && (
+                <p className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">
+                  El código {at} ya está registrado para {registroAT.sistema} {registroAT.periodo_etiqueta ?? `${registroAT.periodo_desde} – ${registroAT.periodo_hasta}`}. Cambia el código para poder guardar o exportar.
+                </p>
+              )}
+              {atValido && registroEditable && (
+                <div className="rounded-md border border-primary/40 bg-primary/10 p-2 text-xs">
+                  <p className="font-medium">Editando registro existente {at} (creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)})</p>
+                  <p className="text-muted-foreground">Versión {registroEditable.version} · última modificación por {registroEditable.updated_by_email ?? registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.updated_at)}. Se pedirá confirmación al guardar.</p>
+                </div>
+              )}
             </div>
             <div className="space-y-1.5 md:col-span-2">
               <Label>Periodo (cada día por su fecha real)</Label>
@@ -368,10 +398,10 @@ function TendenciasPage() {
             {/* 5. Acciones */}
             <section className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4">
               <span className="mr-auto text-sm">Dictamen global: <b>{g.estado} · {g.cumplimiento}</b></span>
-              <Button variant="outline" className="gap-1" onClick={() => { setOcupado(true); guardar().finally(() => setOcupado(false)); }} disabled={ocupado || !puedeEditar}>
+              <Button variant="outline" className="gap-1" onClick={() => { setOcupado(true); guardar().finally(() => setOcupado(false)); }} disabled={ocupado || !puedeEditar || conflicto}>
                 <Save className="h-4 w-4" /> Guardar registro
               </Button>
-              <Button className="gap-1" onClick={exportar} disabled={ocupado || !atValido || faltaJustif.length > 0}>
+              <Button className="gap-1" onClick={exportar} disabled={ocupado || !atValido || conflicto || faltaJustif.length > 0}>
                 <FileSpreadsheet className="h-4 w-4" /> Exportar paquete Excel
               </Button>
               <Button variant="outline" className="gap-1" disabled title="Próximamente"><FileText className="h-4 w-4" /> Exportar Word</Button>
