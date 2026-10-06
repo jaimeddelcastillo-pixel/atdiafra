@@ -20,7 +20,7 @@ import { listAreas, listCambiosFiltro, listInstrumentos, listSistemasHVAC, type 
 import { construirBloques, etiquetaPeriodo, exportarPaqueteForVal16 } from "@/lib/export-forval16";
 import { codigoRegistro, hvacDe, unirPorInstrumento } from "@/lib/seleccion-forval16";
 import { coberturaReal, recortarSemanasPorFecha } from "@/lib/fechas-lectura";
-import { SECCIONES, dictamenGlobal, generarTexto, type TextoForVal16 } from "@/lib/texto-forval16";
+import { SECCIONES, dictamenGlobal, generarTexto, type AlcanceTexto, type TextoForVal16 } from "@/lib/texto-forval16";
 import { TendenciaCard, pngsDeTarjeta } from "@/components/tendencias/TendenciaCard";
 import { descargarBlob } from "@/lib/imagen-grafica";
 
@@ -123,6 +123,9 @@ function TendenciasPage() {
   const hvac = hvacs.find((h) => h.id === hvacId);
   const sistema = modo === "hvac" ? (hvac ? `${hvac.codigo} ${hvac.nombre_uma}` : "")
     : elegidos.length === 1 ? codigoRegistro(elegidos[0], instrMap) : elegidos.length ? "Instrumentos seleccionados" : "";
+  const alcance: AlcanceTexto = modo === "hvac"
+    ? { tipo: "hvac", codigo: hvac?.codigo ?? "", nombreUma: hvac?.nombre_uma ?? "", descripcion: hvac?.descripcion ?? "" }
+    : { tipo: "instrumentos", codigos: [...new Set(elegidos.map((r) => codigoRegistro(r, instrMap)))].sort() };
   const fechasOk = ISO.test(desde) && ISO.test(hasta) && desde <= hasta;
 
   const { bloques } = useMemo(
@@ -133,7 +136,7 @@ function TendenciasPage() {
   const cobertura = useMemo(() => coberturaReal(elegidos.flatMap((r) => recortarSemanasPorFecha(r.semanas, desde, hasta))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [elegidos.map((e) => e.id).join(","), desde, hasta]);
-  const textoAuto = useMemo(() => generarTexto(bloques, cobertura, sistema || "los instrumentos seleccionados"), [bloques, cobertura, sistema]);
+  const textoAuto = useMemo(() => generarTexto(bloques, cobertura, alcance), [bloques, cobertura, alcance]);
 
   // Texto: el guardado del registro AT gana; si no, el generado (mientras no se edite).
   useEffect(() => {
