@@ -1,7 +1,7 @@
 // Texto propuesto del FOR-VAL-16-02 generado a partir de los bloques del motor PNO-VAL-16.
 import type { Bloque } from "./export-forval16";
 import { fmtDMY } from "./export-forval16";
-import { etiquetaCapacidad } from "./estadistica-pno";
+import { etiquetaCapacidad, fueraDeSpec } from "./estadistica-pno";
 
 export interface TextoForVal16 { alcance: string; s81: string; s9: string; s10: string; s11: string }
 
@@ -58,7 +58,7 @@ export function dictamenGlobal(bloques: Bloque[]): { cumplimiento: "CUMPLE" | "N
 function lecturasFuera(b: Bloque) {
   const out: { v: number; f: string }[] = [];
   for (const p of b.puntos) for (const v of p.lecturas)
-    if ((b.lie != null && v < b.lie) || (b.lse != null && v > b.lse)) out.push({ v, f: p.fecha });
+    if (fueraDeSpec(v, { lie: b.lie, lse: b.lse, lieEstricto: b.lieEstricto, lseEstricto: b.lseEstricto })) out.push({ v, f: p.fecha });
   return out;
 }
 
