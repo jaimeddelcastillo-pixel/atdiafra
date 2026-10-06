@@ -72,6 +72,7 @@ function ConfiguracionPage() {
           </div>
         )}
 
+        <MiPerfil />
         <AutoemisionAjuste />
         <Tabs defaultValue="hvac" className="w-full">
           <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full sm:w-auto">
@@ -89,6 +90,34 @@ function ConfiguracionPage() {
           <TabsContent value="formato" className="mt-6"><FormatoForVal16Tab /></TabsContent>
         </Tabs>
       </main>
+    </div>
+  );
+}
+
+function MiPerfil() {
+  const { user } = useAuth();
+  const [nombre, setNombre] = useState(""), [cargo, setCargo] = useState("");
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("perfiles").select("nombre,cargo").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => { setNombre(data?.nombre ?? ""); setCargo(data?.cargo ?? ""); });
+  }, [user]);
+  const guardar = async () => {
+    if (!user) return;
+    const { error } = await supabase.from("perfiles").upsert({ user_id: user.id, nombre: nombre.trim(), cargo: cargo.trim(), updated_at: new Date().toISOString() });
+    if (error) toast.error(error.message); else toast.success("Perfil guardado");
+  };
+  return (
+    <div className="mb-4 rounded-lg border border-border bg-card p-4 space-y-3">
+      <div>
+        <p className="font-medium text-foreground">Mi perfil</p>
+        <p className="text-sm text-muted-foreground">Tu nombre y cargo aparecen en «Realizado por» del control de cambios del FOR-VAL-16-02.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+        <Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre completo" aria-label="Nombre" />
+        <Input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Cargo" aria-label="Cargo" />
+        <Button onClick={guardar}>Guardar</Button>
+      </div>
     </div>
   );
 }
@@ -482,6 +511,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
     area_id: "", area_libre: "", parametro: "", especificacion: "",
     lie_pa: "" as string | number,
     lse_pa: "" as string | number,
+    op_min_pa: "" as string | number,
+    op_max_pa: "" as string | number,
     baseline_pa: "" as string | number,
     baseline_tolerancia_pct: 25 as string | number,
     codigo_bitacora: "",
@@ -494,6 +525,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
       parametro: item?.parametro ?? "", especificacion: item?.especificacion ?? "",
       lie_pa: item?.lie_pa ?? "",
       lse_pa: item?.lse_pa ?? "",
+      op_min_pa: item?.op_min_pa ?? "",
+      op_max_pa: item?.op_max_pa ?? "",
       baseline_pa: item?.baseline_pa ?? "",
       baseline_tolerancia_pct: item?.baseline_tolerancia_pct ?? 25,
       codigo_bitacora: item?.codigo_bitacora ?? "",
@@ -510,7 +543,7 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         id: item?.id, codigo: form.codigo.trim(), tipo: form.tipo,
         area_id: form.area_id || null, area_libre: form.area_libre.trim() || null,
         parametro: form.parametro.trim(), especificacion: form.especificacion.trim() || null,
-        lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
+        lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa), op_min_pa: num(form.op_min_pa), op_max_pa: num(form.op_max_pa),
         baseline_pa: num(form.baseline_pa),
         baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
         codigo_bitacora: form.codigo_bitacora.trim() || null,
@@ -554,7 +587,7 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
           {esManometro && (
             <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
               <p className="text-[11px] font-medium text-muted-foreground">
-                Límites de monitoreo (Pa) — se usan para alarmas de cumplimiento normativo.
+                Especificación normativa (LIE/LSE) — se usa para cumplimiento y capacidad. Ej. ≥10 Pa → LIE 10, LSE vacío.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="LIE ΔP (Pa)">
@@ -564,6 +597,17 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
                 <Field label="LSE ΔP (Pa)">
                   <Input type="number" value={form.lse_pa}
                     onChange={(e) => setForm({ ...form, lse_pa: e.target.value })} placeholder="ej. 50 / 250" />
+                </Field>
+              </div>
+              <p className="text-[11px] font-medium text-muted-foreground pt-2 border-t border-border/60">
+                Rango de operación (Pa) — solo informativo: se dibuja como banda gris; no cuenta para cumplimiento ni capacidad.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Operación mínima (Pa)">
+                  <Input type="number" value={form.op_min_pa} onChange={(e) => setForm({ ...form, op_min_pa: e.target.value })} placeholder="ej. 13" />
+                </Field>
+                <Field label="Operación máxima (Pa)">
+                  <Input type="number" value={form.op_max_pa} onChange={(e) => setForm({ ...form, op_max_pa: e.target.value })} placeholder="ej. 16" />
                 </Field>
               </div>
               {esFiltroHEPA && (
