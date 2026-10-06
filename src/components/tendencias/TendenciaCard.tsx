@@ -192,7 +192,10 @@ export function TendenciaCard({ b }: { b: Bloque }) {
         <div className="font-semibold text-foreground">{b.graficas[0]?.titulo[0]}</div>
         <div className="text-sm text-muted-foreground">{b.graficas[0]?.titulo[1]}</div>
         <div className="text-xs text-muted-foreground">{b.graficas[0]?.titulo[2]}</div>
-        <div className="text-xs mt-1">{b.variable} · Especificación {specTxt(b.lie, b.lse, b.unidad)}</div>
+        <div className="text-xs mt-1">{b.variable} · Especificación {specTxt(b.lie, b.lse, b.unidad, b.specTexto)}</div>
+        {b.pendientes?.length ? (
+          <div className="mt-2 rounded border border-warning/50 bg-warning/10 px-2 py-1 text-xs text-foreground">⚠ {b.pendientes.join(" · ")}</div>
+        ) : null}
       </header>
       {b.graficas.map((g, i) => (
         <div key={i}>
