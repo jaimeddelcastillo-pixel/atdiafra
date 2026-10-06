@@ -552,7 +552,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
   for (const k of bloques) {
     const b = new HojaBuilder();
     b.set(0, 0, `${k.codigo} — ${k.variable}`, ST.titulo);
-    b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad, k.specTexto)}`, ST.nota);
+    b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad, k.specTexto)}${k.pendientes?.length ? ` · ⚠ ${k.pendientes.join(" · ")}` : ""}`, ST.nota);
     k.tablaLimites.forEach((f, i) => b.fila(3 + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
     if (k.notaTabla) b.set(3 + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
     const hRow = 3 + k.tablaLimites.length + 1; // 0-based
