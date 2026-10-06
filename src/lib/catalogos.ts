@@ -39,6 +39,10 @@ export interface Instrumento {
   /** Solo para manómetros de filtro HEPA: baseline + tolerancia para alarma de tendencia. */
   baseline_pa: number | null;
   baseline_tolerancia_pct: number | null;
+  /** Código de la bitácora física (BIT-…) usado en los formatos. */
+  codigo_bitacora: string | null;
+  /** ΔP final de saturación según fabricante (filtros), en la unidad del instrumento. */
+  dp_final_fabricante: number | null;
 }
 
 // La interfaz ParCuartos fue retirada al unificar el catálogo en `objetivos_presion`.
@@ -135,6 +139,25 @@ export async function upsertInstrumento(i: Partial<Instrumento> & { codigo: stri
 
 export async function setInstrumentoActivo(id: string, activo: boolean) {
   const { error } = await supabase.from("instrumentos").update({ activo }).eq("id", id);
+  if (error) throw error;
+}
+
+// ===== Cambios de filtro =====
+export interface CambioFiltro { id: string; instrumento_id: string; fecha: string; nota: string }
+
+export async function listCambiosFiltro(instrumentoId?: string): Promise<CambioFiltro[]> {
+  let q = supabase.from("cambios_filtro").select("id, instrumento_id, fecha, nota").order("fecha");
+  if (instrumentoId) q = q.eq("instrumento_id", instrumentoId);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []) as CambioFiltro[];
+}
+export async function addCambioFiltro(c: { instrumento_id: string; fecha: string; nota: string }) {
+  const { error } = await supabase.from("cambios_filtro").insert(c);
+  if (error) throw error;
+}
+export async function deleteCambioFiltro(id: string) {
+  const { error } = await supabase.from("cambios_filtro").delete().eq("id", id);
   if (error) throw error;
 }
 
