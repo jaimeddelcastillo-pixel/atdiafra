@@ -123,6 +123,9 @@ function TendenciasPage() {
   const hvac = hvacs.find((h) => h.id === hvacId);
   const sistema = modo === "hvac" ? (hvac ? `${hvac.codigo} ${hvac.nombre_uma}` : "")
     : elegidos.length === 1 ? codigoRegistro(elegidos[0], instrMap) : elegidos.length ? "Instrumentos seleccionados" : "";
+  const alcance: AlcanceTexto = modo === "hvac"
+    ? { tipo: "hvac", codigo: hvac?.codigo ?? "", nombreUma: hvac?.nombre_uma ?? "", descripcion: hvac?.descripcion ?? "" }
+    : { tipo: "instrumentos", codigos: [...new Set(elegidos.map((r) => codigoRegistro(r, instrMap)))].sort() };
   const fechasOk = ISO.test(desde) && ISO.test(hasta) && desde <= hasta;
 
   const { bloques } = useMemo(
