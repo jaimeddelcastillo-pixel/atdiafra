@@ -9,7 +9,7 @@ import type { Registro } from "@/lib/semanas";
 import { descriptive } from "./statistics";
 import {
   capacidad, cartaXbarMRR, CONSTANTES_XR, D2_MR, E2_MR, dictamen, limitesDesdeParametros, normalidad,
-  senalesFueraDeControl, TEXTO_INVESTIGAR_CAUSA_ESPECIAL, type DictamenPNO,
+  senalesFueraDeControl, suficienciaMuestra, TEXTO_INVESTIGAR_CAUSA_ESPECIAL, type DictamenPNO, type Senal, type Suficiencia,
 } from "./estadistica-pno";
 import { esLecturaUtil, fechaRealISO, recortarSemanasPorFecha } from "./fechas-lectura";
 
@@ -30,7 +30,10 @@ interface Grafica {
   cy: number;
 }
 
-interface Bloque {
+export interface PuntoTendencia { fecha: string; valor: number; lecturas: number[]; reglas: string[]; fuera: boolean }
+export interface CalidadDatos { nLecturas: number; nDias: number; habilesSinLectura: number; dudosas: number; nSuficiencia: number; suficiencia: Suficiencia }
+
+export interface Bloque {
   hoja: string; codigo: string; variable: string; bitacora: string; tipo: Tipo;
   ubicacion: string; iso: string; lie: number | null; lse: number | null; unidad: string;
   n: number; media: number | null; s: number | null; min: number | null; max: number | null;
@@ -39,7 +42,9 @@ interface Bloque {
   normalidad: string; nSenales: number; dict: DictamenPNO | null;
   tablaLimites: Fila[]; filas: Fila[]; encabezado: string[]; graficas: Grafica[];
   saturacion?: number | null; cambios?: CambioFiltro[];
+  puntos: PuntoTendencia[]; calidad: CalidadDatos; registroId: string; instrumentoId: string | null;
 }
+type BaseBloque = Omit<Bloque, "n" | "media" | "s" | "min" | "max" | "LAS" | "LAI" | "LAcS" | "LAcI" | "Cp" | "Cpk" | "Pp" | "Ppk" | "normalidad" | "nSenales" | "dict" | "tablaLimites" | "filas" | "encabezado" | "graficas" | "puntos">;
 
 export interface PaqueteArgs {
   codigoAT: string;
@@ -52,6 +57,8 @@ export interface PaqueteArgs {
   hvac?: SistemaHVAC;
   /** Cambios de filtro registrados (todas las fechas; se filtran por periodo). */
   cambiosFiltro?: CambioFiltro[];
+  /** Texto propuesto (secciones del FOR-VAL-16-02) para la hoja "Texto". */
+  texto?: { titulo: string; cuerpo: string }[];
 }
 
 // ---------------------------------------------------------------- utilidades
@@ -139,7 +146,34 @@ const specTxt = (lie: number | null, lse: number | null, u: string) =>
 const dictTxt = (d: DictamenPNO | null) => (d ? `${d.estadoControl} · ${d.cumplimientoEspecificacion}` : "Sin datos");
 
 // ---------------------------------------------------------------- bloques
-function bloquePresion(base: Omit<Bloque, "n" | "media" | "s" | "min" | "max" | "LAS" | "LAI" | "LAcS" | "LAcI" | "Cp" | "Cpk" | "Pp" | "Ppk" | "normalidad" | "nSenales" | "dict" | "tablaLimites" | "filas" | "encabezado" | "graficas">,
+const reglasDe = (sen: Senal[], i: number) => sen.filter((x) => x.index === i).map((x) => `Regla ${x.rule}: ${x.description}`);
+
+/** Calidad de datos: lecturas, días, días hábiles sin lectura (no N/A), dudosas de la IA. */
+function calidadDe(r: Registro, campo: "lecturas" | "lecturas_hr", desde: string, hasta: string, nSuficiencia: (nDias: number, nLect: number) => number): CalidadDatos {
+  const conLectura = new Set<string>(), soloNA = new Set<string>(), vistos = new Set<string>();
+  let nLecturas = 0, dudosas = 0;
+  for (const s of recortarSemanasPorFecha(r.semanas, desde, hasta)) {
+    for (const p of (s[campo] ?? [])) {
+      const f = fechaRealISO(s.semana_inicio, p.dia);
+      vistos.add(f);
+      if (esLecturaUtil(p)) { conLectura.add(f); nLecturas++; if (p._dudoso) dudosas++; }
+      else if (p._na) soloNA.add(f);
+    }
+  }
+  const hoy = new Date().toISOString().slice(0, 10);
+  const fin = hasta < hoy ? hasta : hoy;
+  let habiles = 0;
+  for (let d = new Date(desde + "T00:00:00Z"); d.toISOString().slice(0, 10) <= fin; d.setUTCDate(d.getUTCDate() + 1)) {
+    const wd = d.getUTCDay(), iso = d.toISOString().slice(0, 10);
+    if (wd === 0 || wd === 6 || conLectura.has(iso)) continue;
+    if (soloNA.has(iso)) continue; // festivo / N/A marcado
+    habiles++;
+  }
+  const nS = nSuficiencia(conLectura.size, nLecturas);
+  return { nLecturas, nDias: conLectura.size, habilesSinLectura: habiles, dudosas, nSuficiencia: nS, suficiencia: suficienciaMuestra(nS) };
+}
+
+function bloquePresion(base: BaseBloque,
   dias: { fecha: string; valores: number[] }[], rango: string, hasta: string): Bloque {
   const fechas = dias.map((d) => d.fecha);
   const vals = dias.map((d) => d.valores.reduce((a, b) => a + b, 0) / d.valores.length);
@@ -228,6 +262,7 @@ function bloquePresion(base: Omit<Bloque, "n" | "media" | "s" | "min" | "max" | 
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
     nSenales: idxSen.size, dict, tablaLimites, filas, encabezado,
+    puntos: vals.map((v, i) => ({ fecha: fechas[i], valor: v, lecturas: dias[i].valores, reglas: reglasDe(sen, i), fuera: dias[i].valores.some(fueraLectura) })),
     graficas: filas.length ? [{
       hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series,
       titulo: [base.codigo, base.ubicacion, `${base.iso} · ${rango}`],
@@ -237,7 +272,7 @@ function bloquePresion(base: Omit<Bloque, "n" | "media" | "s" | "min" | "max" | 
   };
 }
 
-function bloqueTHR(base: Parameters<typeof bloquePresion>[0], dias: { fecha: string; valores: number[] }[], rango: string, esHR: boolean): Bloque {
+function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[], rango: string, esHR: boolean): Bloque {
   const carta = cartaXbarMRR(dias.map((d) => d.valores));
   const todos = carta ? carta.subgrupos.flatMap((g) => dias[g.indice].valores) : [];
   const d = descriptive(todos);
@@ -301,6 +336,10 @@ function bloqueTHR(base: Parameters<typeof bloquePresion>[0], dias: { fecha: str
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
     nSenales: idxSen.size, dict, tablaLimites, filas, encabezado,
+    puntos: (carta?.subgrupos ?? []).map((g, i) => {
+      const vs = dias[g.indice].valores;
+      return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };
+    }),
     graficas: filas.length && c ? [
       { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sX, titulo: tit, tituloY, yMin: eX.min, yMax: eX.max, xMin: x0, xMax: x1, cy: CY },
       { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sR, titulo: [`${base.codigo} — Rangos (R)`], tituloY: `R ${esHR ? "(%HR)" : "(°C)"}`, yMin: Math.max(0, eR.min), yMax: eR.max, xMin: x0, xMax: x1, cy: CY_R },
@@ -360,9 +399,12 @@ class HojaBuilder {
 const stVal = (v: unknown) => (typeof v === "number" ? ST.num : ST.txt);
 
 // ---------------------------------------------------------------- principal
-export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo: string; bloques: number }> {
+export interface PortadaInst { codigo: string; bitacora: string; variable: string; n: number }
+
+/** Construye los bloques (cálculos del motor) usados por la pantalla /reporte/tendencias y por el Excel. */
+export function construirBloques(a: Omit<PaqueteArgs, "codigoAT" | "sistema" | "texto">): { bloques: Bloque[]; portadaInst: PortadaInst[] } {
   const rango = `${fmtDMY(a.desde)} – ${fmtDMY(a.hasta)}`;
-  const usadas = new Set<string>(["portada", "resumen", "gráficas"]);
+  const usadas = new Set<string>(["portada", "resumen", "gráficas", "texto"]);
   const regs = [...a.registros].sort((x, y) => {
     const cx = (x.instrumento_id && a.instrMap.get(x.instrumento_id)?.codigo) || x.nombre;
     const cy = (y.instrumento_id && a.instrMap.get(y.instrumento_id)?.codigo) || y.nombre;
@@ -370,12 +412,12 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
   });
 
   const bloques: Bloque[] = [];
-  const portadaInst: { codigo: string; bitacora: string; variable: string; n: number }[] = [];
+  const portadaInst: PortadaInst[] = [];
   for (const r of regs) {
     const ins = r.instrumento_id ? a.instrMap.get(r.instrumento_id) : undefined;
     const codigo = ins?.codigo ?? r.nombre;
     const bit = ins?.codigo_bitacora?.trim() || r.nombre;
-    const comun = { codigo, bitacora: bit, ubicacion: ubicacionDe(r, ins, a.areasMap), iso: isoDe(r, ins, a.areasMap) };
+    const comun = { codigo, bitacora: bit, ubicacion: ubicacionDe(r, ins, a.areasMap), iso: isoDe(r, ins, a.areasMap), registroId: r.id, instrumentoId: ins?.id ?? null };
     if (r.modulo === "temphr") {
       for (const [campo, v, lie, lse, u] of [["lecturas", "T", r.lie_t, r.lse_t, "°C"], ["lecturas_hr", "HR", r.lie_hr, r.lse_hr, "%HR"]] as const) {
         const dias = lecturasPorDia(r, campo, a.desde, a.hasta);
@@ -383,7 +425,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
         portadaInst.push({ codigo, bitacora: bit, variable: v === "T" ? "Temperatura" : "Humedad relativa", n });
         if (!n) continue;
         const hoja = nombreHoja(`${codigo} ${v}`, usadas);
-        bloques.push(bloqueTHR({ ...comun, hoja, variable: v === "T" ? "Temperatura" : "Humedad relativa", tipo: "thr", lie: lie ?? null, lse: lse ?? null, unidad: u }, dias, rango, v === "HR"));
+        bloques.push(bloqueTHR({ ...comun, hoja, calidad: calidadDe(r, campo, a.desde, a.hasta, (nd) => nd), variable: v === "T" ? "Temperatura" : "Humedad relativa", tipo: "thr", lie: lie ?? null, lse: lse ?? null, unidad: u }, dias, rango, v === "HR"));
       }
     } else if (r.modulo === "presiones" || r.modulo === "filtros") {
       const dias = lecturasPorDia(r, "lecturas", a.desde, a.hasta);
@@ -393,13 +435,19 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
       const hoja = nombreHoja(codigo, usadas);
       const unidad = r.semanas.find((s) => s.unidad?.trim())?.unidad || "Pa";
       bloques.push(bloquePresion({
-        ...comun, hoja, variable: "Presión diferencial", tipo: r.modulo === "filtros" || ins?.tipo === "manometro_filtro" ? "filtro" : "presion",
+        ...comun, hoja, calidad: calidadDe(r, "lecturas", a.desde, a.hasta, (_nd, nl) => nl), variable: "Presión diferencial", tipo: r.modulo === "filtros" || ins?.tipo === "manometro_filtro" ? "filtro" : "presion",
         lie: r.lie ?? ins?.lie_pa ?? null, lse: r.lse ?? ins?.lse_pa ?? null, unidad,
         saturacion: ins?.dp_final_fabricante ?? null,
         cambios: (a.cambiosFiltro ?? []).filter((c) => c.instrumento_id === ins?.id),
       }, dias, rango, a.hasta));
     }
   }
+  return { bloques, portadaInst };
+}
+
+export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo: string; bloques: number }> {
+  const rango = `${fmtDMY(a.desde)} – ${fmtDMY(a.hasta)}`;
+  const { bloques, portadaInst } = construirBloques(a);
 
   const wb = XLSX.utils.book_new();
   const hojas: { nombre: string; b: HojaBuilder; anclas: { col: number; row: number; g: Grafica }[]; cf?: string; cols: number[] }[] = [];
@@ -483,6 +531,18 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
       row += k.tablaLimites.length + 3;
     }
     hojas.push({ nombre: "Gráficas", b, anclas, cols: Array(8).fill(13) });
+  }
+
+  if (a.texto?.length) {
+    const b = new HojaBuilder();
+    b.set(0, 0, `Texto propuesto · ${a.codigoAT} · ${a.sistema} · ${rango}`, ST.titulo);
+    let row = 2;
+    for (const t of a.texto) {
+      b.set(row++, 0, t.titulo, ST.bold);
+      for (const linea of t.cuerpo.split("\n")) b.set(row++, 0, linea, ST.normal);
+      row++;
+    }
+    hojas.push({ nombre: "Texto", b, anclas: [], cols: [140] });
   }
 
   for (const h of hojas) {
