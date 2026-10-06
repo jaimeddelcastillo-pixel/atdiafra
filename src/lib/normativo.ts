@@ -1,7 +1,7 @@
 // Análisis normativo trimestral/anual: cumplimiento ≥90 lecturas, estadísticas y fuera de spec.
 import type { Registro, Semana, PuntoLectura } from "./semanas";
 import { coberturaReal, esLecturaUtil, recortarSemanasPorFecha } from "./fechas-lectura";
-import { capacidad, cartaXbarR, limitesDesdeParametros, subgruposPorDia, suficienciaMuestra } from "./estadistica-pno";
+import { capacidad, cartaXbarMRR, limitesDesdeParametros, subgruposPorDia, suficienciaMuestra } from "./estadistica-pno";
 
 export const MINIMO_NORMATIVO = 90;
 
@@ -156,7 +156,7 @@ export type EstadisticaSerie = {
   /** σ largo plazo (s global, n−1). */
   sigmaLP: number | null;
   /** Carta X̄-R (solo con subgrupos racionales). */
-  carta: { subgrupos: number; tamano: number; xbarbar: number; Rbar: number; LCS: number; LCI: number } | null;
+  carta: { subgrupos: number; tamano: number; xbarbar: number; Rbar: number; MRbar: number; sigmaEntreDias: number; LCS: number; LCI: number } | null;
   /** Límites de alerta/acción PNO 9.3.7–9.3.8. */
   limites: { LAS: number; LAI: number; LAcS: number; LAcI: number; alertaAjustada: boolean } | null;
   /** n usado para suficiencia de capacidad (subgrupos o lecturas). */
@@ -202,9 +202,11 @@ function construirSerie(
   lse: number | null | undefined,
   lie: number | null | undefined,
   subgrupos: number[][] | null = null,
+  /** Presiones/filtros: medias diarias para límites de alerta/acción (spec sigue con lecturas sueltas). */
+  mediasDiarias: number[] | null = null,
 ): EstadisticaSerie {
   const s = statsBasicas(values);
-  const carta = subgrupos ? cartaXbarR(subgrupos) : null;
+  const carta = subgrupos ? cartaXbarMRR(subgrupos) : null;
   const sigmaLP = s.sdMuestral;
   const sigmaCP = carta ? carta.sigmaCortoPlazo : null;
   const nCapacidad = carta ? carta.subgrupos.length : s.n;
@@ -214,7 +216,10 @@ function construirSerie(
     ? capacidad({ media, sigmaCP, sigmaLP, lie, lse })
     : null;
   const suf = suficienciaMuestra(nCapacidad);
-  const lim = s.media != null && sigmaLP != null ? limitesDesdeParametros(s.media, sigmaLP, { lie, lse }) : null;
+  const sm = mediasDiarias && mediasDiarias.length > 1 ? statsBasicas(mediasDiarias) : null;
+  const lim = sm && sm.media != null && sm.sdMuestral != null
+    ? limitesDesdeParametros(sm.media, sm.sdMuestral, { lie, lse })
+    : s.media != null && sigmaLP != null ? limitesDesdeParametros(s.media, sigmaLP, { lie, lse }) : null;
   return {
     serie: nombre,
     unidad,
@@ -228,7 +233,7 @@ function construirSerie(
     sigmaCP,
     sigmaLP,
     carta: carta
-      ? { subgrupos: carta.subgrupos.length, tamano: carta.tamano, xbarbar: carta.xbarbar, Rbar: carta.Rbar, LCS: carta.LCSx, LCI: carta.LCIx }
+      ? { subgrupos: carta.subgrupos.length, tamano: carta.tamano, xbarbar: carta.xbarbar, Rbar: carta.Rbar, MRbar: carta.MRbar, sigmaEntreDias: carta.sigmaEntreDias, LCS: carta.LCSxMR, LCI: carta.LCIxMR }
       : null,
     limites: lim ? { LAS: lim.LAS, LAI: lim.LAI, LAcS: lim.LAcS, LAcI: lim.LAcI, alertaAjustada: lim.alertaAjustada } : null,
     nCapacidad,
@@ -254,7 +259,9 @@ function seriesDeRegistro(registro: Registro, semanas: Semana[]): { series: Esta
     series.push(construirSerie("Temperatura", "°C", valoresT, registro.lse_t, registro.lie_t, sgT));
     series.push(construirSerie("Humedad", "%HR", valoresHR, registro.lse_hr, registro.lie_hr, sgHR));
   } else {
-    series.push(construirSerie("Valor", "", valoresT, registro.lse, registro.lie));
+    const medias = subgruposPorDia(semanas.map((s) => ({ lecturas: s.lecturas })))
+      .filter((g) => g.length).map((g) => g.reduce((a, b) => a + b, 0) / g.length);
+    series.push(construirSerie("Valor", "", valoresT, registro.lse, registro.lie, null, medias));
   }
   return { series, total: valoresT.length + valoresHR.length };
 }
@@ -381,10 +388,11 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaHallazgo, string> = {
 };
 
 function clasificarCapacidadSerie(s: EstadisticaSerie): Capacidad {
+  // Etiqueta Capaz/Marginal/No capaz con Ppk (σ global); Cp/Cpk quedan como referencia dentro del día.
   if (s.cpkInsuficiente) return "n_insuficiente";
-  if (s.cpk == null) return "n_insuficiente";
-  if (s.cpk < CPK_FAIL) return "no_capaz";
-  if (s.cpk < CPK_WARN) return "marginal";
+  if (s.ppk == null) return "n_insuficiente";
+  if (s.ppk < CPK_FAIL) return "no_capaz";
+  if (s.ppk < CPK_WARN) return "marginal";
   return "capaz";
 }
 
