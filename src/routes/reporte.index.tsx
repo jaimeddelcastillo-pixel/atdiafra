@@ -390,7 +390,20 @@ function ReportePage() {
                     aria-label="Año de los periodos rápidos"
                     className="h-8 rounded-md border border-input bg-background px-2 text-sm"
                     value={y}
-                    onChange={(e) => setAnioPreset(Number(e.target.value))}
+                    onChange={(e) => {
+                      const ny = Number(e.target.value);
+                      setAnioPreset(ny);
+                      // Recorre el periodo actual al año elegido (mismo mes/día); si no aplica, año completo.
+                      const mismoAnio = desde.getFullYear() === hasta.getFullYear();
+                      if (mismoAnio && desde.getFullYear() === y) {
+                        const finMes = (m: number) => new Date(ny, m + 1, 0).getDate();
+                        setDesde(new Date(ny, desde.getMonth(), Math.min(desde.getDate(), finMes(desde.getMonth()))));
+                        setHasta(new Date(ny, hasta.getMonth(), Math.min(hasta.getDate(), finMes(hasta.getMonth()))));
+                      } else {
+                        setDesde(new Date(ny, 0, 1));
+                        setHasta(new Date(ny, 11, 31));
+                      }
+                    }}
                   >
                     {anios.map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
