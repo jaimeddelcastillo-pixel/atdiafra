@@ -118,7 +118,8 @@ export function TendenciaCard({ b }: { b: Bloque }) {
   };
   const copiarTabla = async () => {
     const t = tablaHTML(b);
-    toast[(await copiarHTML(t.html, t.texto)) ? "success" : "error"]((await Promise.resolve(true)) ? "Tabla copiada. Pégala en Word." : "");
+    if (await copiarHTML(t.html, t.texto)) toast.success("Tabla copiada. Pégala en Word.");
+    else toast.error("No se pudo copiar la tabla");
   };
 
   return (
