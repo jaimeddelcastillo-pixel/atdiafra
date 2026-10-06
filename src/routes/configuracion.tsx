@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
 import { Switch } from "@/components/ui/switch";
+import { FormatoForVal16Tab } from "@/components/FormatoForVal16Tab";
 import { supabase } from "@/integrations/supabase/client";
 import { CambiosFiltroEditor } from "@/components/CambiosFiltroEditor";
 import { useAuth } from "@/lib/auth-context";
@@ -73,17 +74,19 @@ function ConfiguracionPage() {
 
         <AutoemisionAjuste />
         <Tabs defaultValue="hvac" className="w-full">
-          <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
+          <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full sm:w-auto">
             <TabsTrigger value="hvac">Sistemas HVAC</TabsTrigger>
             <TabsTrigger value="areas">Áreas</TabsTrigger>
             <TabsTrigger value="instr">Instrumentos</TabsTrigger>
             <TabsTrigger value="pares">Objetivos de presión</TabsTrigger>
+            <TabsTrigger value="formato">Formato FOR-VAL-16-02</TabsTrigger>
           </TabsList>
 
           <TabsContent value="hvac" className="mt-6"><HVACTab /></TabsContent>
           <TabsContent value="areas" className="mt-6"><AreasTab /></TabsContent>
           <TabsContent value="instr" className="mt-6"><InstrumentosTab /></TabsContent>
           <TabsContent value="pares" className="mt-6"><ObjetivosTab /></TabsContent>
+          <TabsContent value="formato" className="mt-6"><FormatoForVal16Tab /></TabsContent>
         </Tabs>
       </main>
     </div>

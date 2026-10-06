@@ -42,7 +42,7 @@ interface AuditEntry {
   id: string;
   table_name: string;
   record_id: string | null;
-  operation: "INSERT" | "UPDATE" | "DELETE";
+  operation: "INSERT" | "UPDATE" | "DELETE" | "EXPORT_WORD";
   old_data: Record<string, unknown> | null;
   new_data: Record<string, unknown> | null;
   changed_by: string | null;
@@ -64,6 +64,7 @@ const TABLE_LABELS: Record<string, string> = {
 const OPERATION_VARIANTS: Record<AuditEntry["operation"], { label: string; cls: string }> = {
   INSERT: { label: "Creado", cls: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400" },
   UPDATE: { label: "Editado", cls: "bg-blue-500/15 text-blue-700 dark:text-blue-400" },
+  EXPORT_WORD: { label: "Exportó Word", cls: "bg-amber-500/15 text-amber-700 dark:text-amber-400" },
   DELETE: { label: "Eliminado", cls: "bg-red-500/15 text-red-700 dark:text-red-400" },
 };
 
@@ -172,6 +173,7 @@ function AuditoriaContent() {
                   <SelectItem value="all">Todas las operaciones</SelectItem>
                   <SelectItem value="INSERT">Creado</SelectItem>
                   <SelectItem value="UPDATE">Editado</SelectItem>
+                  <SelectItem value="EXPORT_WORD">Exportó Word</SelectItem>
                   <SelectItem value="DELETE">Eliminado</SelectItem>
                 </SelectContent>
               </Select>

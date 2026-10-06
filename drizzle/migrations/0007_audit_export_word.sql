@@ -1,0 +1,2 @@
+ALTER TABLE public.audit_log DROP CONSTRAINT audit_log_operation_check;
+ALTER TABLE public.audit_log ADD CONSTRAINT audit_log_operation_check CHECK (operation = ANY (ARRAY['INSERT','UPDATE','DELETE','EXPORT_WORD']));
