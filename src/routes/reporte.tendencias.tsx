@@ -136,7 +136,9 @@ function TendenciasPage() {
   const cobertura = useMemo(() => coberturaReal(elegidos.flatMap((r) => recortarSemanasPorFecha(r.semanas, desde, hasta))),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [elegidos.map((e) => e.id).join(","), desde, hasta]);
-  const textoAuto = useMemo(() => generarTexto(bloques, cobertura, alcance), [bloques, cobertura, alcance]);
+  const alcanceKey = JSON.stringify(alcance);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const textoAuto = useMemo(() => generarTexto(bloques, cobertura, alcance), [bloques, cobertura, alcanceKey]);
 
   // Texto: el guardado del registro AT gana; si no, el generado (mientras no se edite).
   useEffect(() => {
