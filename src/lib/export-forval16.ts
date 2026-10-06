@@ -10,6 +10,7 @@ import { descriptive } from "./statistics";
 import {
   capacidad, cartaXbarMRR, CONSTANTES_XR, D2_MR, E2_MR, dictamen, limitesDesdeParametros, normalidad,
   senalesFueraDeControl, suficienciaMuestra, TEXTO_INVESTIGAR_CAUSA_ESPECIAL, type DictamenPNO, type Senal, type Suficiencia,
+  fueraDeSpec,
 } from "./estadistica-pno";
 import { esLecturaUtil, fechaRealISO, recortarSemanasPorFecha } from "./fechas-lectura";
 
