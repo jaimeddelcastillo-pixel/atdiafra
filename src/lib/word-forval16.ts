@@ -2,7 +2,7 @@
 import {
   AlignmentType, BorderStyle, Document, Footer, Header, HorizontalPositionAlign, HorizontalPositionRelativeFrom,
   ImageRun, LevelFormat, Packer, PageBreak, PageNumber, Paragraph, ShadingType, Table, TableCell, TableRow,
-  TabStopType, TextRun, VerticalAlign, VerticalPositionAlign, VerticalPositionRelativeFrom, WidthType,
+  TextRun, VerticalAlign, VerticalPositionAlign, VerticalPositionRelativeFrom, WidthType,
 } from "docx";
 import logoDefault from "@/assets/diafra-logo.jpg";
 import type { Bloque } from "./export-forval16";
@@ -144,7 +144,7 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
     width: { size: W, type: WidthType.DXA }, columnWidths: c5,
     rows: [
       new TableRow({ children: [
-        celda([new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ type: lt.w && /png/i.test(f.logo ?? "") ? "png" : "jpg", data: logoBytes, transformation: { width: Math.min(logoW, 140), height: logoH }, altText: { title: "Logo", description: "Logo DIAFRA", name: "logo" } })] })], c5[0]),
+        celda([new Paragraph({ alignment: AlignmentType.CENTER, children: [new ImageRun({ type: f.logo?.startsWith("data:image/png") ? "png" : "jpg", data: logoBytes, transformation: { width: Math.min(logoW, 140), height: logoH }, altText: { title: "Logo", description: "Logo DIAFRA", name: "logo" } })] })], c5[0]),
         celda([pc("DIAFRA S.A. de C.V.", { b: true, sz: 12 }), pc("ANÁLISIS DE TENDENCIAS", { b: true, sz: 11 })], span(1, 4), { span: 4 }),
       ] }),
       new TableRow({ children: [celda([pc(`Título: ${a.tituloSistema}`, { b: true, al: AlignmentType.LEFT })], W, { span: 5 })] }),
@@ -246,14 +246,16 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
     const imgs = await a.png(b);
     const titulo = `${b.codigo} · ${ubicacionTxt(b.ubicacion)} — ${b.variable}`;
     cuerpo.push(par(titulo, { b: true, al: AlignmentType.LEFT, keep: true, after: 60 }));
-    imgs.forEach((im, i) => {
+    for (let i = 0; i < imgs.length; i++) {
+      const im = imgs[i];
+      const data = await bytesDe(im.blob);
       cuerpo.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, keepLines: true, children: [new ImageRun({
-        type: "png", data: im.blob as unknown as Uint8Array, transformation: { width: 605, height: i === 1 ? 189 : 340 },
+        type: "png", data, transformation: { width: 605, height: i === 1 ? 189 : 340 },
         altText: { title: im.nombre, description: titulo, name: im.nombre },
       })] }));
       nG++;
       cuerpo.push(par(`Gráfica ${nG}. ${i === 1 ? "Rangos (R) de " : ""}${b.codigo} — ${b.variable}, ${fmtDMY(a.desde)} – ${fmtDMY(a.hasta)}.`, { sz: 9, al: AlignmentType.CENTER, keep: true, after: 80 }));
-    });
+    }
     cuerpo.push(tablaLimites(b));
     if (b.notaTabla) cuerpo.push(new Paragraph({ keepNext: true, children: [run(b.notaTabla, { sz: 8 })] }));
     nT++;
@@ -300,7 +302,6 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
       children: [...portada, ...cuerpo],
     }],
   });
-  void TabStopType;
   const blob = await Packer.toBlob(doc);
   return { blob, archivo: nombreArchivoWord({ codigoAT: a.codigoAT, sistema: a.sistema, periodo: a.periodo, version: a.version }) };
 }
