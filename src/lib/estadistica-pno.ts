@@ -7,6 +7,24 @@ export interface DescriptivaPNO {
   rango: number; cv: number | null; p5: number; p95: number; asimetria: number; curtosis: number;
 }
 
+/** Subgrupo racional T/HR: un día con sus lecturas Mañana / Media tarde / Tarde. */
+export function subgruposPorDia<T extends { dia: string; turno: string; valor?: number | null; _na?: boolean }>(
+  semanas: { lecturas: T[] }[], orden: readonly string[] = ["Mañana", "Media tarde", "Tarde"],
+): number[][] {
+  const out: number[][] = [];
+  for (const sem of semanas) {
+    const porDia = new Map<string, { t: number; v: number }[]>();
+    for (const p of sem.lecturas ?? []) {
+      if (p._na || p.valor == null || !Number.isFinite(p.valor)) continue;
+      const arr = porDia.get(p.dia) ?? [];
+      arr.push({ t: orden.indexOf(p.turno), v: p.valor });
+      porDia.set(p.dia, arr);
+    }
+    for (const arr of porDia.values()) out.push(arr.sort((a, b) => a.t - b.t).map((x) => x.v));
+  }
+  return out;
+}
+
 export function descriptivaPNO(valores: number[]): DescriptivaPNO | null {
   const d = descriptive(valores);
   if (!d) return null;
@@ -29,19 +47,21 @@ export interface LimitesAlertaAccion {
 export function limitesAlertaAccion(valores: number[], spec: Spec = {}): LimitesAlertaAccion | null {
   const d = descriptive(valores);
   if (!d) return null;
-  const { mean: m, stdev: s } = d;
+  return limitesDesdeParametros(d.mean, d.stdev, spec);
+}
+
+/** Límites ±2σ/±3σ con recorte por especificación (PNO 9.3.7) y orden alerta/acción (9.3.8). */
+export function limitesDesdeParametros(m: number, s: number, spec: Spec = {}): LimitesAlertaAccion {
   const lie = spec.lie ?? null, lse = spec.lse ?? null;
   let LAS = m + 2 * s, LAI = m - 2 * s, LAcS = m + 3 * s, LAcI = m - 3 * s;
   const rec = { LAcS: false, LAcI: false };
-  // PNO 9.3.7
+  // PNO 9.3.7 — el límite de acción no rebasa la especificación
   if (lie != null && LAcI < lie) { LAcI = lie; rec.LAcI = true; }
   if (lse != null && LAcS > lse) { LAcS = lse; rec.LAcS = true; }
-  // PNO 9.3.8 — especificación de un solo lado inferior
+  // PNO 9.3.8 (y su espejo superior) — la alerta nunca queda fuera de su límite de acción
   let alertaAjustada = false;
-  if (lie != null && lse == null && LAI < lie) {
-    LAI = lie + 0.5 * (m - lie);
-    alertaAjustada = true;
-  }
+  if (LAI < LAcI) { LAI = LAcI + 0.5 * (m - LAcI); alertaAjustada = true; }
+  if (LAS > LAcS) { LAS = LAcS - 0.5 * (LAcS - m); alertaAjustada = true; }
   return { media: m, s, LAS, LAI, LAcS, LAcI, recortadoPorSpec: rec, alertaAjustada };
 }
 
@@ -100,10 +120,14 @@ export interface Capacidad {
   etiquetaCpk: EtiquetaCapacidad; etiquetaPpk: EtiquetaCapacidad; referencial: boolean;
 }
 
-export function capacidad(p: { media: number; sigmaCP: number; sigmaLP: number; lie?: number | null; lse?: number | null; normal?: boolean }): Capacidad {
-  const { media: m, sigmaCP: sc, sigmaLP: sl } = p;
+/**
+ * Cp/Cpk con σ corto plazo (R̄/d₂ de subgrupos racionales); Pp/Ppk con s global.
+ * Sin subgrupos (sigmaCP omitido) no se calculan Cp/Cpk.
+ */
+export function capacidad(p: { media: number; sigmaCP?: number | null; sigmaLP?: number | null; lie?: number | null; lse?: number | null; normal?: boolean }): Capacidad {
+  const m = p.media, sc = p.sigmaCP ?? null, sl = p.sigmaLP ?? null;
   const lie = p.lie ?? null, lse = p.lse ?? null;
-  const ok = (s: number) => Number.isFinite(s) && s > 0;
+  const ok = (s: number | null): s is number => s != null && Number.isFinite(s) && s > 0;
   const Cps = lse != null && ok(sc) ? (lse - m) / (3 * sc) : null;
   const Cpi = lie != null && ok(sc) ? (m - lie) / (3 * sc) : null;
   const Cp = lie != null && lse != null && ok(sc) ? (lse - lie) / (6 * sc) : null;
@@ -153,8 +177,9 @@ export interface Senal { index: number; rule: 1 | 2 | 3 | 4 | 5 | 6; description
 export function senalesFueraDeControl(valores: number[], media: number, sigma: number): Senal[] {
   const out: Senal[] = [...westernElectric(valores, media, sigma)];
   if (!Number.isFinite(sigma) || sigma === 0) return out;
-  for (let i = 6; i < valores.length; i++) {
-    const w = valores.slice(i - 6, i + 1);
+  // Nelson 5: 6 puntos consecutivos = 5 incrementos del mismo signo
+  for (let i = 5; i < valores.length; i++) {
+    const w = valores.slice(i - 5, i + 1);
     const diffs = w.slice(1).map((x, k) => x - w[k]);
     if (diffs.every((d) => d > 0) || diffs.every((d) => d < 0))
       out.push({ index: i, rule: 5, description: "6 puntos consecutivos ascendentes o descendentes" });
@@ -172,26 +197,55 @@ export type Suficiencia = "Suficiente" | "Aceptable" | "Insuficiente – requier
 export const suficienciaMuestra = (n: number): Suficiencia =>
   n >= 25 ? "Suficiente" : n >= 20 ? "Aceptable" : "Insuficiente – requiere justificación técnica";
 
-export type Dictamen = "BAJO CONTROL" | "BAJO CONTROL CON ALERTAS" | "FUERA DE CONTROL";
+export type EstadoControlPNO = "BAJO CONTROL" | "BAJO CONTROL CON ALERTAS" | "FUERA DE CONTROL";
+export type CumplimientoEspecificacion = "CUMPLE" | "NO CUMPLE";
 
+export const TEXTO_INVESTIGAR_CAUSA_ESPECIAL =
+  "Fuera de control estadístico sin incumplir especificación: investigar causa especial (PNO-VAL-16 9.4)";
+
+export interface DictamenPNO {
+  estadoControl: EstadoControlPNO;
+  cumplimientoEspecificacion: CumplimientoEspecificacion;
+  requiereInvestigacion: boolean;
+  motivos: string[];
+}
+
+/** Dictamen en dos dimensiones independientes: control estadístico y cumplimiento de especificación. */
 export function dictamen(p: {
   valores: number[]; spec?: Spec; limites: Pick<LimitesAlertaAccion, "LAS" | "LAI" | "LAcS" | "LAcI">;
   senales: Senal[]; cpk?: number | null;
-}): { dictamen: Dictamen; motivos: string[] } {
+  /** Límites de control (p. ej. LCS/LCI de la carta X̄). */
+  control?: { LCS: number; LCI: number } | null;
+}): DictamenPNO {
   const lie = p.spec?.lie ?? null, lse = p.spec?.lse ?? null;
   const { LAS, LAI, LAcS, LAcI } = p.limites;
   const motivos: string[] = [];
+
   const fueraSpec = p.valores.filter((v) => (lie != null && v < lie) || (lse != null && v > lse)).length;
   const fueraAccion = p.valores.filter((v) => v > LAcS || v < LAcI).length;
-  const regla1 = p.senales.some((s) => s.rule === 1);
-  if (fueraSpec) motivos.push(`${fueraSpec} punto(s) fuera de especificación`);
-  if (fueraAccion) motivos.push(`${fueraAccion} punto(s) fuera del límite de acción`);
-  if (fueraSpec || fueraAccion) return { dictamen: "FUERA DE CONTROL", motivos };
-  const entreAlerta = p.valores.filter((v) => v > LAS || v < LAI).length;
+  const fueraLC = p.control ? p.valores.filter((v) => v > p.control!.LCS || v < p.control!.LCI).length : 0;
+  const regla1 = p.senales.filter((s) => s.rule === 1).length;
+  const entreAlerta = p.valores.filter((v) => (v > LAS && v <= LAcS) || (v < LAI && v >= LAcI)).length;
   const otras = p.senales.filter((s) => s.rule !== 1).length;
-  if (regla1) motivos.push("Regla 1 (punto fuera de ±3σ)");
+
+  if (regla1) motivos.push(`Regla 1: ${regla1} punto(s) fuera de ±3σ`);
+  if (fueraLC) motivos.push(`${fueraLC} punto(s) fuera de LCS/LCI`);
+  if (fueraAccion) motivos.push(`${fueraAccion} punto(s) fuera del límite de acción`);
   if (entreAlerta) motivos.push(`${entreAlerta} punto(s) entre alerta y acción`);
   if (otras) motivos.push(`${otras} señal(es) de reglas 2–6`);
-  if (p.cpk != null && p.cpk < 1.33) motivos.push(`Cpk ${p.cpk.toFixed(2)} < 1.33`);
-  return { dictamen: motivos.length ? "BAJO CONTROL CON ALERTAS" : "BAJO CONTROL", motivos };
+
+  const estadoControl: EstadoControlPNO = regla1 || fueraLC || fueraAccion
+    ? "FUERA DE CONTROL"
+    : entreAlerta || otras ? "BAJO CONTROL CON ALERTAS" : "BAJO CONTROL";
+
+  const cumplimientoEspecificacion: CumplimientoEspecificacion = fueraSpec ? "NO CUMPLE" : "CUMPLE";
+  if (fueraSpec) motivos.push(`${fueraSpec} punto(s) fuera de especificación`);
+
+  const requiereInvestigacion = fueraSpec > 0 || estadoControl === "FUERA DE CONTROL";
+  if (estadoControl === "FUERA DE CONTROL" && !fueraSpec) motivos.push(TEXTO_INVESTIGAR_CAUSA_ESPECIAL);
+
+  // Nota de capacidad: no altera estadoControl
+  if (p.cpk != null && p.cpk < 1.33) motivos.push("Cpk < 1.33");
+
+  return { estadoControl, cumplimientoEspecificacion, requiereInvestigacion, motivos };
 }
