@@ -195,7 +195,7 @@ export function TendenciaCard({ b }: { b: Bloque }) {
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
             {leyendaDe(g).map((l) => (
               <span key={l.nombre} className="inline-flex items-center gap-1">
-                <svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke={l.linea === "none" ? "transparent" : l.color} strokeDasharray={dash(l.linea)} strokeWidth="1.5" />{(l.marcador || l.linea === "none") && <circle cx="9" cy="4" r="2.5" fill={l.color} />}</svg>
+                <svg width="18" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke={l.linea === "none" ? "transparent" : l.color} strokeDasharray={dash(l.linea)} strokeWidth="1.5" />{(l.marcador || l.linea === "none") && <circle cx="9" cy="4" r="2.5" fill={l.hueco ? "none" : l.color} stroke={l.hueco ? l.color : l.borde ?? "none"} strokeWidth={l.hueco ? 1.2 : 0.6} />}</svg>
                 {l.nombre}
               </span>
             ))}
