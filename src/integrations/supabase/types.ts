@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_config: {
+        Row: {
+          id: number
+          permitir_autoemision: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          permitir_autoemision?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          permitir_autoemision?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       areas_clasificadas: {
         Row: {
           activo: boolean

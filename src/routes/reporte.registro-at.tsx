@@ -30,7 +30,7 @@ interface Fila {
   created_at: string; created_by_email: string | null; usuario_email: string | null; updated_at: string; updated_by_email: string | null;
   version: number; dictamen_global: string | null; estado: string;
 }
-const fecha = (iso: string) => new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+const fecha = (iso: string) => { const d = new Date(iso); const z = (n: number) => String(n).padStart(2, "0"); return `${z(d.getDate())}/${z(d.getMonth() + 1)}/${d.getFullYear()} ${z(d.getHours())}:${z(d.getMinutes())}`; };
 const periodo = (f: Fila) => f.periodo_etiqueta ?? `${f.periodo_desde} – ${f.periodo_hasta}`;
 const estadoTxt = (e: string) => (e === "emitido" ? "Emitido" : "Borrador");
 const TODOS = "__todos";

@@ -36,6 +36,13 @@
       "when": 1791318413551,
       "tag": "0004_registro_at_estado",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791319500070,
+      "tag": "0005_autoemision_at",
+      "breakpoints": true
     }
   ]
 }
