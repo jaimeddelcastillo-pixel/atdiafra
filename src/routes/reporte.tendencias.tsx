@@ -395,7 +395,14 @@ function TendenciasPage() {
             <fieldset disabled={soloLectura} className="space-y-1.5 md:col-span-2">
               <Label>Periodo (cada día por su fecha real)</Label>
               <div className="flex flex-wrap items-center gap-2">
-                <Select value={String(anio)} onValueChange={(v) => setAnio(Number(v))}>
+                <Select value={String(anio)} onValueChange={(v) => {
+                  const ny = Number(v);
+                  const actual = periodosDe(anio).find((p) => p.d === desde && p.h === hasta);
+                  const nuevo = actual ? periodosDe(ny).find((p) => p.l === actual.l) : undefined;
+                  const p = nuevo ?? periodosDe(ny)[0];
+                  setAnio(ny);
+                  if (p) { setDesde(p.d); setHasta(p.h); }
+                }}>
                   <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
                   <SelectContent>{anios.map((y) => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}</SelectContent>
                 </Select>
