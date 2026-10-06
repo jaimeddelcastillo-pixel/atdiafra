@@ -247,6 +247,39 @@ function TendenciasPage() {
     finally { setOcupado(false); }
   };
 
+  const exportarWord = async () => {
+    if (!registroEditable || !texto) { toast.error("Guarda primero el registro AT para exportar el Word."); return; }
+    if (editado && !soloLectura && JSON.stringify(texto) !== JSON.stringify({ ...textoAuto, ...registroEditable.texto })) {
+      toast.error("Hay cambios sin guardar. Guarda el registro antes de exportar el Word."); return;
+    }
+    setOcupado(true);
+    try {
+      const [{ generarWordForVal16 }, { cargarFormato }] = await Promise.all([import("@/lib/word-forval16"), import("@/lib/formato-forval16")]);
+      const formato = await cargarFormato();
+      // Control de cambios: v1 «Documento nuevo» + cada «Nueva versión» con su motivo
+      const { data: hist } = await supabase.from("registro_analisis_tendencias_historial").select("version,datos").eq("registro_id", registroEditable.id).order("version");
+      type V = { version: number; motivo_version?: string | null; updated_at?: string; updated_by_email?: string | null };
+      const versiones: V[] = [...(hist ?? []).map((h) => h.datos as unknown as V), registroEditable as unknown as V].sort((x, y) => x.version - y.version);
+      const cambiosV = [{ de: "N/A", a: "Nuevo", fecha: fechaHora(registroEditable.created_at).slice(0, 10), descripcion: "Documento nuevo.", por: registroEditable.created_by_email ?? "—" }];
+      versiones.forEach((v, i) => {
+        if (i > 0 && v.motivo_version && v.motivo_version !== versiones[i - 1].motivo_version)
+          cambiosV.push({ de: String(versiones[i - 1].version), a: String(v.version), fecha: v.updated_at ? fechaHora(v.updated_at).slice(0, 10) : "—", descripcion: v.motivo_version, por: v.updated_by_email ?? "—" });
+      });
+      const periodo = registroEditable.periodo_etiqueta ?? `${desde}_${hasta}`;
+      const tituloSistema = modo === "hvac" && hvac ? `Sistema HVAC ${hvac.codigo} ${hvac.nombre_uma} (${hvac.descripcion})` : `Instrumentos ${alcance.tipo === "instrumentos" ? alcance.codigos.join(", ") : sistema}`;
+      const { blob, archivo } = await generarWordForVal16({
+        formato, codigoAT: registroEditable.codigo, version: registroEditable.version,
+        estado: registroEditable.estado === "emitido" ? "emitido" : "borrador", emitidoAt: registroEditable.emitido_at,
+        sistema: registroEditable.sistema, tituloSistema, periodo, desde, hasta, bloques, texto,
+        justificaciones: registroEditable.justificaciones, cambios: cambiosV, png: (b) => pngsDeTarjeta(null, b),
+      });
+      descargarBlob(blob, archivo);
+      await supabase.rpc("registrar_exportacion_at", { _registro_id: registroEditable.id, _version: registroEditable.version, _estado: registroEditable.estado, _archivo: archivo });
+      toast.success(`Descargado ${archivo}`);
+    } catch (e) { toast.error(e instanceof Error ? e.message : "Error al exportar Word"); }
+    finally { setOcupado(false); }
+  };
+
   const marcarEmitido = async () => {
     if (!registroEditable) return;
     if (!autoemision && user && user.id === (registroEditable.updated_by ?? registroEditable.created_by)) {
@@ -482,7 +515,7 @@ function TendenciasPage() {
               {esAdmin && soloLectura && (
                 <Button variant="outline" className="gap-1" onClick={nuevaVersion} disabled={ocupado}><Unlock className="h-4 w-4" /> Nueva versión</Button>
               )}
-              <Button variant="outline" className="gap-1" disabled title="Próximamente"><FileText className="h-4 w-4" /> Exportar Word</Button>
+              <Button variant="outline" className="gap-1" onClick={exportarWord} disabled={ocupado || !registroEditable || conflicto} title={!registroEditable ? "Guarda el registro AT para exportar el Word" : undefined}><FileText className="h-4 w-4" /> Exportar Word{registroEditable && !soloLectura ? " (borrador)" : ""}</Button>
               {faltaJustif.length > 0 && <p className="w-full text-xs text-destructive">Escribe la justificación técnica de los instrumentos con muestra insuficiente para poder exportar.</p>}
             </section>
           </>
