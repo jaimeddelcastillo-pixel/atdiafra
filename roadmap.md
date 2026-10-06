@@ -6,3 +6,5 @@
 - [x] Arrastrar y soltar en la carga individual y por lote.
 - [x] Fijar las semanas y añadir una barra horizontal visible en Avance semanal.
 - [x] Exportación de tendencias Excel con gráficas editables para temperatura, HR y presión.
+- [x] Pantalla /reporte/tendencias: selección, calidad de datos, gráficas copiables, texto propuesto y registro AT (FOR-VAL-16-01).
+- [ ] Exportar Word del FOR-VAL-16-02 (botón deshabilitado por ahora).

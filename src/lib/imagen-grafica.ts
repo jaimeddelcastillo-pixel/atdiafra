@@ -26,7 +26,7 @@ export async function graficaPNG(svg: SVGSVGElement, titulo: string[], leyenda: 
   clone.setAttribute("viewBox", `0 0 ${bw} ${bh}`);
   clone.setAttribute("width", String(w));
   clone.setAttribute("height", String(Math.max(10, h - tituloH - leyH)));
-  clone.setAttribute("preserveAspectRatio", "none");
+  clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.querySelectorAll("text").forEach((t) => { t.setAttribute("font-family", FONT); t.setAttribute("fill", t.getAttribute("fill") || "#374151"); });
   clone.querySelectorAll(".recharts-tooltip-cursor, .recharts-active-dot").forEach((n) => n.remove());

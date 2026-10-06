@@ -46,7 +46,7 @@ function Grafico({ b, g, ratio }: { b: Bloque; g: Grafica; ratio: string }) {
   const ticks: number[] = [];
   for (let y = g.yMin; y <= g.yMax + 1e-9; y += g.yStep) ticks.push(Math.round(y * 1000) / 1000);
   return (
-    <div data-grafica className={cn("w-full bg-background", ratio)}>
+    <div data-grafica className={cn("w-full bg-card", ratio)}>
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={datos} margin={{ top: 8, right: 16, bottom: 18, left: 8 }}>
           <CartesianGrid vertical={false} stroke="#E5E7EB" />
