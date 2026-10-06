@@ -61,24 +61,29 @@ function periodosDe(y: number) {
 interface RegistroAT {
   id: string; codigo: string; justificaciones: Record<string, string>; texto: Partial<TextoForVal16>;
   sistema: string; periodo_desde: string; periodo_hasta: string; periodo_etiqueta: string | null;
-  created_at: string; created_by_email: string | null; updated_at: string; updated_by_email: string | null; version: number;
+  created_by: string | null; updated_by: string | null; created_at: string; created_by_email: string | null; updated_at: string; updated_by_email: string | null; version: number;
   estado: string; emitido_at: string | null; emitido_by_email: string | null; motivo_version: string | null;
   seleccion: { modo?: "hvac" | "instrumentos"; hvacId?: string; codigos?: string[] } | null;
   instrumentos: { codigo: string }[] | null;
 }
-const COLS_AT = "id,codigo,justificaciones,texto,sistema,periodo_desde,periodo_hasta,periodo_etiqueta,created_at,created_by_email,usuario_email,updated_at,updated_by_email,version,estado,emitido_at,emitido_by_email,motivo_version,seleccion,instrumentos";
+const COLS_AT = "id,codigo,justificaciones,texto,sistema,periodo_desde,periodo_hasta,periodo_etiqueta,created_by,updated_by,created_at,created_by_email,usuario_email,updated_at,updated_by_email,version,estado,emitido_at,emitido_by_email,motivo_version,seleccion,instrumentos";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const aRegistroAT = (d: any): RegistroAT => ({
   ...d, justificaciones: (d.justificaciones ?? {}) as Record<string, string>, texto: (d.texto ?? {}) as Partial<TextoForVal16>,
   created_by_email: d.created_by_email ?? d.usuario_email ?? null,
 });
-const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-MX", { dateStyle: "short", timeStyle: "short" });
+const fechaHora = (iso: string) => format(new Date(iso), "dd/MM/yyyy HH:mm");
 
 function TendenciasPage() {
   const search = Route.useSearch();
   const { user, hasRole } = useAuth();
   const esAdmin = hasRole("admin") || hasRole("super_admin");
   const puedeEditar = hasRole("editor") || esAdmin;
+  const [autoemision, setAutoemision] = useState(false);
+  useEffect(() => {
+    supabase.from("app_config").select("permitir_autoemision").eq("id", 1).maybeSingle()
+      .then(({ data }) => setAutoemision(!!data?.permitir_autoemision));
+  }, []);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [instr, setInstr] = useState<Instrumento[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
@@ -244,6 +249,9 @@ function TendenciasPage() {
 
   const marcarEmitido = async () => {
     if (!registroEditable) return;
+    if (!autoemision && user && user.id === (registroEditable.updated_by ?? registroEditable.created_by)) {
+      toast.error("Separación de funciones: tú creaste o modificaste esta versión; debe emitirla otro admin o super_admin."); return;
+    }
     if (editado && !window.confirm("Hay cambios sin guardar que no se incluirán. ¿Emitir la última versión guardada?")) return;
     if (!window.confirm(`¿Marcar ${registroEditable.codigo} como EMITIDO?\nYa no se podrá editar el texto, el sistema ni el periodo.`)) return;
     const { data, error } = await supabase.from("registro_analisis_tendencias").update({ estado: "emitido" }).eq("id", registroEditable.id).select(COLS_AT).single();
@@ -316,10 +324,17 @@ function TendenciasPage() {
                 </p>
               )}
               {atValido && registroEditable && (
+{soloLectura ? (
+                <div className="rounded-md border border-success/40 bg-success/10 p-2 text-xs">
+                  <p className="font-medium">Registro emitido · versión {registroEditable.version} · solo lectura</p>
+                  <p className="text-muted-foreground">Creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)}{registroEditable.emitido_by_email ? ` · emitido por ${registroEditable.emitido_by_email}` : ""}{registroEditable.emitido_at ? ` el ${fechaHora(registroEditable.emitido_at)}` : ""}</p>
+                </div>
+              ) : (
                 <div className="rounded-md border border-primary/40 bg-primary/10 p-2 text-xs">
                   <p className="font-medium">Editando registro existente {at} (creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)})</p>
                   <p className="text-muted-foreground">Versión {registroEditable.version} · estado {registroEditable.estado === "emitido" ? "Emitido" : "Borrador"}{registroEditable.motivo_version ? ` · motivo de versión: ${registroEditable.motivo_version}` : ""} · última modificación por {registroEditable.updated_by_email ?? registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.updated_at)}. Se pedirá confirmación al guardar.</p>
                 </div>
+              )}
               )}
             </div>
             <fieldset disabled={soloLectura} className="space-y-1.5 md:col-span-2">
