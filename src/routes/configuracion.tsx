@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
+import { CambiosFiltroEditor } from "@/components/CambiosFiltroEditor";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -453,6 +454,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
     lse_pa: "" as string | number,
     baseline_pa: "" as string | number,
     baseline_tolerancia_pct: 25 as string | number,
+    codigo_bitacora: "",
+    dp_final_fabricante: "" as string | number,
   });
   useEffect(() => {
     setForm({
@@ -463,6 +466,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
       lse_pa: item?.lse_pa ?? "",
       baseline_pa: item?.baseline_pa ?? "",
       baseline_tolerancia_pct: item?.baseline_tolerancia_pct ?? 25,
+      codigo_bitacora: item?.codigo_bitacora ?? "",
+      dp_final_fabricante: item?.dp_final_fabricante ?? "",
     });
   }, [item, open]);
 
@@ -478,6 +483,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
         baseline_pa: num(form.baseline_pa),
         baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
+        codigo_bitacora: form.codigo_bitacora.trim() || null,
+        dp_final_fabricante: num(form.dp_final_fabricante),
       });
       toast.success("Guardado"); onSaved();
     } catch (e) { toast.error((e as Error).message); }
@@ -492,6 +499,7 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} instrumento</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[70vh] overflow-y-auto">
           <Field label="Código"><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="INS-CMB-20" /></Field>
+          <Field label="Código de bitácora"><Input value={form.codigo_bitacora} onChange={(e) => setForm({ ...form, codigo_bitacora: e.target.value })} placeholder="BIT-CMB-24-33" /></Field>
           <Field label="Tipo">
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Instrumento["tipo"] })}>
               {(Object.keys(TIPO_LABEL) as (keyof typeof TIPO_LABEL)[]).map((k) => (
@@ -546,6 +554,11 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
                   <p className="text-[10px] text-muted-foreground">
                     Se dispara alerta si la lectura se desvía más del % indicado respecto al baseline.
                   </p>
+                  <Field label="ΔP final de saturación (fabricante)">
+                    <Input type="number" value={form.dp_final_fabricante}
+                      onChange={(e) => setForm({ ...form, dp_final_fabricante: e.target.value })} placeholder="ej. 450" />
+                  </Field>
+                  {item && <CambiosFiltroEditor instrumentoId={item.id} />}
                 </>
               )}
             </div>

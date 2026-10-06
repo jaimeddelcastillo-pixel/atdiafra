@@ -462,7 +462,7 @@ export function exportarNormativoPDF(
               data.cell.styles.textColor = [71, 85, 105];
               data.cell.styles.fontStyle = "italic";
             } else {
-              const c = colorCpk(s.cpk);
+              const c = colorCpk(s.ppk);
               if (c) {
                 data.cell.styles.fillColor = c;
                 data.cell.styles.textColor = 255;

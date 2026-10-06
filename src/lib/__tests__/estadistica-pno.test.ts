@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   cartaXbarR, limitesAlertaAccion, limitesDesdeParametros, suficienciaMuestra, capacidad, normalidad,
-  senalesFueraDeControl, dictamen, subgruposPorDia, TEXTO_INVESTIGAR_CAUSA_ESPECIAL,
+  senalesFueraDeControl, dictamen, subgruposPorDia, cartaXbarMRR, TEXTO_INVESTIGAR_CAUSA_ESPECIAL,
 } from "../estadistica-pno";
 import { descriptive } from "../statistics";
 import real from "./fixtures/ins-cmb-03-t-q1-2025.json";
@@ -149,5 +149,21 @@ describe("corrección 4 — subgrupo racional = día (Mañana/Media tarde/Tarde)
     expect(c.sigmaCortoPlazo).toBeCloseTo(0.743, 3);
     expect(cap.Cpk!).toBeCloseTo(1.227, 3);
     expect(cap.Ppk!).toBeCloseTo(0.980, 3);
+  });
+});
+
+describe("cartaXbarMRR (X̄-MR-R, PNO 9.3.4.1)", () => {
+  it("MR̄ = media de |diferencias| de X̄ con los subgrupos de prueba", () => {
+    const sg = subgruposPorDia(real.semanas as any);
+    const c = cartaXbarMRR(sg)!;
+    const xs = c.subgrupos.map((g) => g.xbar);
+    const difs = xs.slice(1).map((x, i) => Math.abs(x - xs[i]));
+    const esperado = difs.reduce((a, b) => a + b, 0) / difs.length;
+    expect(c.MR).toHaveLength(c.subgrupos.length - 1);
+    expect(c.MRbar).toBeCloseTo(esperado, 12);
+    expect(c.sigmaEntreDias).toBeCloseTo(esperado / 1.128, 12);
+    expect(c.LCSxMR).toBeCloseTo(c.xbarbar + 2.66 * esperado, 12);
+    expect(c.LCIxMR).toBeCloseTo(c.xbarbar - 2.66 * esperado, 12);
+    expect(c.LCSr).toBeCloseTo(2.574 * c.Rbar, 12);
   });
 });

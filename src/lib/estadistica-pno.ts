@@ -111,6 +111,33 @@ export function cartaXbarR(subgrupos: number[][]): CartaXbarR | null {
   };
 }
 
+/** Constante de rango móvil (n=2): d2 = 1.128; límites X̄ = X̄̄ ± 2.66·MR̄ (= 3/1.128). */
+export const E2_MR = 2.66;
+export const D2_MR = 1.128;
+
+export interface CartaXbarMRR extends CartaXbarR {
+  /** |X̄ᵢ − X̄ᵢ₋₁| para i ≥ 1 (en el orden de los subgrupos usados). */
+  MR: number[];
+  MRbar: number;
+  /** σ entre días = MR̄/1.128 — usado para reglas W.E./Nelson sobre la carta X̄. */
+  sigmaEntreDias: number;
+  /** LCS/LCI de la carta X̄ por rango móvil (X̄̄ ± 2.66·MR̄). */
+  LCSxMR: number; LCIxMR: number;
+}
+
+/** Carta de 3 vías X̄-MR-R (PNO 9.3.4.1): dependencia temporal entre días. */
+export function cartaXbarMRR(subgrupos: number[][]): CartaXbarMRR | null {
+  const base = cartaXbarR(subgrupos);
+  if (!base) return null;
+  const xs = base.subgrupos.map((g) => g.xbar);
+  const MR = xs.slice(1).map((x, i) => Math.abs(x - xs[i]));
+  const MRbar = MR.length ? MR.reduce((a, b) => a + b, 0) / MR.length : 0;
+  return {
+    ...base, MR, MRbar, sigmaEntreDias: MRbar / D2_MR,
+    LCSxMR: base.xbarbar + E2_MR * MRbar, LCIxMR: base.xbarbar - E2_MR * MRbar,
+  };
+}
+
 export type EtiquetaCapacidad = "Capaz" | "Marginal" | "No capaz" | "N/D";
 export const etiquetaCapacidad = (v: number | null): EtiquetaCapacidad =>
   v == null || !Number.isFinite(v) ? "N/D" : v >= 1.33 ? "Capaz" : v >= 1 ? "Marginal" : "No capaz";
