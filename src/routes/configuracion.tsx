@@ -498,6 +498,7 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         <DialogHeader><DialogTitle>{item ? "Editar" : "Nuevo"} instrumento</DialogTitle></DialogHeader>
         <div className="space-y-3 max-h-[70vh] overflow-y-auto">
           <Field label="Código"><Input value={form.codigo} onChange={(e) => setForm({ ...form, codigo: e.target.value })} placeholder="INS-CMB-20" /></Field>
+          <Field label="Código de bitácora"><Input value={form.codigo_bitacora} onChange={(e) => setForm({ ...form, codigo_bitacora: e.target.value })} placeholder="BIT-CMB-24-33" /></Field>
           <Field label="Tipo">
             <select className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Instrumento["tipo"] })}>
               {(Object.keys(TIPO_LABEL) as (keyof typeof TIPO_LABEL)[]).map((k) => (
@@ -552,6 +553,11 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
                   <p className="text-[10px] text-muted-foreground">
                     Se dispara alerta si la lectura se desvía más del % indicado respecto al baseline.
                   </p>
+                  <Field label="ΔP final de saturación (fabricante)">
+                    <Input type="number" value={form.dp_final_fabricante}
+                      onChange={(e) => setForm({ ...form, dp_final_fabricante: e.target.value })} placeholder="ej. 450" />
+                  </Field>
+                  {item && <CambiosFiltroEditor instrumentoId={item.id} />}
                 </>
               )}
             </div>
