@@ -231,6 +231,42 @@ export type Database = {
         }
         Relationships: []
       }
+      formato_forval16: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          firmantes: Json
+          id: string
+          logo: string | null
+          textos: Json
+          version: number
+          version_formato: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          firmantes?: Json
+          id?: string
+          logo?: string | null
+          textos?: Json
+          version: number
+          version_formato?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          firmantes?: Json
+          id?: string
+          logo?: string | null
+          textos?: Json
+          version?: number
+          version_formato?: string
+        }
+        Relationships: []
+      }
       instrumentos: {
         Row: {
           activo: boolean
@@ -721,6 +757,15 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      registrar_exportacion_at: {
+        Args: {
+          _archivo: string
+          _estado: string
+          _registro_id: string
+          _version: number
+        }
+        Returns: undefined
       }
     }
     Enums: {
