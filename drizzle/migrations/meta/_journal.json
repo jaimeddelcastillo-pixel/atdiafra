@@ -8,6 +8,13 @@
       "when": 1790898022046,
       "tag": "0000_foto_semana",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791303001750,
+      "tag": "0001_bitacora_saturacion_cambios_filtro",
+      "breakpoints": true
     }
   ]
 }

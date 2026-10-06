@@ -91,6 +91,41 @@ export type Database = {
         }
         Relationships: []
       }
+      cambios_filtro: {
+        Row: {
+          created_at: string
+          fecha: string
+          id: string
+          instrumento_id: string
+          nota: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fecha: string
+          id?: string
+          instrumento_id: string
+          nota?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          id?: string
+          instrumento_id?: string
+          nota?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cambios_filtro_instrumento_id_fkey"
+            columns: ["instrumento_id"]
+            isOneToOne: false
+            referencedRelation: "instrumentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -186,7 +221,9 @@ export type Database = {
           baseline_pa: number | null
           baseline_tolerancia_pct: number | null
           codigo: string
+          codigo_bitacora: string | null
           created_at: string
+          dp_final_fabricante: number | null
           especificacion: string | null
           id: string
           lie_pa: number | null
@@ -202,7 +239,9 @@ export type Database = {
           baseline_pa?: number | null
           baseline_tolerancia_pct?: number | null
           codigo: string
+          codigo_bitacora?: string | null
           created_at?: string
+          dp_final_fabricante?: number | null
           especificacion?: string | null
           id?: string
           lie_pa?: number | null
@@ -218,7 +257,9 @@ export type Database = {
           baseline_pa?: number | null
           baseline_tolerancia_pct?: number | null
           codigo?: string
+          codigo_bitacora?: string | null
           created_at?: string
+          dp_final_fabricante?: number | null
           especificacion?: string | null
           id?: string
           lie_pa?: number | null
