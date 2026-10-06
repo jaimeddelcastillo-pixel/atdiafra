@@ -515,6 +515,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
     b.set(0, 0, `${k.codigo} — ${k.variable}`, ST.titulo);
     b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad)}`, ST.nota);
     k.tablaLimites.forEach((f, i) => b.fila(3 + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
+    if (k.notaTabla) b.set(3 + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
     const hRow = 3 + k.tablaLimites.length + 1; // 0-based
     b.fila(hRow, 0, k.encabezado, ST.head);
     k.filas.forEach((f, i) => b.fila(hRow + 1 + i, 0, f, (_, j) => (j === 0 ? ST.fecha : ST.num)));
@@ -542,6 +543,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
         row += Math.ceil(g.cy / ROW_EMU) + 1;
       }
       k.tablaLimites.forEach((f, i) => b.fila(row + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
+      if (k.notaTabla) b.set(row + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
       row += k.tablaLimites.length + 3;
     }
     hojas.push({ nombre: "Gráficas", b, anclas, cols: Array(8).fill(13) });
