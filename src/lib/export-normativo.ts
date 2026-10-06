@@ -163,8 +163,12 @@ export function exportarNormativoExcel(
         P95: s.p95 != null ? Number(s.p95.toFixed(3)) : "",
         Cp: s.cpkInsuficiente ? "n insuf." : s.cp != null ? Number(s.cp.toFixed(3)) : "",
         Cpk: s.cpkInsuficiente ? "n insuf." : s.cpk != null ? Number(s.cpk.toFixed(3)) : "",
+        Pp: s.cpkInsuficiente ? "n insuf." : s.pp != null ? Number(s.pp.toFixed(3)) : "",
         Ppk: s.cpkInsuficiente ? "n insuf." : s.ppk != null ? Number(s.ppk.toFixed(3)) : "",
-        "n suficiente para Cpk": s.cpkInsuficiente ? `NO (n=${s.n}, mínimo ${N_MINIMO_CPK})` : "SÍ",
+        "σ corto plazo (R̄/d₂)": s.sigmaCP != null ? Number(s.sigmaCP.toFixed(3)) : "",
+        "σ largo plazo (s)": s.sigmaLP != null ? Number(s.sigmaLP.toFixed(3)) : "",
+        "Subgrupos (día)": s.carta?.subgrupos ?? "",
+        "n suficiente para Cpk": s.cpkInsuficiente ? `NO (n=${s.nCapacidad}, mínimo ${N_MINIMO_CPK})` : s.notaCpk ?? "SÍ",
         "% dentro spec": s.pctDentroSpec != null ? Number(s.pctDentroSpec.toFixed(2)) : "",
         LIE: s.lie ?? "",
         LSE: s.lse ?? "",
@@ -394,8 +398,8 @@ export function exportarNormativoPDF(
 
   const filaSerie = (s: EstadisticaSerie): string[] => {
     const cpkTxt = s.cpkInsuficiente
-      ? `n insuf. (${s.n}<${N_MINIMO_CPK})`
-      : `${num(s.cp)} / ${num(s.cpk)} / ${num(s.ppk)}`;
+      ? `n insuf. (${s.nCapacidad}<${N_MINIMO_CPK})`
+      : `${num(s.cp)} / ${num(s.cpk)} / ${num(s.pp)} / ${num(s.ppk)}${s.notaCpk ? ` (${s.notaCpk})` : ""}`;
     return [
       `${s.serie} ${s.unidad}`.trim(),
       String(s.n),
@@ -480,7 +484,7 @@ export function exportarNormativoPDF(
         const yNota = (doc as any).lastAutoTable.finalY + 10;
         doc.setFontSize(8).setFont("helvetica", "italic").setTextColor(120);
         doc.text(
-          `Nota: Cp/Cpk no se reportan cuando n < ${N_MINIMO_CPK} lecturas consolidadas (no son estadísticamente confiables).`,
+          `Nota: Cp/Cpk no se reportan con menos de ${N_MINIMO_CPK} subgrupos (T/HR) o lecturas (PNO-VAL-16 Tabla 2); 20–24 = Aceptable.`,
           40, yNota,
         );
         doc.setTextColor(0).setFont("helvetica", "normal");

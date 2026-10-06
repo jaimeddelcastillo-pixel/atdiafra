@@ -72,6 +72,7 @@ export function exportarReporteExcel(
         P95: s.p95 != null ? Number(s.p95.toFixed(3)) : "",
         Cp: s.cp != null ? Number(s.cp.toFixed(3)) : "",
         Cpk: s.cpk != null ? Number(s.cpk.toFixed(3)) : "",
+        Pp: s.pp != null ? Number(s.pp.toFixed(3)) : "",
         Ppk: s.ppk != null ? Number(s.ppk.toFixed(3)) : "",
         "% dentro spec": s.pctDentroSpec != null ? Number(s.pctDentroSpec.toFixed(2)) : "",
         LIE: s.lie ?? "",

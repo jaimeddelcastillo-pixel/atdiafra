@@ -1,5 +1,6 @@
 // Análisis normativo trimestral/anual: cumplimiento ≥90 lecturas, estadísticas y fuera de spec.
 import type { Registro, Semana, PuntoLectura } from "./semanas";
+import { capacidad, cartaXbarR, limitesDesdeParametros, subgruposPorDia, suficienciaMuestra } from "./estadistica-pno";
 
 export const MINIMO_NORMATIVO = 90;
 
@@ -104,29 +105,6 @@ function statsBasicas(values: number[]) {
   };
 }
 
-function indicesCapacidad(
-  media: number | null,
-  sdMuestral: number | null,
-  lse: number | null | undefined,
-  lie: number | null | undefined,
-) {
-  if (media == null || sdMuestral == null || sdMuestral === 0) {
-    return { cp: null, cpk: null, ppk: null };
-  }
-  const tieneLSE = lse != null;
-  const tieneLIE = lie != null;
-  let cp: number | null = null;
-  if (tieneLSE && tieneLIE) cp = (lse - lie) / (6 * sdMuestral);
-  let cpu: number | null = null;
-  let cpl: number | null = null;
-  if (tieneLSE) cpu = (lse - media) / (3 * sdMuestral);
-  if (tieneLIE) cpl = (media - lie) / (3 * sdMuestral);
-  const candidatos = [cpu, cpl].filter((v): v is number => v != null);
-  const cpk = candidatos.length ? Math.min(...candidatos) : null;
-  // Ppk = Cpk en este contexto (mismo sd muestral, sin sub-grupos)
-  return { cp, cpk, ppk: cpk };
-}
-
 function porcentajeDentroSpec(
   values: number[],
   lse: number | null | undefined,
@@ -151,8 +129,8 @@ function fueraDeSpec(values: number[], lse: number | null | undefined, lie: numb
   return { altos, bajos, total: altos + bajos };
 }
 
-/** Mínimo de lecturas consolidadas para que Cp/Cpk sea estadísticamente confiable. */
-export const N_MINIMO_CPK = 30;
+/** Mínimo (subgrupos en T/HR; lecturas en series individuales) para reportar capacidad — PNO-VAL-16 Tabla 2. */
+export const N_MINIMO_CPK = 20;
 
 export type EstadisticaSerie = {
   serie: "Temperatura" | "Humedad" | "Valor";
@@ -169,8 +147,21 @@ export type EstadisticaSerie = {
   p95: number | null;
   cp: number | null;
   cpk: number | null;
+  pp: number | null;
   ppk: number | null;
-  /** true si n < N_MINIMO_CPK: Cp/Cpk no son confiables y deben mostrarse como "n insuficiente". */
+  /** σ corto plazo (R̄/d₂, subgrupo = día con sus 3 turnos); null sin subgrupos. */
+  sigmaCP: number | null;
+  /** σ largo plazo (s global, n−1). */
+  sigmaLP: number | null;
+  /** Carta X̄-R (solo con subgrupos racionales). */
+  carta: { subgrupos: number; tamano: number; xbarbar: number; Rbar: number; LCS: number; LCI: number } | null;
+  /** Límites de alerta/acción PNO 9.3.7–9.3.8. */
+  limites: { LAS: number; LAI: number; LAcS: number; LAcI: number; alertaAjustada: boolean } | null;
+  /** n usado para suficiencia de capacidad (subgrupos o lecturas). */
+  nCapacidad: number;
+  /** "Aceptable" (PNO Tabla 2) cuando nCapacidad está entre 20 y 24. */
+  notaCpk: string | null;
+  /** true si nCapacidad < N_MINIMO_CPK: Cp/Cpk no son confiables y deben mostrarse como "n insuficiente". */
   cpkInsuficiente: boolean;
   pctDentroSpec: number | null;
   fueraSpec: { altos: number; bajos: number; total: number };
@@ -206,22 +197,38 @@ function construirSerie(
   values: number[],
   lse: number | null | undefined,
   lie: number | null | undefined,
+  subgrupos: number[][] | null = null,
 ): EstadisticaSerie {
   const s = statsBasicas(values);
-  const insuf = s.n < N_MINIMO_CPK;
-  // Si n < 30, Cp/Cpk no son confiables → no se reportan (null)
-  const cap = insuf
-    ? { cp: null, cpk: null, ppk: null }
-    : indicesCapacidad(s.media, s.sdMuestral, lse, lie);
+  const carta = subgrupos ? cartaXbarR(subgrupos) : null;
+  const sigmaLP = s.sdMuestral;
+  const sigmaCP = carta ? carta.sigmaCortoPlazo : null;
+  const nCapacidad = carta ? carta.subgrupos.length : s.n;
+  const insuf = nCapacidad < N_MINIMO_CPK;
+  const media = carta ? carta.xbarbar : s.media;
+  const cap = !insuf && media != null
+    ? capacidad({ media, sigmaCP, sigmaLP, lie, lse })
+    : null;
+  const suf = suficienciaMuestra(nCapacidad);
+  const lim = s.media != null && sigmaLP != null ? limitesDesdeParametros(s.media, sigmaLP, { lie, lse }) : null;
   return {
     serie: nombre,
     unidad,
     lse: lse ?? null,
     lie: lie ?? null,
     ...s,
-    cp: cap.cp,
-    cpk: cap.cpk,
-    ppk: cap.ppk,
+    cp: cap?.Cp ?? null,
+    cpk: cap?.Cpk ?? null,
+    pp: cap?.Pp ?? null,
+    ppk: cap?.Ppk ?? null,
+    sigmaCP,
+    sigmaLP,
+    carta: carta
+      ? { subgrupos: carta.subgrupos.length, tamano: carta.tamano, xbarbar: carta.xbarbar, Rbar: carta.Rbar, LCS: carta.LCSx, LCI: carta.LCIx }
+      : null,
+    limites: lim ? { LAS: lim.LAS, LAI: lim.LAI, LAcS: lim.LAcS, LAcI: lim.LAcI, alertaAjustada: lim.alertaAjustada } : null,
+    nCapacidad,
+    notaCpk: !insuf && suf === "Aceptable" ? "Aceptable" : null,
     cpkInsuficiente: insuf,
     pctDentroSpec: porcentajeDentroSpec(values, lse, lie),
     fueraSpec: fueraDeSpec(values, lse, lie),
@@ -238,8 +245,10 @@ function seriesDeRegistro(registro: Registro, semanas: Semana[]): { series: Esta
   }
   const series: EstadisticaSerie[] = [];
   if (esTHR) {
-    series.push(construirSerie("Temperatura", "°C", valoresT, registro.lse_t, registro.lie_t));
-    series.push(construirSerie("Humedad", "%HR", valoresHR, registro.lse_hr, registro.lie_hr));
+    const sgT = subgruposPorDia(semanas.map((s) => ({ lecturas: s.lecturas })));
+    const sgHR = subgruposPorDia(semanas.map((s) => ({ lecturas: s.lecturas_hr ?? [] })));
+    series.push(construirSerie("Temperatura", "°C", valoresT, registro.lse_t, registro.lie_t, sgT));
+    series.push(construirSerie("Humedad", "%HR", valoresHR, registro.lse_hr, registro.lie_hr, sgHR));
   } else {
     series.push(construirSerie("Valor", "", valoresT, registro.lse, registro.lie));
   }
