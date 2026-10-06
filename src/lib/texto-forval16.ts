@@ -44,7 +44,7 @@ export function nombreVariable(variable: string): string {
 
 /** Ubicación tal como viene del catálogo, con «VS» normalizado a «vs». */
 export function ubicacionTxt(ubicacion: string): string {
-  return ubicacion.replace(/\bVS\b/g, " vs ");
+  return ubicacion.replace(/\bVS\b/g, "vs");
 }
 
 export function dictamenGlobal(bloques: Bloque[]): { cumplimiento: "CUMPLE" | "NO CUMPLE"; estado: string; requiere: boolean } {
