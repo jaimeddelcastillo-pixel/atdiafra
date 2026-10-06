@@ -36,7 +36,15 @@ export function descriptivaPNO(valores: number[]): DescriptivaPNO | null {
   };
 }
 
-export interface Spec { lie?: number | null; lse?: number | null }
+export interface Spec { lie?: number | null; lse?: number | null; lieEstricto?: boolean; lseEstricto?: boolean }
+/** Fuera de especificación respetando ">"/"<" estricto (el valor límite no cumple) vs "≥"/"≤". */
+export function fueraDeSpec(v: number, s: Spec | undefined): boolean {
+  if (!s) return false;
+  const lie = s.lie ?? null, lse = s.lse ?? null;
+  if (lie != null && (s.lieEstricto ? v <= lie : v < lie)) return true;
+  if (lse != null && (s.lseEstricto ? v >= lse : v > lse)) return true;
+  return false;
+}
 
 export interface LimitesAlertaAccion {
   media: number; s: number;
@@ -226,7 +234,7 @@ export const suficienciaMuestra = (n: number): Suficiencia =>
   n >= 25 ? "Suficiente" : n >= 20 ? "Aceptable" : "Insuficiente – requiere justificación técnica";
 
 export type EstadoControlPNO = "BAJO CONTROL" | "BAJO CONTROL CON ALERTAS" | "FUERA DE CONTROL";
-export type CumplimientoEspecificacion = "CUMPLE" | "NO CUMPLE";
+export type CumplimientoEspecificacion = "CUMPLE" | "NO CUMPLE" | "N/D";
 
 export const TEXTO_INVESTIGAR_CAUSA_ESPECIAL =
   "Fuera de control estadístico sin incumplir especificación: investigar causa especial (PNO-VAL-16 9.4)";
@@ -249,7 +257,7 @@ export function dictamen(p: {
   const { LAS, LAI, LAcS, LAcI } = p.limites;
   const motivos: string[] = [];
 
-  const fueraSpec = p.valores.filter((v) => (lie != null && v < lie) || (lse != null && v > lse)).length;
+  const fueraSpec = p.valores.filter((v) => fueraDeSpec(v, p.spec)).length;
   const fueraAccion = p.valores.filter((v) => v > LAcS || v < LAcI).length;
   const fueraLC = p.control ? p.valores.filter((v) => v > p.control!.LCS || v < p.control!.LCI).length : 0;
   const regla1 = p.senales.filter((s) => s.rule === 1).length;
@@ -266,7 +274,7 @@ export function dictamen(p: {
     ? "FUERA DE CONTROL"
     : entreAlerta || otras ? "BAJO CONTROL CON ALERTAS" : "BAJO CONTROL";
 
-  const cumplimientoEspecificacion: CumplimientoEspecificacion = fueraSpec ? "NO CUMPLE" : "CUMPLE";
+  const cumplimientoEspecificacion: CumplimientoEspecificacion = lie == null && lse == null ? "N/D" : fueraSpec ? "NO CUMPLE" : "CUMPLE";
   if (fueraSpec) motivos.push(`${fueraSpec} punto(s) fuera de especificación`);
 
   const requiereInvestigacion = fueraSpec > 0 || estadoControl === "FUERA DE CONTROL";

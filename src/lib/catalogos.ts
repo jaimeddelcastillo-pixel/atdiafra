@@ -46,6 +46,14 @@ export interface Instrumento {
   /** Rango de operación (Pa): solo informativo, banda gris; no se usa para cumplimiento ni capacidad. */
   op_min_pa?: number | null;
   op_max_pa?: number | null;
+  /** Especificación normativa (FOR). "na" = sin especificación (solo tendencia). */
+  spec_estado?: "validada" | "pendiente" | "na" | null;
+  spec_texto?: string | null;
+  spec_lie?: number | null; spec_lse?: number | null;
+  spec_lie_estricto?: boolean; spec_lse_estricto?: boolean;
+  spec_texto_hr?: string | null; spec_lie_hr?: number | null; spec_lse_hr?: number | null;
+  spec_referencia?: string | null; spec_fecha_validacion?: string | null;
+  area_estado?: "validada" | "pendiente"; area_nota?: string | null;
 }
 
 // La interfaz ParCuartos fue retirada al unificar el catálogo en `objetivos_presion`.

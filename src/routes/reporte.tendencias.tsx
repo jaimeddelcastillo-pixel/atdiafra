@@ -302,6 +302,11 @@ function TendenciasPage() {
     if (!autoemision && user && user.id === (registroEditable.updated_by ?? registroEditable.created_by)) {
       toast.error("Separación de funciones: tú creaste o modificaste esta versión; debe emitirla otro admin o super_admin."); return;
     }
+    const pend = bloques.filter((b) => b.pendientes?.length).map((b) => `• ${b.codigo} (${b.variable}): ${b.pendientes!.join("; ")}`);
+    if (pend.length) {
+      window.alert(`No se puede emitir: hay instrumentos con pendientes de validación.\nResuélvelos en Configuración › Pendientes de validación.\n\n${[...new Set(pend)].join("\n")}`);
+      return;
+    }
     if (editado && !window.confirm("Hay cambios sin guardar que no se incluirán. ¿Emitir la última versión guardada?")) return;
     if (!window.confirm(`¿Marcar ${registroEditable.codigo} como EMITIDO?\nYa no se podrá editar el texto, el sistema ni el periodo.`)) return;
     const { data, error } = await supabase.from("registro_analisis_tendencias").update({ estado: "emitido" }).eq("id", registroEditable.id).select(COLS_AT).single();

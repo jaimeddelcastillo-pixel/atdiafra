@@ -228,11 +228,13 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
   // PPC y CQA's
   const vistos = new Set<string>();
   const ppc = a.bloques.filter((b) => { const k = `${b.codigo}|${b.variable}`; if (vistos.has(k)) return false; vistos.add(k); return true; });
-  const anchosPPC = [Math.round(W * 0.22), Math.round(W * 0.18), Math.round(W * 0.38)];
+  const anchosPPC = [Math.round(W * 0.18), Math.round(W * 0.16), Math.round(W * 0.30), Math.round(W * 0.18)];
   anchosPPC.push(W - anchosPPC.reduce((x, y) => x + y, 0));
+  const rangoOp = (b: Bloque) => (b.opMin != null || b.opMax != null
+    ? (b.opMin != null && b.opMax != null ? `${b.opMin} – ${b.opMax} ${b.unidad}` : b.opMin != null ? `≥ ${b.opMin} ${b.unidad}` : `≤ ${b.opMax} ${b.unidad}`) : "—");
   cuerpo.push(par("Variables de Control de Proceso (PPC) y CQA´s", { b: true, al: AlignmentType.CENTER, keep: true }));
-  cuerpo.push(tablaSimple([["Variable", "Código de instrumento", "Ubicación", "Especificación"],
-    ...ppc.map((b) => [b.variable, b.codigo, ubicacionTxt(b.ubicacion), specTxt(b.lie, b.lse, b.unidad)])], anchosPPC));
+  cuerpo.push(tablaSimple([["Variable", "Código de instrumento", "Ubicación", "Especificación normativa", "Rango de operación"],
+    ...ppc.map((b) => [b.variable, b.codigo, ubicacionTxt(b.ubicacion), specTxt(b.lie, b.lse, b.unidad, b.specTexto) + (b.pendientes?.some((x) => x.startsWith("Especificación")) ? " (pendiente de validar)" : ""), rangoOp(b)])], anchosPPC));
 
   cuerpo.push(h1("Responsabilidades."), ...parrafosPlantilla(f.textos.s4, vars));
   cuerpo.push(h1("Abreviaturas, símbolos y definiciones."), ...parrafosPlantilla(f.textos.s5, vars));
@@ -250,6 +252,7 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
     const imgs = await a.png(b);
     const titulo = `${b.codigo} · ${ubicacionTxt(b.ubicacion)} — ${b.variable}`;
     cuerpo.push(par(titulo, { b: true, al: AlignmentType.LEFT, keep: true, after: 60 }));
+    if (b.pendientes?.length) cuerpo.push(par(`⚠ ${b.pendientes.join(" · ")}`, { sz: 9, al: AlignmentType.LEFT, keep: true, after: 60 }));
     for (let i = 0; i < imgs.length; i++) {
       const im = imgs[i];
       const data = await bytesDe(im.blob);

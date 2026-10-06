@@ -10,6 +10,7 @@ import { descriptive } from "./statistics";
 import {
   capacidad, cartaXbarMRR, CONSTANTES_XR, D2_MR, E2_MR, dictamen, limitesDesdeParametros, normalidad,
   senalesFueraDeControl, suficienciaMuestra, TEXTO_INVESTIGAR_CAUSA_ESPECIAL, type DictamenPNO, type Senal, type Suficiencia,
+  fueraDeSpec,
 } from "./estadistica-pno";
 import { esLecturaUtil, fechaRealISO, recortarSemanasPorFecha } from "./fechas-lectura";
 
@@ -38,6 +39,12 @@ export interface CalidadDatos { nLecturas: number; nDias: number; habilesSinLect
 export interface Bloque {
   hoja: string; codigo: string; variable: string; bitacora: string; tipo: Tipo;
   ubicacion: string; iso: string; lie: number | null; lse: number | null; unidad: string;
+  /** ">"/"<" estricto en el límite. */
+  lieEstricto?: boolean; lseEstricto?: boolean;
+  /** Texto de la especificación tal como aparece en el FOR (p. ej. ">5 Pa", "N/A"). */
+  specTexto?: string | null;
+  /** Pendientes de validación (especificación o área); bloquean la emisión del registro AT. */
+  pendientes?: string[];
   n: number; media: number | null; s: number | null; min: number | null; max: number | null;
   LAS: number | null; LAI: number | null; LAcS: number | null; LAcI: number | null;
   Cp: number | null; Cpk: number | null; Pp: number | null; Ppk: number | null;
@@ -154,12 +161,26 @@ function isoDe(r: Registro, ins: Instrumento | undefined, areasMap: Map<string, 
   const a = (ins?.area_id && areasMap.get(ins.area_id)) || (r.area_id && areasMap.get(r.area_id)) || undefined;
   return a?.iso ?? r.iso ?? "No clasificada";
 }
-export const specTxt = (lie: number | null, lse: number | null, u: string) =>
-  lie != null && lse != null ? `${lie} – ${lse} ${u}` : lse != null ? `≤ ${lse} ${u}` : lie != null ? `≥ ${lie} ${u}` : "Sin especificación";
+export const specTxt = (lie: number | null, lse: number | null, u: string, texto?: string | null) =>
+  texto?.trim() ? texto.trim() : lie != null && lse != null ? `${lie} – ${lse} ${u}` : lse != null ? `≤ ${lse} ${u}` : lie != null ? `≥ ${lie} ${u}` : "Sin especificación";
 
 export const dictTxt = (d: DictamenPNO | null) => (d ? `${d.estadoControl} · ${d.cumplimientoEspecificacion}` : "Sin datos");
 
 // ---------------------------------------------------------------- bloques
+const specDe = (b: { lie: number | null; lse: number | null; lieEstricto?: boolean; lseEstricto?: boolean }) =>
+  ({ lie: b.lie, lse: b.lse, lieEstricto: b.lieEstricto, lseEstricto: b.lseEstricto });
+
+/** Especificación normativa del catálogo; null si el instrumento aún no la tiene definida (se usan los límites del registro). */
+function specInstrumento(ins: Instrumento | undefined, hr: boolean) {
+  if (!ins?.spec_estado) return null;
+  const pend: string[] = [];
+  if (ins.spec_estado === "pendiente") pend.push("Especificación pendiente de validar");
+  if (ins.area_estado === "pendiente") pend.push(`Área pendiente de validar${ins.area_nota ? `: ${ins.area_nota}` : ""}`);
+  if (ins.spec_estado === "na") return { lie: null, lse: null, lieEstricto: false, lseEstricto: false, specTexto: "N/A", pendientes: pend };
+  return hr
+    ? { lie: ins.spec_lie_hr ?? null, lse: ins.spec_lse_hr ?? null, lieEstricto: false, lseEstricto: false, specTexto: ins.spec_texto_hr ?? null, pendientes: pend }
+    : { lie: ins.spec_lie ?? null, lse: ins.spec_lse ?? null, lieEstricto: !!ins.spec_lie_estricto, lseEstricto: !!ins.spec_lse_estricto, specTexto: ins.spec_texto ?? null, pendientes: pend };
+}
 const reglasDe = (sen: Senal[], i: number) => sen.filter((x) => x.index === i).map((x) => `Regla ${x.rule}: ${x.description}`);
 
 /** Calidad de datos: lecturas, días, días hábiles sin lectura (no N/A), dudosas de la IA. */
@@ -191,17 +212,17 @@ function bloquePresion(base: BaseBloque,
   dias: { fecha: string; valores: number[] }[], rango: string, hasta: string): Bloque {
   const fechas = dias.map((d) => d.fecha);
   const vals = dias.map((d) => d.valores.reduce((a, b) => a + b, 0) / d.valores.length);
-  const fueraLectura = (v: number) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse);
+  const fueraLectura = (v: number) => fueraDeSpec(v, specDe(base));
   const individuales = dias.flatMap((d) => d.valores);
   const d = descriptive(vals);
   const media = d?.mean ?? null, s = d && d.n > 1 ? d.stdev : null;
-  const lim = media != null && s != null ? limitesDesdeParametros(media, s, { lie: base.lie, lse: base.lse }) : null;
+  const lim = media != null && s != null ? limitesDesdeParametros(media, s, specDe(base)) : null;
   const sen = media != null && s != null ? senalesFueraDeControl(vals, media, s) : [];
   const idxSen = new Set(sen.map((x) => x.index));
   const cap = media != null ? capacidad({ media, sigmaLP: s, lie: base.lie, lse: base.lse }) : null;
   const norm = normalidad(vals);
   // Límites con medias diarias; cumplimiento de especificación con cada lectura suelta.
-  let dict = lim ? dictamen({ valores: individuales, spec: { lie: base.lie, lse: base.lse }, limites: lim, senales: sen, cpk: null }) : null;
+  let dict = lim ? dictamen({ valores: individuales, spec: specDe(base), limites: lim, senales: sen, cpk: null }) : null;
   if (dict && lim) {
     const dMedias = dictamen({ valores: vals, spec: {}, limites: lim, senales: sen, cpk: null });
     const fueraSpec = individuales.filter(fueraLectura).length;
@@ -210,7 +231,7 @@ function bloquePresion(base: BaseBloque,
     if (fueraSpec) motivos.push(`${fueraSpec} lectura(s) individual(es) fuera de especificación`);
     else if (dMedias.estadoControl === "FUERA DE CONTROL") motivos.push(TEXTO_INVESTIGAR_CAUSA_ESPECIAL);
     if (cap?.Ppk != null && cap.Ppk < 1.33) motivos.push("Ppk < 1.33");
-    dict = { estadoControl: dMedias.estadoControl, cumplimientoEspecificacion: fueraSpec ? "NO CUMPLE" : "CUMPLE", requiereInvestigacion: requiere, motivos };
+    dict = { estadoControl: dMedias.estadoControl, cumplimientoEspecificacion: base.lie == null && base.lse == null ? "N/D" : fueraSpec ? "NO CUMPLE" : "CUMPLE", requiereInvestigacion: requiere, motivos };
   }
 
   // Filtros: regresión desde el último cambio de filtro, saturación del fabricante y cambios en el periodo.
@@ -248,7 +269,7 @@ function bloquePresion(base: BaseBloque,
       base.lse, base.lie, fuera ? r3(v) : null, idxSen.has(i) ? r3(v) : null,
       ...(tend ? [x >= desdeTend ? r3(tend(x)) : null] : []), ...(sat != null ? [sat] : []), ...(hayOp ? [base.opMax!, base.opMin!] : [])];
   });
-  const espTxt = specTxt(base.lie, base.lse, base.unidad);
+  const espTxt = specTxt(base.lie, base.lse, base.unidad, base.specTexto);
   const tablaLimites: Fila[] = [
     ["Media", "s", "LAS", "LAI", "LAcS", "LAcI", "Especificación", "Ppk"],
     [r3(media), r3(s), r3(lim?.LAS), r3(lim?.LAI), r3(lim?.LAcS), r3(lim?.LAcI), espTxt, r3(cap?.Ppk)],
@@ -314,14 +335,14 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
   const sen = carta ? senalesFueraDeControl(xbars, carta.xbarbar, carta.sigmaEntreDias) : [];
   const idxSen = new Set(sen.map((x) => x.index));
   const cap = carta ? capacidad({ media: carta.xbarbar, sigmaCP: carta.sigmaCortoPlazo, sigmaLP: s, lie: base.lie, lse: base.lse }) : null;
-  const lim = d && s != null ? limitesDesdeParametros(d.mean, s, { lie: base.lie, lse: base.lse }) : null;
+  const lim = d && s != null ? limitesDesdeParametros(d.mean, s, specDe(base)) : null;
   const norm = normalidad(todos);
   let dict = carta && lim ? dictamen({
-    valores: xbars, spec: { lie: base.lie, lse: base.lse }, limites: lim, senales: sen, cpk: null,
+    valores: xbars, spec: specDe(base), limites: lim, senales: sen, cpk: null,
     control: { LCS: carta.LCSxMR, LCI: carta.LCIxMR },
   }) : null;
   if (dict && cap?.Ppk != null && cap.Ppk < 1.33) dict = { ...dict, motivos: [...dict.motivos, "Ppk < 1.33"] };
-  const fueraInd = todos.filter((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)).length;
+  const fueraInd = todos.filter((v) => fueraDeSpec(v, specDe(base))).length;
   if (dict && fueraInd && dict.cumplimientoEspecificacion === "CUMPLE") {
     dict = { ...dict, cumplimientoEspecificacion: "NO CUMPLE", requiereInvestigacion: true,
       motivos: [...dict.motivos.filter((m) => !m.startsWith("Fuera de control estadístico sin")), `${fueraInd} lectura(s) individual(es) fuera de especificación`] };
@@ -329,7 +350,7 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
   const encabezado = ["Fecha", "X̄", "R", "LC", "LCS", "LCI", "LSE", "LIE", "Fuera de spec", "Señal W.E.", "R̄", "LCS_R"];
   const filas: Fila[] = (carta?.subgrupos ?? []).map((g, i) => {
     const vs = dias[g.indice].valores;
-    const fuera = vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse));
+    const fuera = vs.some((v) => fueraDeSpec(v, specDe(base)));
     return [serial(fechas[i]), r3(g.xbar), r3(g.R), r3(carta!.xbarbar), r3(carta!.LCSxMR), r3(carta!.LCIxMR), base.lse, base.lie,
       fuera ? r3(g.xbar) : null, idxSen.has(i) ? r3(g.xbar) : null, r3(carta!.Rbar), r3(LCSr)];
   });
@@ -368,7 +389,7 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
     nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado, sigmaEntreDias: r3(carta?.sigmaEntreDias),
     puntos: (carta?.subgrupos ?? []).map((g, i) => {
       const vs = dias[g.indice].valores;
-      return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };
+      return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => fueraDeSpec(v, specDe(base))) };
     }),
     graficas: filas.length && c ? [
       { hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series: sX, titulo: tit, tituloY, yMin: eX.min, yMax: eX.max, yStep: eX.paso, xMin: x0, xMax: x1, cy: CY },
@@ -455,7 +476,8 @@ export function construirBloques(a: Omit<PaqueteArgs, "codigoAT" | "sistema" | "
         portadaInst.push({ codigo, bitacora: bit, variable: v === "T" ? "Temperatura" : "Humedad relativa", n });
         if (!n) continue;
         const hoja = nombreHoja(`${codigo} ${v}`, usadas);
-        bloques.push(bloqueTHR({ ...comun, hoja, calidad: calidadDe(r, campo, a.desde, a.hasta, (nd) => nd), variable: v === "T" ? "Temperatura" : "Humedad relativa", tipo: "thr", lie: lie ?? null, lse: lse ?? null, unidad: u }, dias, rango, v === "HR"));
+        const sp = specInstrumento(ins, v === "HR");
+        bloques.push(bloqueTHR({ ...comun, hoja, calidad: calidadDe(r, campo, a.desde, a.hasta, (nd) => nd), variable: v === "T" ? "Temperatura" : "Humedad relativa", tipo: "thr", lie: lie ?? null, lse: lse ?? null, ...(sp ?? {}), unidad: u }, dias, rango, v === "HR"));
       }
     } else if (r.modulo === "presiones" || r.modulo === "filtros") {
       const dias = lecturasPorDia(r, "lecturas", a.desde, a.hasta);
@@ -466,7 +488,7 @@ export function construirBloques(a: Omit<PaqueteArgs, "codigoAT" | "sistema" | "
       const unidad = r.semanas.find((s) => s.unidad?.trim())?.unidad || "Pa";
       bloques.push(bloquePresion({
         ...comun, hoja, calidad: calidadDe(r, "lecturas", a.desde, a.hasta, (_nd, nl) => nl), variable: "Presión diferencial", tipo: r.modulo === "filtros" || ins?.tipo === "manometro_filtro" ? "filtro" : "presion",
-        lie: r.lie ?? ins?.lie_pa ?? null, lse: r.lse ?? ins?.lse_pa ?? null, unidad,
+        lie: r.lie ?? ins?.lie_pa ?? null, lse: r.lse ?? ins?.lse_pa ?? null, ...(specInstrumento(ins, false) ?? {}), unidad,
         saturacion: ins?.dp_final_fabricante ?? null,
         opMin: ins?.op_min_pa ?? null, opMax: ins?.op_max_pa ?? null,
         cambios: (a.cambiosFiltro ?? []).filter((c) => c.instrumento_id === ins?.id),
@@ -502,7 +524,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
     const head = ["Código", "Bitácora", "Variable", "Ubicación", "Clase ISO", "Especificación", "n", "Media", "s", "Mín", "Máx", "LAS", "LAI", "LAcS", "LAcI", "Cp", "Cpk", "Pp", "Ppk", "Normalidad", "N° señales", "Dictamen", "Requiere investigación", "Motivos"];
     b.fila(2, 0, head, ST.head);
     bloques.forEach((k, i) => b.fila(3 + i, 0, [
-      k.codigo, k.bitacora, k.variable, k.ubicacion, k.iso, specTxt(k.lie, k.lse, k.unidad), k.n, k.media, k.s, k.min, k.max,
+      k.codigo, k.bitacora, k.variable, k.ubicacion, k.iso, specTxt(k.lie, k.lse, k.unidad, k.specTexto), k.n, k.media, k.s, k.min, k.max,
       k.LAS, k.LAI, k.LAcS, k.LAcI, k.Cp, k.Cpk, k.Pp, k.Ppk, k.normalidad, k.nSenales, dictTxt(k.dict),
       k.dict?.requiereInvestigacion ? "Sí" : "No", (k.dict?.motivos ?? []).join("; "),
     ], (v, j) => (j === 6 || j === 20 ? ST.txt : stVal(v))));
@@ -530,7 +552,7 @@ export async function exportarPaqueteForVal16(a: PaqueteArgs): Promise<{ archivo
   for (const k of bloques) {
     const b = new HojaBuilder();
     b.set(0, 0, `${k.codigo} — ${k.variable}`, ST.titulo);
-    b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad)}`, ST.nota);
+    b.set(1, 0, `${k.ubicacion} · ${k.iso} · ${rango} · Especificación ${specTxt(k.lie, k.lse, k.unidad, k.specTexto)}${k.pendientes?.length ? ` · ⚠ ${k.pendientes.join(" · ")}` : ""}`, ST.nota);
     k.tablaLimites.forEach((f, i) => b.fila(3 + i, 0, f, i % 2 === 0 ? ST.head : ST.num));
     if (k.notaTabla) b.set(3 + k.tablaLimites.length, 0, k.notaTabla, ST.nota);
     const hRow = 3 + k.tablaLimites.length + 1; // 0-based
