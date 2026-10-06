@@ -4,6 +4,12 @@ import { fmtDMY } from "./export-forval16";
 import { etiquetaCapacidad } from "./estadistica-pno";
 
 export interface TextoForVal16 { alcance: string; s81: string; s9: string; s10: string; s11: string }
+
+/** Cómo se acota el análisis: por sistema HVAC o por una selección libre de instrumentos. */
+export type AlcanceTexto =
+  | { tipo: "hvac"; codigo: string; nombreUma: string; descripcion: string }
+  | { tipo: "instrumentos"; codigos: string[] };
+
 export const SECCIONES: { k: keyof TextoForVal16; titulo: string }[] = [
   { k: "alcance", titulo: "2. Alcance" },
   { k: "s81", titulo: "8.1 Registros analizados" },
@@ -13,9 +19,33 @@ export const SECCIONES: { k: keyof TextoForVal16; titulo: string }[] = [
 ];
 
 const n2 = (v: number | null | undefined) => (v == null ? "N/D" : v.toFixed(2));
-const NUM = ["Ninguna", "Una", "Dos", "Tres", "Cuatro", "Cinco", "Seis", "Siete", "Ocho", "Nueve", "Diez"];
-const cuenta = (n: number, sing: string, plur: string) => `${n <= 10 ? NUM[n] : n} ${n === 1 ? sing : plur}`;
-const varMin = (b: Bloque) => b.variable.toLowerCase();
+
+/** Une elementos en español: comas y «y» antes del último. 0 → cadena vacía. */
+export function listaEs(items: string[]): string {
+  const limpios = items.filter((x) => x && x.trim());
+  if (limpios.length <= 1) return limpios.join("");
+  return `${limpios.slice(0, -1).join(", ")} y ${limpios[limpios.length - 1]}`;
+}
+
+/**
+ * Cantidad con concordancia de número: 1 → "una lectura"/"un punto"/"una señal";
+ * >1 → "N lecturas"/"N puntos"/"N señales" (numeral).
+ */
+export function fraseCantidad(n: number, sing: string, plur: string): string {
+  return n === 1 ? sing : `${n} ${plur}`;
+}
+
+/** Nombre de la variable en minúscula, con el símbolo de porcentaje en humedad. */
+export function nombreVariable(variable: string): string {
+  const v = variable.toLowerCase();
+  if (v.includes("humedad")) return "% de humedad relativa";
+  return v;
+}
+
+/** Ubicación tal como viene del catálogo, con «VS» normalizado a «vs». */
+export function ubicacionTxt(ubicacion: string): string {
+  return ubicacion.replace(/\bVS\b/g, " vs ");
+}
 
 export function dictamenGlobal(bloques: Bloque[]): { cumplimiento: "CUMPLE" | "NO CUMPLE"; estado: string; requiere: boolean } {
   const ds = bloques.map((b) => b.dict).filter(Boolean);
@@ -35,7 +65,7 @@ function lecturasFuera(b: Bloque) {
 function parrafo(b: Bloque): string {
   const u = b.unidad;
   const ppkEt = etiquetaCapacidad(b.Ppk).toLowerCase();
-  let t = `${b.codigo} (${b.ubicacion}), ${varMin(b)}: media ${n2(b.media)} ${u}, Ppk ${n2(b.Ppk)} (${ppkEt}).`;
+  let t = `${b.codigo} (${ubicacionTxt(b.ubicacion)}), ${nombreVariable(b.variable)}: media ${n2(b.media)} ${u}, Ppk ${n2(b.Ppk)} (${ppkEt}).`;
   const fuera = lecturasFuera(b);
   const otras = b.puntos.reduce((a, p) => a + p.reglas.filter((r) => !r.startsWith("Regla 1")).length, 0);
   const r1 = b.puntos.filter((p) => p.reglas.some((r) => r.startsWith("Regla 1"))).length;
@@ -43,13 +73,12 @@ function parrafo(b: Bloque): string {
   const partes: string[] = [];
   if (fuera.length) {
     const ej = fuera.slice(0, 3).map((x) => `${x.v.toFixed(1)} ${u}, ${fmtDMY(x.f)}`).join("; ");
-    partes.push(`${cuenta(fuera.length, "lectura", "lecturas")} fuera de especificación (${ej}${fuera.length > 3 ? "; …" : ""})`);
+    partes.push(`${fraseCantidad(fuera.length, "una lectura", "lecturas")} fuera de especificación (${ej}${fuera.length > 3 ? "; …" : ""})`);
   }
-  if (r1) partes.push(`${cuenta(r1, "punto", "puntos")} fuera de los límites de control`);
-  if (otras) partes.push(`${otras} ${otras === 1 ? "señal" : "señales"} de reglas 2–6 en ${carta}`);
+  if (r1) partes.push(`${fraseCantidad(r1, "un punto", "puntos")} fuera de los límites de control`);
+  if (otras) partes.push(`${fraseCantidad(otras, "una señal", "señales")} de reglas 2–6 en ${carta}`);
   if (partes.length) {
-    const s = partes.join(r1 || fuera.length ? ", " : " y ");
-    t += ` ${s.charAt(0).toUpperCase()}${s.slice(1)}; requiere investigación de causa raíz (PNO-VAL-16 9.4).`;
+    t += ` ${partes.length === 1 ? "Presenta" : "Presentan"} ${listaEs(partes)}; requiere investigación de causa raíz (PNO-VAL-16 9.4).`;
   } else {
     t += ` Todas las lecturas se encuentran dentro de especificación y no se detectaron señales de las reglas de Western Electric/Nelson en ${carta}.`;
   }
@@ -57,21 +86,26 @@ function parrafo(b: Bloque): string {
   return t;
 }
 
-export function generarTexto(bloques: Bloque[], cobertura: { primera: string | null; ultima: string | null }, sistema: string): TextoForVal16 {
-  const vars = [...new Set(bloques.map(varMin))];
+function alcanceTxt(a: AlcanceTexto): string {
+  if (a.tipo === "hvac") return `aplica al sistema HVAC ${a.codigo} ${a.nombreUma} (${a.descripcion})`;
+  return a.codigos.length ? `aplica a los instrumentos ${listaEs(a.codigos)}` : "aplica a los instrumentos seleccionados";
+}
+
+export function generarTexto(bloques: Bloque[], cobertura: { primera: string | null; ultima: string | null }, alcance: AlcanceTexto): TextoForVal16 {
+  const vars = [...new Set(bloques.map((b) => nombreVariable(b.variable)))];
   const periodo = cobertura.primera && cobertura.ultima ? `del ${fmtDMY(cobertura.primera)} al ${fmtDMY(cobertura.ultima)}` : "sin datos en el periodo";
-  const alcance = `El presente análisis de tendencias aplica a ${sistema}, con los datos registrados ${periodo} (primera y última fecha con datos reales). Variables analizadas: ${vars.join(", ") || "ninguna"}.`;
-  const s81 = bloques.map((b, i) => `${i + 1}. Monitoreo de ${varMin(b)} ${b.codigo} (${b.ubicacion}) con código ${b.bitacora}`).join("\n");
+  const alcanceLinea = `El presente análisis de tendencias ${alcanceTxt(alcance)}, con los datos registrados ${periodo} (primera y última fecha con datos reales). Variables analizadas: ${listaEs(vars) || "ninguna"}.`;
+  const s81 = bloques.map((b, i) => `${i + 1}. Monitoreo de ${nombreVariable(b.variable)} ${b.codigo} (${ubicacionTxt(b.ubicacion)}) con código ${b.bitacora}`).join("\n");
   const g = dictamenGlobal(bloques);
   const conInv = bloques.filter((b) => b.dict?.requiereInvestigacion);
   const global = !bloques.length ? "No se analizaron instrumentos en el periodo."
     : conInv.length
-      ? `En conjunto, ${bloques.length - conInv.length} de ${bloques.length} series analizadas no presentan hallazgos; ${conInv.length} ${conInv.length === 1 ? "requiere" : "requieren"} investigación de causa raíz (PNO-VAL-16 9.4).`
+      ? `En conjunto, ${bloques.length - conInv.length} de ${bloques.length} series analizadas no presentan hallazgos; ${conInv.length === 1 ? "una requiere" : `${conInv.length} requieren`} investigación de causa raíz (PNO-VAL-16 9.4).`
       : `En conjunto, las ${bloques.length} series analizadas se mantienen dentro de especificación y bajo control estadístico.`;
   const s9 = [...bloques.map(parrafo), global].join("\n\n");
   const s10 = conInv.length
-    ? `Se identificaron los siguientes casos que requieren investigación:\n${conInv.map((b, i) => `${i + 1}. ${b.codigo} – ${varMin(b)}: ${b.dict!.estadoControl} · ${b.dict!.cumplimientoEspecificacion}.`).join("\n")}\nRegistrar en FOR-VAL-03-06.`
+    ? `Se identificaron los siguientes casos que requieren investigación:\n${conInv.map((b, i) => `${i + 1}. ${b.codigo} – ${nombreVariable(b.variable)}: ${b.dict!.estadoControl} · ${b.dict!.cumplimientoEspecificacion}.`).join("\n")}\nRegistrar en FOR-VAL-03-06.`
     : "No se generaron desviaciones durante el periodo analizado.";
   const s11 = `Con base en el análisis estadístico conforme a PNO-VAL-16 y a los requisitos de la NOM-241-SSA1-2025, el resultado global del periodo es ${g.cumplimiento} con especificación, con estado de control ${g.estado}.${g.requiere ? " Los casos señalados en la sección 10 requieren investigación de causa raíz (PNO-VAL-16 9.4)." : ""}`;
-  return { alcance, s81, s9, s10, s11 };
+  return { alcance: alcanceLinea, s81, s9, s10, s11 };
 }
