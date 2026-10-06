@@ -496,7 +496,7 @@ export function evaluarRegistro(
         serie: `${s.serie} ${s.unidad}`.trim(),
         dimension: "capacidad", categoria: "alerta_estadistica", severidad: "media",
         titulo: "Capacidad baja",
-        detalle: `Cpk ${s.cpk?.toFixed(2)} (< ${CPK_FAIL.toFixed(2)}) — variabilidad alta frente a los límites`,
+        detalle: `Ppk ${s.ppk?.toFixed(2)} (< ${CPK_FAIL.toFixed(2)}) — variabilidad alta frente a los límites`,
         accionSugerida: "Evaluar necesidad de investigación; monitorear tendencia. No es NC si no hay lecturas fuera de spec.",
       });
     } else if (cap === "marginal") {
@@ -505,7 +505,7 @@ export function evaluarRegistro(
         serie: `${s.serie} ${s.unidad}`.trim(),
         dimension: "capacidad", categoria: "alerta_estadistica", severidad: "baja",
         titulo: "Capacidad marginal",
-        detalle: `Cpk ${s.cpk?.toFixed(2)} (${CPK_FAIL.toFixed(2)}–${CPK_WARN.toFixed(2)}) — margen de seguridad reducido`,
+        detalle: `Ppk ${s.ppk?.toFixed(2)} (${CPK_FAIL.toFixed(2)}–${CPK_WARN.toFixed(2)}) — margen de seguridad reducido`,
         accionSugerida: "Seguimiento; mantener el proceso monitoreado sin acción correctiva inmediata.",
       });
     }
