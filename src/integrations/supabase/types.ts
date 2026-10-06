@@ -342,13 +342,19 @@ export type Database = {
           created_by: string | null
           created_by_email: string | null
           dictamen_global: string | null
+          emitido_at: string | null
+          emitido_by: string | null
+          emitido_by_email: string | null
+          estado: string
           fecha: string
           id: string
           instrumentos: Json
           justificaciones: Json
+          motivo_version: string | null
           periodo_desde: string
           periodo_etiqueta: string | null
           periodo_hasta: string
+          seleccion: Json | null
           sistema: string
           texto: Json
           updated_at: string
@@ -364,13 +370,19 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           dictamen_global?: string | null
+          emitido_at?: string | null
+          emitido_by?: string | null
+          emitido_by_email?: string | null
+          estado?: string
           fecha?: string
           id?: string
           instrumentos?: Json
           justificaciones?: Json
+          motivo_version?: string | null
           periodo_desde: string
           periodo_etiqueta?: string | null
           periodo_hasta: string
+          seleccion?: Json | null
           sistema: string
           texto?: Json
           updated_at?: string
@@ -386,13 +398,19 @@ export type Database = {
           created_by?: string | null
           created_by_email?: string | null
           dictamen_global?: string | null
+          emitido_at?: string | null
+          emitido_by?: string | null
+          emitido_by_email?: string | null
+          estado?: string
           fecha?: string
           id?: string
           instrumentos?: Json
           justificaciones?: Json
+          motivo_version?: string | null
           periodo_desde?: string
           periodo_etiqueta?: string | null
           periodo_hasta?: string
+          seleccion?: Json | null
           sistema?: string
           texto?: Json
           updated_at?: string
