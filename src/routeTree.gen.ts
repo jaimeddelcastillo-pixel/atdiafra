@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReporteIndexRouteImport } from './routes/reporte.index'
 import { Route as ReporteTendenciasRouteImport } from './routes/reporte.tendencias'
+import { Route as ReporteRegistroAtRouteImport } from './routes/reporte.registro-at'
 import { Route as ReporteNormativoRouteImport } from './routes/reporte.normativo'
 import { Route as ReporteIdRouteImport } from './routes/reporte.$id'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
@@ -58,6 +59,11 @@ const ReporteIndexRoute = ReporteIndexRouteImport.update({
 const ReporteTendenciasRoute = ReporteTendenciasRouteImport.update({
   id: '/tendencias',
   path: '/tendencias',
+  getParentRoute: () => ReporteRoute,
+} as any)
+const ReporteRegistroAtRoute = ReporteRegistroAtRouteImport.update({
+  id: '/registro-at',
+  path: '/registro-at',
   getParentRoute: () => ReporteRoute,
 } as any)
 const ReporteNormativoRoute = ReporteNormativoRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/registro-at': typeof ReporteRegistroAtRoute
   '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/registro-at': typeof ReporteRegistroAtRoute
   '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/registro-at': typeof ReporteRegistroAtRoute
   '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -166,6 +175,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/registro-at'
     | '/reporte/tendencias'
     | '/reporte/'
     | '/lovable/email/auth/preview'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/registro-at'
     | '/reporte/tendencias'
     | '/reporte'
     | '/lovable/email/auth/preview'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/registro-at'
     | '/reporte/tendencias'
     | '/reporte/'
     | '/lovable/email/auth/preview'
@@ -271,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReporteTendenciasRouteImport
       parentRoute: typeof ReporteRoute
     }
+    '/reporte/registro-at': {
+      id: '/reporte/registro-at'
+      path: '/registro-at'
+      fullPath: '/reporte/registro-at'
+      preLoaderRoute: typeof ReporteRegistroAtRouteImport
+      parentRoute: typeof ReporteRoute
+    }
     '/reporte/normativo': {
       id: '/reporte/normativo'
       path: '/normativo'
@@ -333,6 +352,7 @@ declare module '@tanstack/react-router' {
 interface ReporteRouteChildren {
   ReporteIdRoute: typeof ReporteIdRoute
   ReporteNormativoRoute: typeof ReporteNormativoRoute
+  ReporteRegistroAtRoute: typeof ReporteRegistroAtRoute
   ReporteTendenciasRoute: typeof ReporteTendenciasRoute
   ReporteIndexRoute: typeof ReporteIndexRoute
 }
@@ -340,6 +360,7 @@ interface ReporteRouteChildren {
 const ReporteRouteChildren: ReporteRouteChildren = {
   ReporteIdRoute: ReporteIdRoute,
   ReporteNormativoRoute: ReporteNormativoRoute,
+  ReporteRegistroAtRoute: ReporteRegistroAtRoute,
   ReporteTendenciasRoute: ReporteTendenciasRoute,
   ReporteIndexRoute: ReporteIndexRoute,
 }

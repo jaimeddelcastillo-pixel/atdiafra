@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import JSZip from "jszip";
-import { ChevronLeft, Copy, Download, FileSpreadsheet, FileText, Save, RotateCcw } from "lucide-react";
+import { ChevronLeft, Copy, FolderOpen, Lock, Unlock, BadgeCheck, Download, FileSpreadsheet, FileText, Save, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -24,7 +24,7 @@ import { SECCIONES, dictamenGlobal, generarTexto, type AlcanceTexto, type TextoF
 import { TendenciaCard, pngsDeTarjeta } from "@/components/tendencias/TendenciaCard";
 import { descargarBlob } from "@/lib/imagen-grafica";
 
-type Search = { ids?: string; desde?: string; hasta?: string; hvac?: string };
+type Search = { ids?: string; desde?: string; hasta?: string; hvac?: string; at?: string };
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export const Route = createFileRoute("/reporte/tendencias")({
@@ -33,6 +33,7 @@ export const Route = createFileRoute("/reporte/tendencias")({
     desde: typeof s.desde === "string" && ISO.test(s.desde) ? s.desde : undefined,
     hasta: typeof s.hasta === "string" && ISO.test(s.hasta) ? s.hasta : undefined,
     hvac: typeof s.hvac === "string" ? s.hvac : undefined,
+    at: typeof s.at === "string" && /^AT-\d{4}-\d{3}$/.test(s.at) ? s.at : undefined,
   }),
   head: () => ({
     meta: [
@@ -61,8 +62,11 @@ interface RegistroAT {
   id: string; codigo: string; justificaciones: Record<string, string>; texto: Partial<TextoForVal16>;
   sistema: string; periodo_desde: string; periodo_hasta: string; periodo_etiqueta: string | null;
   created_at: string; created_by_email: string | null; updated_at: string; updated_by_email: string | null; version: number;
+  estado: string; emitido_at: string | null; emitido_by_email: string | null; motivo_version: string | null;
+  seleccion: { modo?: "hvac" | "instrumentos"; hvacId?: string; codigos?: string[] } | null;
+  instrumentos: { codigo: string }[] | null;
 }
-const COLS_AT = "id,codigo,justificaciones,texto,sistema,periodo_desde,periodo_hasta,periodo_etiqueta,created_at,created_by_email,usuario_email,updated_at,updated_by_email,version";
+const COLS_AT = "id,codigo,justificaciones,texto,sistema,periodo_desde,periodo_hasta,periodo_etiqueta,created_at,created_by_email,usuario_email,updated_at,updated_by_email,version,estado,emitido_at,emitido_by_email,motivo_version,seleccion,instrumentos";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const aRegistroAT = (d: any): RegistroAT => ({
   ...d, justificaciones: (d.justificaciones ?? {}) as Record<string, string>, texto: (d.texto ?? {}) as Partial<TextoForVal16>,
@@ -73,7 +77,8 @@ const fechaHora = (iso: string) => new Date(iso).toLocaleString("es-MX", { dateS
 function TendenciasPage() {
   const search = Route.useSearch();
   const { user, hasRole } = useAuth();
-  const puedeEditar = hasRole("editor") || hasRole("admin") || hasRole("super_admin");
+  const esAdmin = hasRole("admin") || hasRole("super_admin");
+  const puedeEditar = hasRole("editor") || esAdmin;
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [instr, setInstr] = useState<Instrumento[]>([]);
   const [areas, setAreas] = useState<AreaClasificada[]>([]);
@@ -89,7 +94,7 @@ function TendenciasPage() {
   const [hvacId, setHvacId] = useState(search.hvac ?? "");
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [filtro, setFiltro] = useState("");
-  const [at, setAt] = useState("");
+  const [at, setAt] = useState(search.at ?? "");
   const [registroAT, setRegistroAT] = useState<RegistroAT | null>(null);
   const [justif, setJustif] = useState<Record<string, string>>({});
   const [texto, setTexto] = useState<TextoForVal16 | null>(null);
@@ -123,6 +128,26 @@ function TendenciasPage() {
   };
   useEffect(() => { sugerirAT(new Date().getFullYear()).then((c) => setAt((v) => v || c)); }, []);
 
+  // Abrir reporte guardado (?at=…): fija sistema/instrumentos, periodo y código
+  const abiertoRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!search.at || cargando || abiertoRef.current === search.at) return;
+    abiertoRef.current = search.at;
+    supabase.from("registro_analisis_tendencias").select(COLS_AT).eq("codigo", search.at).maybeSingle().then(({ data }) => {
+      if (!data) { toast.error(`No existe el registro ${search.at}`); return; }
+      const r = aRegistroAT(data);
+      setAt(r.codigo); setDesde(r.periodo_desde); setHasta(r.periodo_hasta); setAnio(Number(r.periodo_desde.slice(0, 4)));
+      const hv = (r.seleccion?.hvacId && hvacs.find((h) => h.id === r.seleccion!.hvacId)) || hvacs.find((h) => `${h.codigo} ${h.nombre_uma}` === r.sistema);
+      if (r.seleccion?.modo !== "instrumentos" && hv) { setModo("hvac"); setHvacId(hv.id); }
+      else {
+        const cods = new Set(r.seleccion?.codigos ?? (r.instrumentos ?? []).map((i) => i.codigo));
+        setModo("instrumentos"); setSel(new Set(unidos.filter((u) => cods.has(codigoRegistro(u, instrMap))).map((u) => u.id)));
+      }
+      setEditado(false);
+      setRegistroAT(r);
+    });
+  }, [search.at, cargando, hvacs, unidos, instrMap]);
+
   // Cargar registro AT existente si el código ya existe
   useEffect(() => {
     if (!/^AT-\d{4}-\d{3}$/.test(at)) { setRegistroAT(null); return; }
@@ -137,6 +162,7 @@ function TendenciasPage() {
   // Integridad: un código existente solo se edita si coincide sistema y periodo.
   const conflicto = !!registroAT && (registroAT.sistema !== (sistema || "Sin sistema") || registroAT.periodo_desde !== desde || registroAT.periodo_hasta !== hasta);
   const registroEditable = conflicto ? null : registroAT;
+  const soloLectura = registroEditable?.estado === "emitido";
   const alcance: AlcanceTexto = modo === "hvac"
     ? { tipo: "hvac", codigo: hvac?.codigo ?? "", nombreUma: hvac?.nombre_uma ?? "", descripcion: hvac?.descripcion ?? "" }
     : { tipo: "instrumentos", codigos: [...new Set(elegidos.map((r) => codigoRegistro(r, instrMap)))].sort() };
@@ -168,6 +194,7 @@ function TendenciasPage() {
   const g = dictamenGlobal(bloques);
 
   const guardar = async (): Promise<boolean> => {
+    if (soloLectura) { toast.error("El registro está emitido; crea una nueva versión para modificarlo."); return false; }
     if (!puedeEditar) { toast.error("Tu rol solo permite consultar. Pide a un editor que guarde el registro."); return false; }
     if (!atValido) { toast.error("Escribe un código con formato AT-AAAA-NNN."); return false; }
     if (conflicto && registroAT) { toast.error(`El código ${at} ya está registrado para ${registroAT.sistema} ${registroAT.periodo_etiqueta ?? ""}. Cambia el código.`); return false; }
@@ -180,6 +207,7 @@ function TendenciasPage() {
       dictamen_global: `${g.estado} · ${g.cumplimiento}`,
       justificaciones: Object.fromEntries(insuficientes.map((b) => [b.hoja, justif[b.hoja].trim()])),
       texto: texto ?? {},
+      seleccion: modo === "hvac" ? { modo, hvacId } : { modo, codigos: [...new Set(elegidos.map((r) => codigoRegistro(r, instrMap)))].sort() },
     };
     if (registroEditable) {
       const quien = registroEditable.created_by_email ?? "otro usuario";
@@ -204,7 +232,7 @@ function TendenciasPage() {
     if (!bloques.length) { toast.info("No hay lecturas en este periodo."); return; }
     setOcupado(true);
     try {
-      if (!(await guardar())) return;
+      if (!soloLectura && !(await guardar())) return;
       const r = await exportarPaqueteForVal16({
         codigoAT: at, sistema: sistema || "Instrumentos", registros: elegidos, instrMap, areasMap, desde, hasta, hvac, cambiosFiltro: cambios,
         texto: texto ? SECCIONES.map((s) => ({ titulo: s.titulo, cuerpo: texto[s.k] })) : undefined,
@@ -212,6 +240,23 @@ function TendenciasPage() {
       toast.success(`Descargado ${r.archivo}`);
     } catch (e) { toast.error(e instanceof Error ? e.message : "Error al exportar"); }
     finally { setOcupado(false); }
+  };
+
+  const marcarEmitido = async () => {
+    if (!registroEditable) return;
+    if (editado && !window.confirm("Hay cambios sin guardar que no se incluirán. ¿Emitir la última versión guardada?")) return;
+    if (!window.confirm(`¿Marcar ${registroEditable.codigo} como EMITIDO?\nYa no se podrá editar el texto, el sistema ni el periodo.`)) return;
+    const { data, error } = await supabase.from("registro_analisis_tendencias").update({ estado: "emitido" }).eq("id", registroEditable.id).select(COLS_AT).single();
+    if (error) { toast.error(error.message); return; }
+    setEditado(false); setRegistroAT(aRegistroAT(data)); toast.success(`${registroEditable.codigo} emitido`);
+  };
+  const nuevaVersion = async () => {
+    if (!registroEditable) return;
+    const motivo = window.prompt(`Motivo de la nueva versión de ${registroEditable.codigo} (queda en el historial):`)?.trim();
+    if (!motivo) { if (motivo === "") toast.error("El motivo es obligatorio."); return; }
+    const { data, error } = await supabase.from("registro_analisis_tendencias").update({ estado: "borrador", motivo_version: motivo }).eq("id", registroEditable.id).select(COLS_AT).single();
+    if (error) { toast.error(error.message); return; }
+    setRegistroAT(aRegistroAT(data)); toast.success(`${registroEditable.codigo} regresó a borrador (versión ${data.version})`);
   };
 
   const zipTodas = async () => {
@@ -240,10 +285,20 @@ function TendenciasPage() {
         <Link to="/reporte" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
           <ChevronLeft className="h-4 w-4" /> Reporte consolidado
         </Link>
-        <div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
           <h1 className="text-2xl font-semibold text-foreground">Análisis de tendencias (FOR-VAL-16-02)</h1>
           <p className="text-sm text-muted-foreground mt-1">Elige qué analizar, revisa las gráficas y el texto, y llévalos a Word. Los números son los mismos del Excel.</p>
+          </div>
+          <Button variant="outline" size="sm" asChild className="gap-1">
+            <Link to="/reporte/registro-at"><FolderOpen className="h-4 w-4" /> Abrir reporte guardado</Link>
+          </Button>
         </div>
+        {soloLectura && registroEditable && (
+          <p className="flex items-center gap-2 rounded-md border border-success/40 bg-success/10 p-3 text-sm">
+            <Lock className="h-4 w-4" /> {registroEditable.codigo} está <b>emitido</b>{registroEditable.emitido_by_email ? ` por ${registroEditable.emitido_by_email}` : ""}{registroEditable.emitido_at ? ` el ${fechaHora(registroEditable.emitido_at)}` : ""}. Modo lectura: puedes exportar, pero no editar.
+          </p>
+        )}
 
         {/* 1. Selección */}
         <section className="rounded-xl border border-border bg-card p-4 space-y-4">
@@ -263,11 +318,11 @@ function TendenciasPage() {
               {atValido && registroEditable && (
                 <div className="rounded-md border border-primary/40 bg-primary/10 p-2 text-xs">
                   <p className="font-medium">Editando registro existente {at} (creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)})</p>
-                  <p className="text-muted-foreground">Versión {registroEditable.version} · última modificación por {registroEditable.updated_by_email ?? registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.updated_at)}. Se pedirá confirmación al guardar.</p>
+                  <p className="text-muted-foreground">Versión {registroEditable.version} · estado {registroEditable.estado === "emitido" ? "Emitido" : "Borrador"}{registroEditable.motivo_version ? ` · motivo de versión: ${registroEditable.motivo_version}` : ""} · última modificación por {registroEditable.updated_by_email ?? registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.updated_at)}. Se pedirá confirmación al guardar.</p>
                 </div>
               )}
             </div>
-            <div className="space-y-1.5 md:col-span-2">
+            <fieldset disabled={soloLectura} className="space-y-1.5 md:col-span-2">
               <Label>Periodo (cada día por su fecha real)</Label>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={String(anio)} onValueChange={(v) => setAnio(Number(v))}>
@@ -284,8 +339,9 @@ function TendenciasPage() {
                 <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" aria-label="Hasta" />
                 {!fechasOk && <span className="text-destructive text-xs">Revisa las fechas.</span>}
               </div>
-            </div>
+            </fieldset>
           </div>
+          <fieldset disabled={soloLectura} className="space-y-4">
           <div className="flex gap-2">
             <Button size="sm" variant={modo === "hvac" ? "default" : "outline"} onClick={() => setModo("hvac")}>Por sistema HVAC</Button>
             <Button size="sm" variant={modo === "instrumentos" ? "default" : "outline"} onClick={() => setModo("instrumentos")}>Elegir instrumentos</Button>
@@ -312,6 +368,7 @@ function TendenciasPage() {
               </div>
             </div>
           )}
+          </fieldset>
         </section>
 
         {cargando ? <p className="text-sm text-muted-foreground">Cargando capturas…</p>
@@ -348,7 +405,7 @@ function TendenciasPage() {
                               {b.calidad.suficiencia} (n = {b.calidad.nSuficiencia})
                             </span>
                             {ins && (
-                              <Textarea value={justif[b.hoja] ?? ""} onChange={(e) => setJustif((j) => ({ ...j, [b.hoja]: e.target.value }))}
+                              <Textarea readOnly={soloLectura} value={justif[b.hoja] ?? ""} onChange={(e) => setJustif((j) => ({ ...j, [b.hoja]: e.target.value }))}
                                 placeholder="Justificación técnica obligatoria" className="mt-1 min-h-16 text-xs" />
                             )}
                           </td>
@@ -376,7 +433,7 @@ function TendenciasPage() {
               <section className="rounded-xl border border-border bg-card p-4 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h2 className="font-semibold">4. Texto propuesto</h2>
-                  <Button size="sm" variant="ghost" className="gap-1" onClick={() => { setTexto(textoAuto); setEditado(false); }}>
+                  <Button size="sm" variant="ghost" className="gap-1" disabled={soloLectura} onClick={() => { setTexto(textoAuto); setEditado(false); }}>
                     <RotateCcw className="h-4 w-4" /> Regenerar desde los datos
                   </Button>
                 </div>
@@ -388,7 +445,7 @@ function TendenciasPage() {
                         try { await navigator.clipboard.writeText(texto[s.k]); toast.success("Texto copiado"); } catch { toast.error("No se pudo copiar"); }
                       }}><Copy className="h-3.5 w-3.5" /> Copiar</Button>
                     </div>
-                    <Textarea value={texto[s.k]} onChange={(e) => { setTexto({ ...texto, [s.k]: e.target.value }); setEditado(true); }}
+                    <Textarea readOnly={soloLectura} value={texto[s.k]} onChange={(e) => { setTexto({ ...texto, [s.k]: e.target.value }); setEditado(true); }}
                       className={cn("text-sm", s.k === "s9" ? "min-h-48" : "min-h-20")} />
                   </div>
                 ))}
@@ -398,12 +455,18 @@ function TendenciasPage() {
             {/* 5. Acciones */}
             <section className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card p-4">
               <span className="mr-auto text-sm">Dictamen global: <b>{g.estado} · {g.cumplimiento}</b></span>
-              <Button variant="outline" className="gap-1" onClick={() => { setOcupado(true); guardar().finally(() => setOcupado(false)); }} disabled={ocupado || !puedeEditar || conflicto}>
+              <Button variant="outline" className="gap-1" onClick={() => { setOcupado(true); guardar().finally(() => setOcupado(false)); }} disabled={ocupado || !puedeEditar || conflicto || soloLectura}>
                 <Save className="h-4 w-4" /> Guardar registro
               </Button>
               <Button className="gap-1" onClick={exportar} disabled={ocupado || !atValido || conflicto || faltaJustif.length > 0}>
                 <FileSpreadsheet className="h-4 w-4" /> Exportar paquete Excel
               </Button>
+              {esAdmin && registroEditable && !soloLectura && (
+                <Button variant="outline" className="gap-1" onClick={marcarEmitido} disabled={ocupado}><BadgeCheck className="h-4 w-4" /> Marcar como emitido</Button>
+              )}
+              {esAdmin && soloLectura && (
+                <Button variant="outline" className="gap-1" onClick={nuevaVersion} disabled={ocupado}><Unlock className="h-4 w-4" /> Nueva versión</Button>
+              )}
               <Button variant="outline" className="gap-1" disabled title="Próximamente"><FileText className="h-4 w-4" /> Exportar Word</Button>
               {faltaJustif.length > 0 && <p className="w-full text-xs text-destructive">Escribe la justificación técnica de los instrumentos con muestra insuficiente para poder exportar.</p>}
             </section>

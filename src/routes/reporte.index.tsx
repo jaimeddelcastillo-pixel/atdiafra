@@ -304,6 +304,9 @@ function ReportePage() {
                 <FileSpreadsheet className="h-4 w-4" /> Análisis de tendencias FOR-VAL-16-02
               </Link>
             </Button>
+            <Button size="sm" variant="outline" asChild className="gap-1">
+              <Link to="/reporte/registro-at"><FileSpreadsheet className="h-4 w-4" /> Registro AT (FOR-VAL-16-01)</Link>
+            </Button>
             <Button size="sm" variant="outline" onClick={() => onExport("excel")} disabled={loading} className="gap-1">
               <FileSpreadsheet className="h-4 w-4" /> Excel
             </Button>
