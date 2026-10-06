@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { AuthGuard } from "@/components/AuthGuard";
+import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
 import { CambiosFiltroEditor } from "@/components/CambiosFiltroEditor";
 import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,7 @@ function ConfiguracionPage() {
           </div>
         )}
 
+        <AutoemisionAjuste />
         <Tabs defaultValue="hvac" className="w-full">
           <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full sm:w-auto">
             <TabsTrigger value="hvac">Sistemas HVAC</TabsTrigger>
@@ -83,6 +86,30 @@ function ConfiguracionPage() {
           <TabsContent value="pares" className="mt-6"><ObjetivosTab /></TabsContent>
         </Tabs>
       </main>
+    </div>
+  );
+}
+
+function AutoemisionAjuste() {
+  const { hasRole } = useAuth();
+  const esAdmin = hasRole("admin") || hasRole("super_admin");
+  const [val, setVal] = useState(false);
+  useEffect(() => {
+    supabase.from("app_config").select("permitir_autoemision").eq("id", 1).maybeSingle()
+      .then(({ data }) => setVal(!!data?.permitir_autoemision));
+  }, []);
+  const cambiar = async (v: boolean) => {
+    const { error } = await supabase.from("app_config").update({ permitir_autoemision: v, updated_at: new Date().toISOString() }).eq("id", 1);
+    if (error) { toast.error(error.message); return; }
+    setVal(v); toast.success(v ? "Autoemisión permitida" : "Autoemisión desactivada");
+  };
+  return (
+    <div className="mb-6 flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
+      <div>
+        <p className="font-medium text-foreground">Permitir autoemisión de registros AT</p>
+        <p className="text-sm text-muted-foreground">Apagado: quien creó o modificó la versión vigente no puede emitirla; la emite otro admin o super_admin. Enciéndelo solo si hay un único responsable.</p>
+      </div>
+      <Switch checked={val} onCheckedChange={cambiar} disabled={!esAdmin} aria-label="Permitir autoemisión" />
     </div>
   );
 }
