@@ -1,31 +1,42 @@
 // Dibuja una gráfica (SVG de Recharts) a 300 dpi en PNG: fondo blanco, Calibri, título y leyenda.
-export interface LeyendaItem { nombre: string; color: string; linea: "solid" | "dash" | "sysDot" | "none"; marcador?: boolean }
+// Tamaños tipográficos en puntos al tamaño final (16 cm de ancho): título 11 pt negrita, leyenda 9 pt.
+export interface LeyendaItem { nombre: string; color: string; linea: "solid" | "dash" | "sysDot" | "none"; marcador?: boolean; hueco?: boolean; borde?: string }
 
 export const PX_16x9 = { w: 1890, h: 1063 };
 export const PX_16x5 = { w: 1890, h: 591 };
+/** Factor entre píxeles CSS (96 dpi) y la imagen final (300 dpi). 9 pt = 12 px CSS. */
+export const ESCALA_PNG = 300 / 96;
 const FONT = "Calibri, Carlito, Arial, sans-serif";
+const pt = (p: number) => (p * 300) / 72;
 
-export async function graficaPNG(svg: SVGSVGElement, titulo: string[], leyenda: LeyendaItem[], size: { w: number; h: number }): Promise<Blob> {
+export interface LayoutPNG { tituloH: number; leyH: number; chartH: number; filas: LeyendaItem[][] }
+
+export function layoutPNG(titulo: string[], leyenda: LeyendaItem[], size: { w: number; h: number }): LayoutPNG {
   const { w, h } = size;
-  const k = w / 640; // escala tipográfica
-  const tituloH = titulo.length * 15 * k + 8 * k;
+  const tituloH = titulo.length ? titulo.length * pt(11) * 1.2 + pt(4) : 0;
   const ctx0 = document.createElement("canvas").getContext("2d")!;
-  ctx0.font = `${9 * k}px ${FONT}`;
-  // filas de leyenda
+  ctx0.font = `${pt(9)}px ${FONT}`;
   const filas: LeyendaItem[][] = [[]];
   let ancho = 0;
   for (const it of leyenda) {
-    const wi = 26 * k + ctx0.measureText(it.nombre).width;
-    if (ancho + wi > w - 20 * k && filas[filas.length - 1].length) { filas.push([]); ancho = 0; }
+    const wi = pt(26) + ctx0.measureText(it.nombre).width;
+    if (ancho + wi > w - pt(12) && filas[filas.length - 1].length) { filas.push([]); ancho = 0; }
     filas[filas.length - 1].push(it); ancho += wi;
   }
-  const leyH = leyenda.length ? filas.length * 13 * k + 6 * k : 0;
+  const leyH = leyenda.length ? filas.length * pt(9) * 1.35 + pt(4) : 0;
+  return { tituloH, leyH, chartH: Math.max(40, h - tituloH - leyH), filas };
+}
+
+/** El SVG debe estar dibujado a (size.w / ESCALA_PNG) × (chartH / ESCALA_PNG) px CSS para que los textos midan lo indicado. */
+export async function graficaPNG(svg: SVGSVGElement, titulo: string[], leyenda: LeyendaItem[], size: { w: number; h: number }): Promise<Blob> {
+  const { w, h } = size;
+  const L = layoutPNG(titulo, leyenda, size);
 
   const clone = svg.cloneNode(true) as SVGSVGElement;
   const bw = svg.clientWidth || svg.viewBox.baseVal.width, bh = svg.clientHeight || svg.viewBox.baseVal.height;
   clone.setAttribute("viewBox", `0 0 ${bw} ${bh}`);
   clone.setAttribute("width", String(w));
-  clone.setAttribute("height", String(Math.max(10, h - tituloH - leyH)));
+  clone.setAttribute("height", String(L.chartH));
   clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.querySelectorAll("text").forEach((t) => { t.setAttribute("font-family", FONT); t.setAttribute("fill", t.getAttribute("fill") || "#374151"); });
@@ -39,24 +50,30 @@ export async function graficaPNG(svg: SVGSVGElement, titulo: string[], leyenda: 
   const ctx = c.getContext("2d")!;
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = "#111827"; ctx.textAlign = "center"; ctx.textBaseline = "top";
-  titulo.forEach((t, i) => { ctx.font = `${i === 0 ? "bold " : ""}${10 * k}px ${FONT}`; ctx.fillText(t, w / 2, 4 * k + i * 15 * k); });
-  ctx.drawImage(img, 0, tituloH, w, h - tituloH - leyH);
+  ctx.font = `bold ${pt(11)}px ${FONT}`;
+  titulo.forEach((t, i) => ctx.fillText(t, w / 2, pt(2) + i * pt(11) * 1.2));
+  ctx.drawImage(img, 0, L.tituloH, w, L.chartH);
   URL.revokeObjectURL(url);
 
-  ctx.font = `${9 * k}px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  filas.forEach((fila, fi) => {
-    const tot = fila.reduce((a, it) => a + 26 * k + ctx.measureText(it.nombre).width, 0);
+  ctx.font = `${pt(9)}px ${FONT}`; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  const filaH = pt(9) * 1.35;
+  L.filas.forEach((fila, fi) => {
+    const tot = fila.reduce((a, it) => a + pt(26) + ctx.measureText(it.nombre).width, 0);
     let x = (w - tot) / 2;
-    const y = h - leyH + 3 * k + fi * 13 * k + 6 * k;
+    const y = h - L.leyH + pt(2) + fi * filaH + filaH / 2;
     for (const it of fila) {
-      ctx.strokeStyle = it.color; ctx.fillStyle = it.color; ctx.lineWidth = 1.5 * k;
+      ctx.strokeStyle = it.color; ctx.fillStyle = it.color; ctx.lineWidth = pt(1);
       if (it.linea !== "none") {
-        ctx.setLineDash(it.linea === "dash" ? [4 * k, 3 * k] : it.linea === "sysDot" ? [1.5 * k, 2 * k] : []);
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 18 * k, y); ctx.stroke(); ctx.setLineDash([]);
+        ctx.setLineDash(it.linea === "dash" ? [pt(4), pt(3)] : it.linea === "sysDot" ? [pt(1.5), pt(2)] : []);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + pt(18), y); ctx.stroke(); ctx.setLineDash([]);
       }
-      if (it.marcador || it.linea === "none") { ctx.beginPath(); ctx.arc(x + 9 * k, y, 2.5 * k, 0, Math.PI * 2); ctx.fill(); }
-      ctx.fillStyle = "#374151"; ctx.fillText(it.nombre, x + 22 * k, y);
-      x += 26 * k + ctx.measureText(it.nombre).width;
+      if (it.marcador || it.linea === "none") {
+        ctx.beginPath(); ctx.arc(x + pt(9), y, pt(3), 0, Math.PI * 2);
+        if (it.hueco) { ctx.lineWidth = pt(1.2); ctx.stroke(); }
+        else { ctx.fill(); if (it.borde) { ctx.strokeStyle = it.borde; ctx.lineWidth = pt(0.75); ctx.stroke(); } }
+      }
+      ctx.fillStyle = "#374151"; ctx.fillText(it.nombre, x + pt(22), y);
+      x += pt(26) + ctx.measureText(it.nombre).width;
     }
   });
   return await new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("PNG vacío"))), "image/png"));
