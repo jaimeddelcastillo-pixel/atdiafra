@@ -1,6 +1,7 @@
 // Motor estadístico conforme a PNO-VAL-16 (alimenta FOR-VAL-16-02).
 // Extiende src/lib/statistics.ts sin modificarlo.
 import { descriptive, westernElectric } from "./statistics";
+import { esLecturaUtil } from "./fechas-lectura";
 
 export interface DescriptivaPNO {
   n: number; media: number; mediana: number; s: number; min: number; max: number;
@@ -15,9 +16,9 @@ export function subgruposPorDia<T extends { dia: string; turno: string; valor?: 
   for (const sem of semanas) {
     const porDia = new Map<string, { t: number; v: number }[]>();
     for (const p of sem.lecturas ?? []) {
-      if (p._na || p.valor == null || !Number.isFinite(p.valor)) continue;
+      if (!esLecturaUtil(p)) continue;
       const arr = porDia.get(p.dia) ?? [];
-      arr.push({ t: orden.indexOf(p.turno), v: p.valor });
+      arr.push({ t: orden.indexOf(p.turno), v: p.valor as number });
       porDia.set(p.dia, arr);
     }
     for (const arr of porDia.values()) out.push(arr.sort((a, b) => a.t - b.t).map((x) => x.v));

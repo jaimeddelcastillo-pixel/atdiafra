@@ -1,5 +1,6 @@
 // Análisis normativo trimestral/anual: cumplimiento ≥90 lecturas, estadísticas y fuera de spec.
 import type { Registro, Semana, PuntoLectura } from "./semanas";
+import { coberturaReal, esLecturaUtil, recortarSemanasPorFecha } from "./fechas-lectura";
 import { capacidad, cartaXbarR, limitesDesdeParametros, subgruposPorDia, suficienciaMuestra } from "./estadistica-pno";
 
 export const MINIMO_NORMATIVO = 90;
@@ -46,9 +47,10 @@ export function rangoPeriodo(p: Periodo): { desde: string; hasta: string; etique
   };
 }
 
+/** Semanas recortadas a las lecturas cuya fecha real (semana_inicio + día) cae en el periodo. */
 export function semanasDelPeriodo(registro: Registro, p: Periodo): Semana[] {
   const { desde, hasta } = rangoPeriodo(p);
-  return registro.semanas.filter((s) => s.semana_inicio >= desde && s.semana_inicio <= hasta);
+  return recortarSemanasPorFecha(registro.semanas, desde, hasta);
 }
 
 /** Días esperados de monitoreo entre dos fechas (lun-vie por defecto). */
@@ -68,7 +70,7 @@ export function diasHabilesEntre(desde: string, hasta: string, hoy = new Date())
 
 function lecturasValidas(arr: PuntoLectura[] | undefined): number[] {
   return (arr ?? [])
-    .filter((p) => !p._na && p.valor != null && Number.isFinite(p.valor))
+    .filter(esLecturaUtil)
     .map((p) => p.valor as number);
 }
 
@@ -187,6 +189,8 @@ export type AnalisisRegistro = {
   porcentajeMinimo: number;
   series: EstadisticaSerie[];
   desgloseMensual: DesgloseMensual[];
+  /** Primera y última fecha real con lectura, y días distintos con lectura. */
+  cobertura: { primera: string | null; ultima: string | null; dias: number };
 };
 
 const MESES_CORTOS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -260,20 +264,21 @@ export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new
   const semanas = semanasDelPeriodo(registro, periodo);
   const { series, total: totalLecturas } = seriesDeRegistro(registro, semanas);
 
-  const grupos = new Map<string, Semana[]>();
-  for (const s of semanas) {
-    const k = s.semana_inicio.slice(0, 7);
-    const arr = grupos.get(k);
-    if (arr) arr.push(s);
-    else grupos.set(k, [s]);
+  // Desglose mensual por fecha real de la lectura
+  const meses: string[] = [];
+  for (let c = rango.desde.slice(0, 7); c <= rango.hasta.slice(0, 7);) {
+    meses.push(c);
+    const [y, m] = c.split("-").map(Number);
+    c = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
   }
-  const desgloseMensual: DesgloseMensual[] = Array.from(grupos.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, sems]) => {
-      const [anio, mes] = k.split("-").map(Number);
-      const r = seriesDeRegistro(registro, sems);
-      return { anio, mes, etiqueta: `${MESES_CORTOS[mes - 1]} ${anio}`, totalLecturas: r.total, series: r.series };
-    });
+  const desgloseMensual: DesgloseMensual[] = meses.flatMap((k) => {
+    const [anio, mes] = k.split("-").map(Number);
+    const fin = `${k}-${String(new Date(anio, mes, 0).getDate()).padStart(2, "0")}`;
+    const ini = `${k}-01`;
+    const sems = recortarSemanasPorFecha(semanas, ini < rango.desde ? rango.desde : ini, fin > rango.hasta ? rango.hasta : fin);
+    const r = seriesDeRegistro(registro, sems);
+    return r.total ? [{ anio, mes, etiqueta: `${MESES_CORTOS[mes - 1]} ${anio}`, totalLecturas: r.total, series: r.series }] : [];
+  });
 
   const diasHabiles = diasHabilesEntre(rango.desde, rango.hasta, hoy);
   const diasTranscurridos = Math.max(
@@ -296,6 +301,7 @@ export function analizarRegistro(registro: Registro, periodo: Periodo, hoy = new
     porcentajeMinimo: Math.min(100, Math.round((totalLecturas / MINIMO_NORMATIVO) * 100)),
     series,
     desgloseMensual,
+    cobertura: coberturaReal(semanas),
   };
 }
 
