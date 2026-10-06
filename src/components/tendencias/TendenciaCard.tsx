@@ -145,8 +145,8 @@ export function tablaHTML(b: Bloque): { html: string; texto: string } {
       const cs = j === f.length - 1 ? nCols - span * (f.length - 1) : span;
       const t = esc(fmtCelda(v));
       return head
-        ? `<th${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};background:#DCE6F2;font-family:Calibri;font-size:9pt;font-weight:bold;text-align:center;vertical-align:middle;padding:1pt 2pt">${t}</th>`
-        : `<td${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};font-family:Calibri;font-size:9pt;text-align:center;vertical-align:middle;white-space:nowrap;padding:1pt 2pt">${t}</td>`;
+        ? `<th${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};background:#DCE6F2;vertical-align:middle;padding:1pt 2pt"><p style="font-family:Calibri;font-size:9pt;font-weight:bold;text-align:center;margin:2pt 0">${t}</p></th>`
+        : `<td${cs > 1 ? ` colspan="${cs}"` : ""} style="${borde};vertical-align:middle;white-space:nowrap;padding:1pt 2pt"><p style="font-family:Calibri;font-size:9pt;text-align:center;margin:2pt 0">${t}</p></td>`;
     }).join("")}</tr>`;
   }).join("");
   const cols = Array.from({ length: nCols }, () => `<col style="width:${anchoCol}cm">`).join("");
