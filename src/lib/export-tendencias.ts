@@ -45,7 +45,7 @@ function promediosDiarios(
       if (fecha < inicio || fecha > fin) continue;
       const key = format(fecha, "yyyy-MM-dd");
       const dia = dias.get(key) ?? { fecha, valores: [] };
-      dia.valores.push(punto.valor);
+      dia.valores.push(punto.valor as number);
       dias.set(key, dia);
     }
   }
