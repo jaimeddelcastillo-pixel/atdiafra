@@ -282,6 +282,8 @@ export type Database = {
           id: string
           lie_pa: number | null
           lse_pa: number | null
+          op_max_pa: number | null
+          op_min_pa: number | null
           parametro: string
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at: string
@@ -300,6 +302,8 @@ export type Database = {
           id?: string
           lie_pa?: number | null
           lse_pa?: number | null
+          op_max_pa?: number | null
+          op_min_pa?: number | null
           parametro: string
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
@@ -318,6 +322,8 @@ export type Database = {
           id?: string
           lie_pa?: number | null
           lse_pa?: number | null
+          op_max_pa?: number | null
+          op_min_pa?: number | null
           parametro?: string
           tipo?: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
@@ -386,6 +392,27 @@ export type Database = {
           tipo?: Database["public"]["Enums"]["tipo_objetivo_presion"]
           unidad?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      perfiles: {
+        Row: {
+          cargo: string
+          nombre: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cargo?: string
+          nombre?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cargo?: string
+          nombre?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
