@@ -43,6 +43,9 @@ export interface Instrumento {
   codigo_bitacora: string | null;
   /** ΔP final de saturación según fabricante (filtros), en la unidad del instrumento. */
   dp_final_fabricante: number | null;
+  /** Rango de operación (Pa): solo informativo, banda gris; no se usa para cumplimiento ni capacidad. */
+  op_min_pa?: number | null;
+  op_max_pa?: number | null;
 }
 
 // La interfaz ParCuartos fue retirada al unificar el catálogo en `objetivos_presion`.
