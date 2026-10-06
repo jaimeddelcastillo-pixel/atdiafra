@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { listSistemasHVAC, type AreaClasificada, type Instrumento, type SistemaHVAC } from "@/lib/catalogos";
+import { listCambiosFiltro, listSistemasHVAC, type AreaClasificada, type Instrumento, type SistemaHVAC } from "@/lib/catalogos";
 import type { Registro } from "@/lib/semanas";
 import { etiquetaPeriodo, exportarPaqueteForVal16 } from "@/lib/export-forval16";
 
@@ -91,7 +91,8 @@ export function PaqueteForVal16Dialog({ open, onOpenChange, registros, instrMap,
     setGenerando(true);
     const t = toast.loading("Generando paquete FOR-VAL-16-02…");
     try {
-      const r = await exportarPaqueteForVal16({ codigoAT: at.trim(), sistema, registros: elegidos, instrMap, areasMap, desde: d, hasta: h, hvac });
+      const cambiosFiltro = await listCambiosFiltro().catch(() => []);
+      const r = await exportarPaqueteForVal16({ codigoAT: at.trim(), sistema, registros: elegidos, instrMap, areasMap, desde: d, hasta: h, hvac, cambiosFiltro });
       if (!r.bloques) toast.info("Ninguno de los instrumentos tiene lecturas en este periodo. Cambia las fechas arriba.", { id: t });
       else { toast.success(`Descargado ${r.archivo} (${r.bloques} gráfica${r.bloques === 1 ? "" : "s"})`, { id: t }); onOpenChange(false); }
     } catch (e: unknown) {
