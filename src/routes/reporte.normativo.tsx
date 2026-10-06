@@ -784,6 +784,9 @@ function SerieDetail({ a }: { a: AnalisisRegistro }) {
                     {s.cpk.toFixed(2)}
                   </span>
                 ) : "—"}
+                {!s.cpkInsuficiente && s.ppk != null && (
+                  <span className="block text-[10px] text-muted-foreground">Ppk {s.ppk.toFixed(2)}{s.notaCpk ? ` · ${s.notaCpk}` : ""}</span>
+                )}
               </td>
               <td className="px-2 py-1.5 text-center">
                 {s.fueraSpec.total === 0 ? (

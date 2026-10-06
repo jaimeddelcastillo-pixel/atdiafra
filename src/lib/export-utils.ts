@@ -155,7 +155,7 @@ export function exportarReportePDF(
   });
 
   const headStats = [
-    ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
+    ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Pp / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
   ];
   const filaSerie = (s: EstadisticaSerie): string[] => [
     `${s.serie} ${s.unidad}`.trim(),
@@ -164,7 +164,7 @@ export function exportarReportePDF(
     num(s.sd),
     `${num(s.min)} / ${num(s.max)}`,
     `${num(s.p5)} / ${num(s.p95)}`,
-    `${num(s.cp)} / ${num(s.cpk)} / ${num(s.ppk)}`,
+    `${num(s.cp)} / ${num(s.cpk)} / ${num(s.pp)} / ${num(s.ppk)}`,
     s.pctDentroSpec != null ? `${s.pctDentroSpec.toFixed(1)}%` : "—",
     `${s.lie ?? "—"} / ${s.lse ?? "—"}`,
     s.fueraSpec.total === 0 ? "0" : `${s.fueraSpec.total} (${s.fueraSpec.altos}↑ ${s.fueraSpec.bajos}↓)`,

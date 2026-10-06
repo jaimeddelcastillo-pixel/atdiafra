@@ -415,7 +415,7 @@ export function exportarNormativoPDF(
   };
 
   const headStats = [
-    ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
+    ["Serie", "n", "Media", "σ", "Mín / Máx", "P5 / P95", "Cp / Cpk / Pp / Ppk", "% spec", "LIE / LSE", "Fuera spec"],
   ];
 
   for (const seccion of secciones) {
