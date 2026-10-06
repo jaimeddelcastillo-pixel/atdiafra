@@ -256,22 +256,38 @@ function TendenciasPage() {
     try {
       const [{ generarWordForVal16 }, { cargarFormato }] = await Promise.all([import("@/lib/word-forval16"), import("@/lib/formato-forval16")]);
       const formato = await cargarFormato();
-      // Control de cambios: v1 «Documento nuevo» + cada «Nueva versión» con su motivo
+      // Control de cambios y «Sustituye a»: solo versiones EMITIDAS (los borradores nunca cuentan).
       const { data: hist } = await supabase.from("registro_analisis_tendencias_historial").select("version,datos").eq("registro_id", registroEditable.id).order("version");
-      type V = { version: number; motivo_version?: string | null; updated_at?: string; updated_by_email?: string | null };
-      const versiones: V[] = [...(hist ?? []).map((h) => h.datos as unknown as V), registroEditable as unknown as V].sort((x, y) => x.version - y.version);
-      const cambiosV = [{ de: "N/A", a: "Nuevo", fecha: fechaHora(registroEditable.created_at).slice(0, 10), descripcion: "Documento nuevo.", por: registroEditable.created_by_email ?? "—" }];
-      versiones.forEach((v, i) => {
-        if (i > 0 && v.motivo_version && v.motivo_version !== versiones[i - 1].motivo_version)
-          cambiosV.push({ de: String(versiones[i - 1].version), a: String(v.version), fecha: v.updated_at ? fechaHora(v.updated_at).slice(0, 10) : "—", descripcion: v.motivo_version, por: v.updated_by_email ?? "—" });
-      });
+      type V = { version: number; estado?: string | null; emitido_at?: string | null; motivo_version?: string | null; updated_at?: string; updated_by?: string | null; created_by?: string | null; updated_by_email?: string | null; created_by_email?: string | null };
+      const todas: V[] = [...(hist ?? []).map((h) => h.datos as unknown as V), registroEditable as unknown as V].sort((x, y) => x.version - y.version);
+      const emitidas = todas.filter((v) => v.estado === "emitido");
+      const ids = [...new Set(emitidas.map((v) => v.updated_by ?? v.created_by).filter(Boolean))] as string[];
+      const { data: perf } = ids.length ? await supabase.from("perfiles").select("user_id,nombre,cargo").in("user_id", ids) : { data: [] };
+      const pMap = new Map((perf ?? []).map((p) => [p.user_id, p]));
+      const quien = (v: V) => {
+        const p = pMap.get((v.updated_by ?? v.created_by) ?? "");
+        return p?.nombre?.trim() ? `${p.nombre.trim()}${p.cargo?.trim() ? `, ${p.cargo.trim()}` : ""}` : (v.updated_by_email ?? v.created_by_email ?? "—");
+      };
+      const vv = (n: number) => String(n).padStart(2, "0");
+      const cambiosV = emitidas.map((v, i) => ({
+        de: i === 0 ? "N/A" : vv(emitidas[i - 1].version), a: vv(v.version),
+        fecha: fechaHora(v.emitido_at ?? v.updated_at ?? registroEditable.created_at).slice(0, 10),
+        descripcion: i === 0 ? "Documento nuevo." : v.motivo_version?.trim() || "Nueva versión.", por: quien(v),
+      }));
+      const previa = emitidas.filter((v) => v.version < registroEditable.version).pop();
+      const sustituye = previa ? `${registroEditable.codigo} v${vv(previa.version)}` : "N/A";
+      // Áreas únicas: códigos de cuarto presentes en las ubicaciones, con su nombre del catálogo.
+      const porCodigo = new Map(areas.map((ar) => [ar.codigo.toUpperCase(), ar]));
+      const cods = new Set<string>();
+      for (const b of bloques) for (const m of b.ubicacion.toUpperCase().matchAll(/[A-Z]{2,4}-\d{2,3}/g)) if (porCodigo.has(m[0])) cods.add(m[0]);
+      const areasLista = [...cods].sort().map((c) => `${porCodigo.get(c)!.codigo} ${porCodigo.get(c)!.nombre}`);
       const periodo = registroEditable.periodo_etiqueta ?? `${desde}_${hasta}`;
       const tituloSistema = modo === "hvac" && hvac ? `Sistema HVAC ${hvac.codigo} ${hvac.nombre_uma} (${hvac.descripcion})` : `Instrumentos ${alcance.tipo === "instrumentos" ? alcance.codigos.join(", ") : sistema}`;
       const { blob, archivo } = await generarWordForVal16({
         formato, codigoAT: registroEditable.codigo, version: registroEditable.version,
         estado: registroEditable.estado === "emitido" ? "emitido" : "borrador", emitidoAt: registroEditable.emitido_at,
         sistema: registroEditable.sistema, tituloSistema, periodo, desde, hasta, bloques, texto,
-        justificaciones: registroEditable.justificaciones, cambios: cambiosV, png: (b) => pngsDeTarjeta(null, b),
+        justificaciones: registroEditable.justificaciones, cambios: cambiosV, sustituye, areas: areasLista, png: (b) => pngsDeTarjeta(null, b),
       });
       descargarBlob(blob, archivo);
       const { error: eAud } = await supabase.rpc("registrar_exportacion_at", { _registro_id: registroEditable.id, _version: registroEditable.version, _estado: registroEditable.estado, _archivo: archivo });

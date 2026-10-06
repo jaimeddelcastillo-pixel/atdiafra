@@ -22,6 +22,8 @@ export interface SerieGrafica {
   linea: "solid" | "dash" | "sysDot" | "none"; ancho?: number;
   /** Valores literales (p. ej. línea vertical de cambio de filtro) en lugar de rango de celdas. */
   lit?: { x: number[]; y: number[] };
+  /** Límite de una banda informativa (rango de operación): se dibuja como área gris en pantalla. */
+  banda?: "sup" | "inf";
   marcador?: { simbolo: "circle" | "square" | "diamond" | "triangle"; color: string; tam: number; hueco?: boolean; borde?: string };
 }
 export interface Grafica {
@@ -42,6 +44,10 @@ export interface Bloque {
   normalidad: string; nSenales: number; dict: DictamenPNO | null;
   tablaLimites: Fila[]; notaTabla?: string; filas: Fila[]; encabezado: string[]; graficas: Grafica[];
   saturacion?: number | null; cambios?: CambioFiltro[];
+  /** Rango de operación (informativo). */
+  opMin?: number | null; opMax?: number | null;
+  /** σ entre días (MR̄/1.128 de las medias diarias). */
+  sigmaEntreDias?: number | null;
   puntos: PuntoTendencia[]; calidad: CalidadDatos; registroId: string; instrumentoId: string | null;
 }
 type BaseBloque = Omit<Bloque, "n" | "media" | "s" | "min" | "max" | "LAS" | "LAI" | "LAcS" | "LAcI" | "Cp" | "Cpk" | "Pp" | "Ppk" | "normalidad" | "nSenales" | "dict" | "tablaLimites" | "filas" | "encabezado" | "graficas" | "puntos">;
@@ -229,14 +235,18 @@ function bloquePresion(base: BaseBloque,
       }
     }
   }
+  const hayOp = base.opMin != null && base.opMax != null;
   const encabezado = ["Fecha", "Medias", "Media", "LAS", "LAI", "LAcS", "LAcI", "LSE", "LIE", "Fuera de spec", "Señal W.E.",
-    ...(tend ? ["Tendencia"] : []), ...(sat != null ? ["Saturación (fabricante)"] : [])];
+    ...(tend ? ["Tendencia"] : []), ...(sat != null ? ["Saturación (fabricante)"] : []), ...(hayOp ? ["Operación sup", "Operación inf"] : [])];
+  const colOp = 11 + (tend ? 1 : 0) + (sat != null ? 1 : 0);
+  const mrs = vals.slice(1).map((v, i) => Math.abs(v - vals[i]));
+  const sigmaED = mrs.length ? mrs.reduce((a, b) => a + b, 0) / mrs.length / 1.128 : null;
   const filas: Fila[] = vals.map((v, i) => {
     const fuera = dias[i].valores.some(fueraLectura);
     const x = serial(fechas[i]);
     return [x, r3(v), r3(media), r3(lim?.LAS), r3(lim?.LAI), r3(lim?.LAcS), r3(lim?.LAcI),
       base.lse, base.lie, fuera ? r3(v) : null, idxSen.has(i) ? r3(v) : null,
-      ...(tend ? [x >= desdeTend ? r3(tend(x)) : null] : []), ...(sat != null ? [sat] : [])];
+      ...(tend ? [x >= desdeTend ? r3(tend(x)) : null] : []), ...(sat != null ? [sat] : []), ...(hayOp ? [base.opMax!, base.opMin!] : [])];
   });
   const espTxt = specTxt(base.lie, base.lse, base.unidad);
   const tablaLimites: Fila[] = [
@@ -247,6 +257,8 @@ function bloquePresion(base: BaseBloque,
       [r3(pendienteDia != null ? pendienteDia * 30.4375 : null),
         diasSat != null ? Math.round(diasSat) : sat == null ? "Sin ΔP fabricante" : pendienteDia == null ? "Datos insuficientes" : "Sin tendencia ascendente"],
     ] as Fila[] : []),
+    ["n días", "n lecturas", "Dictamen", "Capacidad"],
+    [vals.length, individuales.length, dict ? `${dict.estadoControl} · ${dict.cumplimientoEspecificacion}` : "N/D", cap?.etiquetaPpk ?? "N/D"],
   ];
 
   const series: SerieGrafica[] = [
@@ -262,6 +274,10 @@ function bloquePresion(base: BaseBloque,
     { nombre: "Señal W.E.", col: "K", color: "F59E0B", linea: "none", marcador: { simbolo: "circle", color: "F59E0B", tam: 6, hueco: true } },
     ...(tend ? [{ nombre: "Tendencia", col: "L", color: "6B7280", linea: "sysDot" as const }] : []),
     ...(sat != null ? [{ nombre: "Saturación (fabricante)", col: col(11 + (tend ? 1 : 0)), color: "7C3AED", linea: "solid" as const, ancho: 15875 }] : []),
+    ...(hayOp ? [
+      { nombre: "Rango de operación", col: col(colOp), color: "D1D5DB", linea: "solid" as const, banda: "sup" as const },
+      { nombre: "Rango de operación", col: col(colOp + 1), color: "D1D5DB", linea: "solid" as const, banda: "inf" as const },
+    ] : []),
   ];
   const yVals = filas.flatMap((f) => f.slice(1).map((x) => (typeof x === "number" ? x : null)));
   const esc = escala(yVals);
@@ -274,7 +290,7 @@ function bloquePresion(base: BaseBloque,
     LAS: r3(lim?.LAS), LAI: r3(lim?.LAI), LAcS: r3(lim?.LAcS), LAcI: r3(lim?.LAcI),
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
-    nSenales: idxSen.size, dict, tablaLimites, filas, encabezado,
+    nSenales: idxSen.size, dict, tablaLimites, filas, encabezado, sigmaEntreDias: r3(sigmaED),
     puntos: vals.map((v, i) => ({ fecha: fechas[i], valor: v, lecturas: dias[i].valores, reglas: reglasDe(sen, i), fuera: dias[i].valores.some(fueraLectura) })),
     graficas: filas.length ? [{
       hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series,
@@ -349,7 +365,7 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
     LAS: r3(lim?.LAS), LAI: r3(lim?.LAI), LAcS: r3(lim?.LAcS), LAcI: r3(lim?.LAcI),
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
-    nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado,
+    nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado, sigmaEntreDias: r3(carta?.sigmaEntreDias),
     puntos: (carta?.subgrupos ?? []).map((g, i) => {
       const vs = dias[g.indice].valores;
       return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };
@@ -452,6 +468,7 @@ export function construirBloques(a: Omit<PaqueteArgs, "codigoAT" | "sistema" | "
         ...comun, hoja, calidad: calidadDe(r, "lecturas", a.desde, a.hasta, (_nd, nl) => nl), variable: "Presión diferencial", tipo: r.modulo === "filtros" || ins?.tipo === "manometro_filtro" ? "filtro" : "presion",
         lie: r.lie ?? ins?.lie_pa ?? null, lse: r.lse ?? ins?.lse_pa ?? null, unidad,
         saturacion: ins?.dp_final_fabricante ?? null,
+        opMin: ins?.op_min_pa ?? null, opMax: ins?.op_max_pa ?? null,
         cambios: (a.cambiosFiltro ?? []).filter((c) => c.instrumento_id === ins?.id),
       }, dias, rango, a.hasta));
     }

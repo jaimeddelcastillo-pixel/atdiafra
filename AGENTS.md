@@ -11,3 +11,5 @@
 - registro_analisis_tendencias is versioned by a DB trigger (previous row copied to registro_analisis_tendencias_historial, created_by/updated_by set server-side); history can't be bypassed by the client.
 - AT records have estado borrador/emitido enforced by the registro_at_versionar trigger (emitido rows reject edits; only admins emit or reopen with a motivo); the app's read-only mode is just a convenience.
 - The FOR-VAL-16-02 Word is generated client-side with docx (src/lib/word-forval16.ts) from the same Bloque/PNG/texto as screen and Excel; template texts live in the versioned formato_forval16 table (insert-only, latest wins) so past exports stay reproducible.
+- Manometer operating range (instrumentos.op_min_pa/op_max_pa) is informational only (grey band); LIE/LSE alone drive compliance and capacity, so normative spec and process setpoints never mix.
+- Signer names/positions come from the perfiles table (one row per auth user); FOR-VAL-16-02 change control and "Sustituye a" count only emitted versions.

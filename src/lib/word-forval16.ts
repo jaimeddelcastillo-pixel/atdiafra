@@ -18,6 +18,10 @@ export interface WordArgs {
   sistema: string; tituloSistema: string; periodo: string; desde: string; hasta: string;
   bloques: Bloque[]; texto: TextoForVal16; justificaciones: Record<string, string>;
   cambios: CambioVersion[];
+  /** «AT-AAAA-NNN vNN» de la última versión EMITIDA anterior, o N/A. */
+  sustituye: string;
+  /** Áreas únicas (cuartos individuales) ordenadas por código, p. ej. «DCC-01 Entrada personal». */
+  areas: string[];
   png: (b: Bloque) => Promise<{ nombre: string; blob: Blob }[]>;
 }
 
@@ -129,7 +133,7 @@ export function nombreArchivoWord(a: { codigoAT: string; sistema: string; period
 export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; archivo: string }> {
   const f = a.formato;
   const emitido = a.estado === "emitido";
-  const areas = [...new Set(a.bloques.map((b) => ubicacionTxt(b.ubicacion)))];
+  const areas = a.areas.length ? a.areas : [...new Set(a.bloques.map((b) => ubicacionTxt(b.ubicacion)))];
   const clases = [...new Set(a.bloques.map((b) => b.iso).filter(Boolean))].sort();
   const vars = { sistema: a.tituloSistema, periodo: a.periodo, areas: listaEs(areas) || "—", clases_iso: listaEs(clases) || "—" };
 
@@ -153,7 +157,7 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
       new TableRow({ children: [
         celda([pc(a.codigoAT)], c5[0]),
         celda([pc(emitido ? String(a.version).padStart(2, "0") : "Borrador")], c5[1]),
-        celda([pc(a.version > 1 ? `${a.codigoAT} v${String(a.version - 1).padStart(2, "0")}` : "N/A")], c5[2]),
+        celda([pc(a.sustituye || "N/A")], c5[2]),
         celda([pc(emitido && a.emitidoAt ? fmtDMY(a.emitidoAt.slice(0, 10)) : "—")], c5[3]),
         celda([new Paragraph({ alignment: AlignmentType.CENTER, children: [
           new TextRun({ children: ["Página ", PageNumber.CURRENT, " de ", PageNumber.TOTAL_PAGES], size: 18, font: FONT }),
@@ -271,7 +275,7 @@ export async function generarWordForVal16(a: WordArgs): Promise<{ blob: Blob; ar
   const anchosCC = [900, 900, 1500, 4272];
   anchosCC.push(W - anchosCC.reduce((x, y) => x + y, 0));
   cuerpo.push(tablaSimple([["De", "A", "Fecha", "Descripción del cambio", "Realizado por"],
-    ...a.cambios.map((c) => [c.de, c.a, c.fecha, c.descripcion, c.por])], anchosCC));
+    ...(a.cambios.length ? a.cambios.map((c) => [c.de, c.a, c.fecha, c.descripcion, c.por]) : [["—", "—", "—", "Sin versiones emitidas.", "—"]])], anchosCC));
 
   cuerpo.push(h1("Anexos."));
   const just = a.bloques.filter((b) => a.justificaciones[b.hoja]?.trim());

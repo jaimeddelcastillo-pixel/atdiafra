@@ -81,28 +81,64 @@ export function fraseEstacional(puntos: { fecha: string; reglas: string[] }[]): 
   return `Se observa un desplazamiento de la media en ${MESES_LARGOS[Number(top.slice(5, 7)) - 1]}; evaluar influencia estacional (PNO-VAL-16 8.8).`;
 }
 
+/** Acción que exige el dictamen: investigación (fuera de control / no cumple), vigilancia (alertas) o ninguna. */
+export function accionDe(b: Bloque): "investigar" | "vigilar" | null {
+  const d = b.dict;
+  if (!d) return null;
+  if (d.estadoControl === "FUERA DE CONTROL" || d.cumplimientoEspecificacion === "NO CUMPLE") return "investigar";
+  if (d.estadoControl === "BAJO CONTROL CON ALERTAS") return "vigilar";
+  return null;
+}
+const TXT_INV = "requiere investigación de causa raíz (PNO-VAL-16 9.4)";
+const TXT_VIG = "requiere vigilancia en el siguiente periodo (PNO-VAL-16 9.7.7)";
+
+/** "12 días con señal (regla 4: 9; regla 2: 3)": cuenta puntos, no reglas repetidas. */
+export function fraseSenales(puntos: { reglas: string[] }[], unidad = "días"): string | null {
+  const con = puntos.filter((p) => p.reglas.length);
+  if (!con.length) return null;
+  const porRegla = new Map<string, number>();
+  for (const p of con) for (const r of new Set(p.reglas.map((x) => x.match(/Regla\s*(\d+)/i)?.[1] ?? x)))
+    porRegla.set(r, (porRegla.get(r) ?? 0) + 1);
+  const det = [...porRegla.entries()].sort((x, y) => y[1] - x[1]).map(([r, n]) => `${/^\d+$/.test(r) ? `regla ${r}` : r}: ${n}`).join("; ");
+  const sing = unidad === "días" ? "un día" : "un punto";
+  return `${con.length === 1 ? sing : `${con.length} ${unidad}`} con señal (${det})`;
+}
+
+/** Mes con la media más baja y más alta. */
+function mesesExtremos(puntos: { fecha: string; valor: number }[], u: string): string | null {
+  const m = new Map<string, number[]>();
+  for (const p of puntos) { const k = p.fecha.slice(0, 7); m.set(k, [...(m.get(k) ?? []), p.valor]); }
+  if (m.size < 2) return null;
+  const medias = [...m.entries()].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length] as const).sort((x, y) => x[1] - y[1]);
+  const nom = (k: string) => MESES_LARGOS[Number(k.slice(5, 7)) - 1];
+  const [lo, hi] = [medias[0], medias[medias.length - 1]];
+  return `La media mensual más baja se presentó en ${nom(lo[0])} (${lo[1].toFixed(2)} ${u}) y la más alta en ${nom(hi[0])} (${hi[1].toFixed(2)} ${u}).`;
+}
+
 function parrafo(b: Bloque): string {
   const u = b.unidad;
   const ppkEt = etiquetaCapacidad(b.Ppk).toLowerCase();
   let t = `${b.codigo} (${ubicacionTxt(b.ubicacion)}), ${nombreVariable(b.variable)}: media ${n2(b.media)} ${u}, Ppk ${n2(b.Ppk)} (${ppkEt}).`;
   const fuera = lecturasFuera(b);
-  const otras = b.puntos.reduce((a, p) => a + p.reglas.filter((r) => !r.startsWith("Regla 1")).length, 0);
-  const r1 = b.puntos.filter((p) => p.reglas.some((r) => r.startsWith("Regla 1"))).length;
   const carta = b.tipo === "thr" ? "la carta X̄-MR" : "la gráfica de medias diarias";
-  const partes: string[] = [];
   if (fuera.length) {
     const ej = fuera.slice(0, 3).map((x) => `${x.v.toFixed(1)} ${u}, ${fmtDMY(x.f)}`).join("; ");
-    partes.push(`${fraseCantidad(fuera.length, "una lectura", "lecturas")} fuera de especificación (${ej}${fuera.length > 3 ? "; …" : ""})`);
+    t += ` ${fuera.length === 1 ? "Se observa una lectura" : `Se observan ${fuera.length} lecturas`} fuera de especificación (${ej}${fuera.length > 3 ? "; …" : ""}).`;
   }
-  if (r1) partes.push(`${fraseCantidad(r1, "un punto", "puntos")} fuera de los límites de control`);
-  if (otras) partes.push(`${fraseCantidad(otras, "una señal", "señales")} de reglas 2–6 en ${carta}`);
-  if (partes.length) {
-    t += ` ${partes.length === 1 ? "Presenta" : "Presentan"} ${listaEs(partes)}; requiere investigación de causa raíz (PNO-VAL-16 9.4).`;
+  const sen = fraseSenales(b.puntos);
+  if (sen) t += ` ${sen.startsWith("un ") ? "Se observa" : "Se observan"} ${sen} en ${carta}.`;
+  if (!fuera.length && !sen) t += ` Todas las lecturas se encuentran dentro de especificación y no se detectaron señales de las reglas de Western Electric/Nelson en ${carta}.`;
+  const acc = accionDe(b);
+  if (acc) t += ` Por su dictamen (${b.dict!.estadoControl} · ${b.dict!.cumplimientoEspecificacion}), ${acc === "investigar" ? TXT_INV : TXT_VIG}.`;
+  const sg = b.s, se = b.sigmaEntreDias;
+  if (sg != null && se != null && se > 0 && sg >= 1.5 * se) {
+    t += ` La variación entre periodos supera a la variación diaria (σ global ${sg.toFixed(2)} vs σ entre días ${se.toFixed(2)}), lo que indica desplazamiento de la media a lo largo del periodo; evaluar influencia estacional (PNO-VAL-16 8.8).`;
+    const mx = mesesExtremos(b.puntos, u);
+    if (mx) t += ` ${mx}`;
   } else {
-    t += ` Todas las lecturas se encuentran dentro de especificación y no se detectaron señales de las reglas de Western Electric/Nelson en ${carta}.`;
+    const est = fraseEstacional(b.puntos);
+    if (est) t += ` ${est}`;
   }
-  const est = fraseEstacional(b.puntos);
-  if (est) t += ` ${est}`;
   if (b.calidad.suficiencia.startsWith("Insuficiente")) t += ` El tamaño de muestra es insuficiente (n = ${b.calidad.nSuficiencia}) según PNO-VAL-16 Tabla 2.`;
   return t;
 }
@@ -118,15 +154,29 @@ export function generarTexto(bloques: Bloque[], cobertura: { primera: string | n
   const alcanceLinea = `El presente análisis de tendencias ${alcanceTxt(alcance)}, con los datos registrados ${periodo} (primera y última fecha con datos reales). Variables analizadas: ${listaEs(vars) || "ninguna"}.`;
   const s81 = bloques.map((b, i) => `${i + 1}. Monitoreo de ${nombreVariable(b.variable)} ${b.codigo} (${ubicacionTxt(b.ubicacion)}) con código ${b.bitacora}`).join("\n");
   const g = dictamenGlobal(bloques);
-  const conInv = bloques.filter((b) => b.dict?.requiereInvestigacion);
+  const etq = (b: Bloque) => `${b.codigo} – ${nombreVariable(b.variable)}`;
+  const inv = bloques.filter((b) => accionDe(b) === "investigar");
+  const vig = bloques.filter((b) => accionDe(b) === "vigilar");
+  const sinHall = bloques.length - inv.length - vig.length;
+  const partesG: string[] = [];
+  if (inv.length) partesG.push(`${inv.length === 1 ? "una requiere" : `${inv.length} requieren`} investigación de causa raíz (PNO-VAL-16 9.4)`);
+  if (vig.length) partesG.push(`${vig.length === 1 ? "una requiere" : `${vig.length} requieren`} vigilancia en el siguiente periodo (PNO-VAL-16 9.7.7)`);
   const global = !bloques.length ? "No se analizaron instrumentos en el periodo."
-    : conInv.length
-      ? `En conjunto, ${bloques.length - conInv.length} de ${bloques.length} series analizadas no presentan hallazgos; ${conInv.length === 1 ? "una requiere" : `${conInv.length} requieren`} investigación de causa raíz (PNO-VAL-16 9.4).`
+    : partesG.length
+      ? `En conjunto, ${sinHall} de ${bloques.length} series analizadas no presentan hallazgos; ${listaEs(partesG)}.`
       : `En conjunto, las ${bloques.length} series analizadas se mantienen dentro de especificación y bajo control estadístico.`;
   const s9 = [...bloques.map(parrafo), global].join("\n\n");
-  const s10 = conInv.length
-    ? `Se identificaron los siguientes casos que requieren investigación:\n${conInv.map((b, i) => `${i + 1}. ${b.codigo} – ${nombreVariable(b.variable)}: ${b.dict!.estadoControl} · ${b.dict!.cumplimientoEspecificacion}.`).join("\n")}\nRegistrar en FOR-VAL-03-06.`
-    : "No se generaron desviaciones durante el periodo analizado.";
-  const s11 = `Con base en el análisis estadístico conforme a PNO-VAL-16 y a los requisitos de la NOM-241-SSA1-2025, el resultado global del periodo es ${g.cumplimiento} con especificación, con estado de control ${g.estado}.${g.requiere ? " Los casos señalados en la sección 10 requieren investigación de causa raíz (PNO-VAL-16 9.4)." : ""}`;
+  const lista = (xs: Bloque[]) => xs.map((b, i) => `${i + 1}. ${etq(b)}: ${b.dict!.estadoControl} · ${b.dict!.cumplimientoEspecificacion}.`).join("\n");
+  const s10Partes: string[] = [];
+  if (inv.length) s10Partes.push(`Casos que requieren investigación de causa raíz (PNO-VAL-16 9.4) — ${inv.length}:\n${lista(inv)}\nRegistrar en FOR-VAL-03-06.`);
+  if (vig.length) s10Partes.push(`Casos que requieren vigilancia en el siguiente periodo (PNO-VAL-16 9.7.7) — ${vig.length}:\n${lista(vig)}`);
+  const s10 = s10Partes.length ? s10Partes.join("\n\n") : "No se generaron desviaciones durante el periodo analizado.";
+  const conPpk = bloques.filter((b) => b.Ppk != null);
+  const ok = conPpk.filter((b) => b.Ppk! >= 1.33).length;
+  const bajos = conPpk.filter((b) => b.Ppk! < 1);
+  const cap = bloques.length
+    ? ` Capacidad: ${ok} de ${bloques.length} series con Ppk ≥ 1.33; ${bajos.length ? `las series con Ppk < 1.00 son: ${listaEs(bajos.map((b) => `${etq(b)} (Ppk ${n2(b.Ppk)})`))}` : "ninguna serie presenta Ppk < 1.00"}.`
+    : "";
+  const s11 = `Con base en el análisis estadístico conforme a PNO-VAL-16 y a los requisitos de la NOM-241-SSA1-2025, el resultado global del periodo es ${g.cumplimiento} con especificación, con estado de control ${g.estado}.${cap}${inv.length ? " Los casos señalados en la sección 10 requieren investigación de causa raíz (PNO-VAL-16 9.4)." : ""}${vig.length ? " Los casos con alertas se vigilarán en el siguiente periodo (PNO-VAL-16 9.7.7)." : ""}`;
   return { alcance: alcanceLinea, s81, s9, s10, s11 };
 }

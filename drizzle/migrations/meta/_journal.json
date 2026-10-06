@@ -57,6 +57,13 @@
       "when": 1791320556528,
       "tag": "0007_audit_export_word",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791321622865,
+      "tag": "0008_perfiles_y_rango_operacion",
+      "breakpoints": true
     }
   ]
 }
