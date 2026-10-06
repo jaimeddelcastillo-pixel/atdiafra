@@ -98,7 +98,7 @@ function trimestreActual(): Trimestre {
 
 /** Peor Cpk (mínimo entre series con n suficiente). null si ninguna. */
 function peorCpk(a: AnalisisRegistro): number | null {
-  const vals = a.series.filter((s) => !s.cpkInsuficiente && s.cpk != null).map((s) => s.cpk as number);
+  const vals = a.series.filter((s) => !s.cpkInsuficiente && s.ppk != null).map((s) => s.ppk as number);
   return vals.length ? Math.min(...vals) : null;
 }
 
@@ -793,16 +793,18 @@ function SerieDetail({ a }: { a: AnalisisRegistro }) {
               <td className="px-2 py-1.5 text-center tabular-nums">
                 {s.cpkInsuficiente ? (
                   <span className="text-[10px] italic text-muted-foreground">n insuf.</span>
-                ) : s.cpk != null ? (
+                ) : s.ppk != null ? (
                   <span
-                    className={s.cpk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
-                    title={s.cpk < CPK_FAIL ? "Capacidad baja — alerta estadística" : s.cpk < CPK_WARN ? "Capacidad marginal" : "Capacidad adecuada"}
+                    className={s.ppk < CPK_WARN ? "text-warning font-medium" : "text-success font-medium"}
+                    title={s.ppk < CPK_FAIL ? "Capacidad baja (Ppk) — alerta estadística" : s.ppk < CPK_WARN ? "Capacidad marginal (Ppk)" : "Capacidad adecuada (Ppk)"}
                   >
-                    {s.cpk.toFixed(2)}
+                    Ppk {s.ppk.toFixed(2)}
                   </span>
                 ) : "—"}
-                {!s.cpkInsuficiente && s.ppk != null && (
-                  <span className="block text-[10px] text-muted-foreground">Ppk {s.ppk.toFixed(2)}{s.notaCpk ? ` · ${s.notaCpk}` : ""}</span>
+                {!s.cpkInsuficiente && (
+                  <span className="block text-[10px] text-muted-foreground" title="Cpk: referencia (variación dentro del día)">
+                    {s.cpk != null ? `Cpk ref. ${s.cpk.toFixed(2)}` : ""}{s.notaCpk ? ` · ${s.notaCpk}` : ""}
+                  </span>
                 )}
               </td>
               <td className="px-2 py-1.5 text-center">
