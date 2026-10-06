@@ -339,6 +339,8 @@ export type Database = {
         Row: {
           codigo: string
           created_at: string
+          created_by: string | null
+          created_by_email: string | null
           dictamen_global: string | null
           fecha: string
           id: string
@@ -350,12 +352,17 @@ export type Database = {
           sistema: string
           texto: Json
           updated_at: string
+          updated_by: string | null
+          updated_by_email: string | null
           usuario_email: string | null
           usuario_id: string | null
+          version: number
         }
         Insert: {
           codigo: string
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           dictamen_global?: string | null
           fecha?: string
           id?: string
@@ -367,12 +374,17 @@ export type Database = {
           sistema: string
           texto?: Json
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           usuario_email?: string | null
           usuario_id?: string | null
+          version?: number
         }
         Update: {
           codigo?: string
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           dictamen_global?: string | null
           fecha?: string
           id?: string
@@ -384,8 +396,44 @@ export type Database = {
           sistema?: string
           texto?: Json
           updated_at?: string
+          updated_by?: string | null
+          updated_by_email?: string | null
           usuario_email?: string | null
           usuario_id?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
+      registro_analisis_tendencias_historial: {
+        Row: {
+          codigo: string
+          datos: Json
+          fecha: string
+          id: string
+          registro_id: string
+          usuario_email: string | null
+          usuario_id: string | null
+          version: number
+        }
+        Insert: {
+          codigo: string
+          datos: Json
+          fecha?: string
+          id?: string
+          registro_id: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+          version: number
+        }
+        Update: {
+          codigo?: string
+          datos?: Json
+          fecha?: string
+          id?: string
+          registro_id?: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+          version?: number
         }
         Relationships: []
       }

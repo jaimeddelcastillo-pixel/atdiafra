@@ -8,3 +8,4 @@
 - Filter change dates live in the cambios_filtro table (not on instrumentos) so multiple changes per instrument can be charted and regressed.
 
 - /reporte/tendencias and the FOR-VAL-16-02 Excel share construirBloques() in src/lib/export-forval16.ts; screen, Excel and Word must show identical numbers.
+- registro_analisis_tendencias is versioned by a DB trigger (previous row copied to registro_analisis_tendencias_historial, created_by/updated_by set server-side); history can't be bypassed by the client.
