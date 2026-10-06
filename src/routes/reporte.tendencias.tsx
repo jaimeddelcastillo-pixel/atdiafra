@@ -20,7 +20,7 @@ import { listAreas, listCambiosFiltro, listInstrumentos, listSistemasHVAC, type 
 import { construirBloques, etiquetaPeriodo, exportarPaqueteForVal16 } from "@/lib/export-forval16";
 import { codigoRegistro, hvacDe, unirPorInstrumento } from "@/lib/seleccion-forval16";
 import { coberturaReal, recortarSemanasPorFecha } from "@/lib/fechas-lectura";
-import { SECCIONES, dictamenGlobal, generarTexto, type TextoForVal16 } from "@/lib/texto-forval16";
+import { SECCIONES, dictamenGlobal, generarTexto, type AlcanceTexto, type TextoForVal16 } from "@/lib/texto-forval16";
 import { TendenciaCard, pngsDeTarjeta } from "@/components/tendencias/TendenciaCard";
 import { descargarBlob } from "@/lib/imagen-grafica";
 
