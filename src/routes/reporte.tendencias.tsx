@@ -274,8 +274,9 @@ function TendenciasPage() {
         justificaciones: registroEditable.justificaciones, cambios: cambiosV, png: (b) => pngsDeTarjeta(null, b),
       });
       descargarBlob(blob, archivo);
-      await supabase.rpc("registrar_exportacion_at", { _registro_id: registroEditable.id, _version: registroEditable.version, _estado: registroEditable.estado, _archivo: archivo });
-      toast.success(`Descargado ${archivo}`);
+      const { error: eAud } = await supabase.rpc("registrar_exportacion_at", { _registro_id: registroEditable.id, _version: registroEditable.version, _estado: registroEditable.estado, _archivo: archivo });
+      if (eAud) toast.warning(`Word descargado, pero no se registró en Auditoría: ${eAud.message}`);
+      else toast.success(`Descargado ${archivo}`);
     } catch (e) { toast.error(e instanceof Error ? e.message : "Error al exportar Word"); }
     finally { setOcupado(false); }
   };
