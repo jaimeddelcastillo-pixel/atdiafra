@@ -228,7 +228,6 @@ function bloquePresion(base: Omit<Bloque, "n" | "media" | "s" | "min" | "max" | 
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
     nSenales: idxSen.size, dict, tablaLimites, filas, encabezado,
-    Cp: null, Cpk: null,
     graficas: filas.length ? [{
       hoja: base.hoja, filaIni: 0, filaFin: 0, colX: "A", series,
       titulo: [base.codigo, base.ubicacion, `${base.iso} · ${rango}`],
