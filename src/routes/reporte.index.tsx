@@ -139,7 +139,6 @@ function ReportePage() {
   const [desde, setDesde] = useState<Date>(hace90);
   const [hasta, setHasta] = useState<Date>(hoy);
   const [anioPreset, setAnioPreset] = useState<number>(hoy.getFullYear());
-  const [paqueteOpen, setPaqueteOpen] = useState(false);
 
   const reload = async () => {
     setLoading(true);

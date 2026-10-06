@@ -61,6 +61,12 @@ function Index() {
                   >
                     <Gauge className="h-4 w-4" /> Abrir Presiones diferenciales
                   </Link>
+                  <Link
+                    to="/reporte/tendencias"
+                    className="inline-flex items-center gap-2 rounded-md border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Activity className="h-4 w-4" /> Análisis de tendencias FOR-VAL-16-02
+                  </Link>
                 </div>
               </div>
             </div>

@@ -212,7 +212,6 @@ function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "e
 
 export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
   const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
-  const [paquete, setPaquete] = useState<string[] | null>(null);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
 
