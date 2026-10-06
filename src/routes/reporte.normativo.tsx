@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { listRegistros, type Registro, type Modulo } from "@/lib/semanas";
 import { listAreas, listSistemasHVAC, listInstrumentos } from "@/lib/catalogos";
 import {
-  analizarRegistro, claveGrupo, etiquetaGrupo, MINIMO_NORMATIVO, CPK_WARN, CPK_FAIL,
+  analizarRegistro, semanasDelPeriodo, claveGrupo, etiquetaGrupo, MINIMO_NORMATIVO, CPK_WARN, CPK_FAIL,
   tipoRegistroReporte, etiquetaTipoRegistro,
   type AgruparPor, type AnalisisRegistro, type Periodo, type Trimestre, type TipoRegistroReporte,
 } from "@/lib/normativo";
