@@ -324,7 +324,7 @@ function TendenciasPage() {
                 </p>
               )}
               {atValido && registroEditable && (
-{soloLectura ? (
+                soloLectura ? (
                 <div className="rounded-md border border-success/40 bg-success/10 p-2 text-xs">
                   <p className="font-medium">Registro emitido · versión {registroEditable.version} · solo lectura</p>
                   <p className="text-muted-foreground">Creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)}{registroEditable.emitido_by_email ? ` · emitido por ${registroEditable.emitido_by_email}` : ""}{registroEditable.emitido_at ? ` el ${fechaHora(registroEditable.emitido_at)}` : ""}</p>
@@ -334,7 +334,7 @@ function TendenciasPage() {
                   <p className="font-medium">Editando registro existente {at} (creado por {registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.created_at)})</p>
                   <p className="text-muted-foreground">Versión {registroEditable.version} · estado {registroEditable.estado === "emitido" ? "Emitido" : "Borrador"}{registroEditable.motivo_version ? ` · motivo de versión: ${registroEditable.motivo_version}` : ""} · última modificación por {registroEditable.updated_by_email ?? registroEditable.created_by_email ?? "—"} el {fechaHora(registroEditable.updated_at)}. Se pedirá confirmación al guardar.</p>
                 </div>
-              )}
+              )
               )}
             </div>
             <fieldset disabled={soloLectura} className="space-y-1.5 md:col-span-2">
