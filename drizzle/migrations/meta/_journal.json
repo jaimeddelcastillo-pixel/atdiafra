@@ -64,6 +64,13 @@
       "when": 1791321622865,
       "tag": "0008_perfiles_y_rango_operacion",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791322519976,
+      "tag": "0009_especificacion_normativa_instrumentos",
+      "breakpoints": true
     }
   ]
 }

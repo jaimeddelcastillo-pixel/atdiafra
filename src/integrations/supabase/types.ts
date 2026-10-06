@@ -270,8 +270,10 @@ export type Database = {
       instrumentos: {
         Row: {
           activo: boolean
+          area_estado: string
           area_id: string | null
           area_libre: string | null
+          area_nota: string | null
           baseline_pa: number | null
           baseline_tolerancia_pct: number | null
           codigo: string
@@ -285,13 +287,26 @@ export type Database = {
           op_max_pa: number | null
           op_min_pa: number | null
           parametro: string
+          spec_estado: string | null
+          spec_fecha_validacion: string | null
+          spec_lie: number | null
+          spec_lie_estricto: boolean
+          spec_lie_hr: number | null
+          spec_lse: number | null
+          spec_lse_estricto: boolean
+          spec_lse_hr: number | null
+          spec_referencia: string | null
+          spec_texto: string | null
+          spec_texto_hr: string | null
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at: string
         }
         Insert: {
           activo?: boolean
+          area_estado?: string
           area_id?: string | null
           area_libre?: string | null
+          area_nota?: string | null
           baseline_pa?: number | null
           baseline_tolerancia_pct?: number | null
           codigo: string
@@ -305,13 +320,26 @@ export type Database = {
           op_max_pa?: number | null
           op_min_pa?: number | null
           parametro: string
+          spec_estado?: string | null
+          spec_fecha_validacion?: string | null
+          spec_lie?: number | null
+          spec_lie_estricto?: boolean
+          spec_lie_hr?: number | null
+          spec_lse?: number | null
+          spec_lse_estricto?: boolean
+          spec_lse_hr?: number | null
+          spec_referencia?: string | null
+          spec_texto?: string | null
+          spec_texto_hr?: string | null
           tipo: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
         }
         Update: {
           activo?: boolean
+          area_estado?: string
           area_id?: string | null
           area_libre?: string | null
+          area_nota?: string | null
           baseline_pa?: number | null
           baseline_tolerancia_pct?: number | null
           codigo?: string
@@ -325,6 +353,17 @@ export type Database = {
           op_max_pa?: number | null
           op_min_pa?: number | null
           parametro?: string
+          spec_estado?: string | null
+          spec_fecha_validacion?: string | null
+          spec_lie?: number | null
+          spec_lie_estricto?: boolean
+          spec_lie_hr?: number | null
+          spec_lse?: number | null
+          spec_lse_estricto?: boolean
+          spec_lse_hr?: number | null
+          spec_referencia?: string | null
+          spec_texto?: string | null
+          spec_texto_hr?: string | null
           tipo?: Database["public"]["Enums"]["instrumento_tipo"]
           updated_at?: string
         }
