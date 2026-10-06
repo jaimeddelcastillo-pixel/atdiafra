@@ -6,3 +6,5 @@
 - Pressure/filter alert-action limits use daily means while spec compliance uses each individual reading; keeps the FOR-VAL-16-02 package and normative report consistent.
 - T/HR control charts use the 3-way X̄-MR-R (cartaXbarMRR) and capacity verdicts use Ppk; Cp/Cpk are reference-only because readings within a day are time-dependent.
 - Filter change dates live in the cambios_filtro table (not on instrumentos) so multiple changes per instrument can be charted and regressed.
+
+- /reporte/tendencias and the FOR-VAL-16-02 Excel share construirBloques() in src/lib/export-forval16.ts; screen, Excel and Word must show identical numbers.

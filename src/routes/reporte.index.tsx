@@ -19,7 +19,6 @@ import { MODULOS } from "@/lib/diafra-data";
 import { exportarNormativoExcel, exportarNormativoPDF } from "@/lib/export-normativo";
 import { Input } from "@/components/ui/input";
 import { VistaInstrumentos, VistaAvance } from "@/components/reporte/ReporteVistas";
-import { PaqueteForVal16Dialog } from "@/components/reporte/PaqueteForVal16Dialog";
 import { MINIMO_NORMATIVO, analizarRegistro, semanasDelPeriodo, type Periodo } from "@/lib/normativo";
 
 export const Route = createFileRoute("/reporte/")({
@@ -140,7 +139,6 @@ function ReportePage() {
   const [desde, setDesde] = useState<Date>(hace90);
   const [hasta, setHasta] = useState<Date>(hoy);
   const [anioPreset, setAnioPreset] = useState<number>(hoy.getFullYear());
-  const [paqueteOpen, setPaqueteOpen] = useState(false);
 
   const reload = async () => {
     setLoading(true);
@@ -301,11 +299,11 @@ function ReportePage() {
             <Button size="sm" variant="outline" onClick={reload} className="gap-1">
               <RefreshCw className="h-4 w-4" /> Actualizar
             </Button>
-            <Button size="sm" onClick={() => setPaqueteOpen(true)} disabled={loading} className="gap-1">
-              <FileSpreadsheet className="h-4 w-4" /> Paquete FOR-VAL-16-02
+            <Button size="sm" asChild disabled={loading} className="gap-1">
+              <Link to="/reporte/tendencias" search={{ desde: format(desde, "yyyy-MM-dd"), hasta: format(hasta, "yyyy-MM-dd") }}>
+                <FileSpreadsheet className="h-4 w-4" /> Análisis de tendencias FOR-VAL-16-02
+              </Link>
             </Button>
-            <PaqueteForVal16Dialog open={paqueteOpen} onOpenChange={setPaqueteOpen} registros={registros}
-              instrMap={instrMap} areasMap={areasMap} desde={desde} hasta={hasta} />
             <Button size="sm" variant="outline" onClick={() => onExport("excel")} disabled={loading} className="gap-1">
               <FileSpreadsheet className="h-4 w-4" /> Excel
             </Button>

@@ -335,6 +335,60 @@ export type Database = {
         }
         Relationships: []
       }
+      registro_analisis_tendencias: {
+        Row: {
+          codigo: string
+          created_at: string
+          dictamen_global: string | null
+          fecha: string
+          id: string
+          instrumentos: Json
+          justificaciones: Json
+          periodo_desde: string
+          periodo_etiqueta: string | null
+          periodo_hasta: string
+          sistema: string
+          texto: Json
+          updated_at: string
+          usuario_email: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          dictamen_global?: string | null
+          fecha?: string
+          id?: string
+          instrumentos?: Json
+          justificaciones?: Json
+          periodo_desde: string
+          periodo_etiqueta?: string | null
+          periodo_hasta: string
+          sistema: string
+          texto?: Json
+          updated_at?: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          dictamen_global?: string | null
+          fecha?: string
+          id?: string
+          instrumentos?: Json
+          justificaciones?: Json
+          periodo_desde?: string
+          periodo_etiqueta?: string | null
+          periodo_hasta?: string
+          sistema?: string
+          texto?: Json
+          updated_at?: string
+          usuario_email?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: []
+      }
       registro_semanas: {
         Row: {
           anio: string

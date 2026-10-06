@@ -7,7 +7,6 @@ import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText, LineChart } from 
 import { toast } from "sonner";
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF, exportarNormativoExcel } from "@/lib/export-normativo";
-import { PaqueteForVal16Dialog } from "./PaqueteForVal16Dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -213,7 +212,6 @@ function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "e
 
 export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
   const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
-  const [paquete, setPaquete] = useState<string[] | null>(null);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
 
@@ -221,7 +219,7 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
     <section className="mt-3">
       <Leyenda>
         Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
-        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">FOR-VAL-16-02</b> para descargar el paquete de reporte con límites y gráficas editables del periodo elegido; "Ver bitácora" abre la captura para corregir.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">FOR-VAL-16-02</b> para abrir el análisis de tendencias (gráficas, texto y paquete Excel) del periodo elegido; "Ver bitácora" abre la captura para corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
@@ -276,10 +274,12 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
                       {!f.sinDatos && (
                         <>
                           {(f.modulo === "temphr" || f.modulo === "presiones" || f.modulo === "filtros") && (
-                            <Button type="button" size="sm" variant="outline" onClick={() => setPaquete([f.registro.id])}
-                              title="Paquete FOR-VAL-16-02: resumen, límites y gráficas editables en Excel"
+                            <Button type="button" size="sm" variant="outline" asChild
+                              title="Análisis de tendencias FOR-VAL-16-02: gráficas, límites y texto del periodo elegido"
                               className="h-7 gap-1 px-2 text-xs">
-                              <LineChart className="h-3.5 w-3.5" /> FOR-VAL-16-02
+                              <Link to="/reporte/tendencias" search={{ ids: f.registro.id, desde: format(desde, "yyyy-MM-dd"), hasta: format(hasta, "yyyy-MM-dd") }}>
+                                <LineChart className="h-3.5 w-3.5" /> FOR-VAL-16-02
+                              </Link>
                             </Button>
                           )}
                           <Button type="button" size="sm" onClick={() => descargarReporte(f, desde, hasta, "pdf")}
@@ -306,8 +306,6 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
           </tbody>
         </table>
       </div>
-      <PaqueteForVal16Dialog open={paquete != null} onOpenChange={(v) => !v && setPaquete(null)}
-        registros={registros} instrMap={instrMap} areasMap={areasMap} desde={desde} hasta={hasta} preseleccion={paquete ?? undefined} />
     </section>
   );
 }

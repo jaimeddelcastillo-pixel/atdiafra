@@ -15,6 +15,7 @@ import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReporteIndexRouteImport } from './routes/reporte.index'
+import { Route as ReporteTendenciasRouteImport } from './routes/reporte.tendencias'
 import { Route as ReporteNormativoRouteImport } from './routes/reporte.normativo'
 import { Route as ReporteIdRouteImport } from './routes/reporte.$id'
 import { Route as ModuloSlugRouteImport } from './routes/modulo.$slug'
@@ -52,6 +53,11 @@ const IndexRoute = IndexRouteImport.update({
 const ReporteIndexRoute = ReporteIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ReporteRoute,
+} as any)
+const ReporteTendenciasRoute = ReporteTendenciasRouteImport.update({
+  id: '/tendencias',
+  path: '/tendencias',
   getParentRoute: () => ReporteRoute,
 } as any)
 const ReporteNormativoRoute = ReporteNormativoRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/modulo/$slug': typeof ModuloSlugRoute
   '/reporte/$id': typeof ReporteIdRoute
   '/reporte/normativo': typeof ReporteNormativoRoute
+  '/reporte/tendencias': typeof ReporteTendenciasRoute
   '/reporte/': typeof ReporteIndexRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/tendencias'
     | '/reporte/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/tendencias'
     | '/reporte'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/modulo/$slug'
     | '/reporte/$id'
     | '/reporte/normativo'
+    | '/reporte/tendencias'
     | '/reporte/'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -252,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReporteIndexRouteImport
       parentRoute: typeof ReporteRoute
     }
+    '/reporte/tendencias': {
+      id: '/reporte/tendencias'
+      path: '/tendencias'
+      fullPath: '/reporte/tendencias'
+      preLoaderRoute: typeof ReporteTendenciasRouteImport
+      parentRoute: typeof ReporteRoute
+    }
     '/reporte/normativo': {
       id: '/reporte/normativo'
       path: '/normativo'
@@ -314,12 +333,14 @@ declare module '@tanstack/react-router' {
 interface ReporteRouteChildren {
   ReporteIdRoute: typeof ReporteIdRoute
   ReporteNormativoRoute: typeof ReporteNormativoRoute
+  ReporteTendenciasRoute: typeof ReporteTendenciasRoute
   ReporteIndexRoute: typeof ReporteIndexRoute
 }
 
 const ReporteRouteChildren: ReporteRouteChildren = {
   ReporteIdRoute: ReporteIdRoute,
   ReporteNormativoRoute: ReporteNormativoRoute,
+  ReporteTendenciasRoute: ReporteTendenciasRoute,
   ReporteIndexRoute: ReporteIndexRoute,
 }
 
