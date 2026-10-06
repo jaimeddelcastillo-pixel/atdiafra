@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, FileSpreadsheet, FileText, LineChart } from 
 import { toast } from "sonner";
 import { analizarRegistro, type Periodo } from "@/lib/normativo";
 import { exportarNormativoPDF, exportarNormativoExcel } from "@/lib/export-normativo";
-import { exportarTendenciasExcel } from "@/lib/export-tendencias";
+import { PaqueteForVal16Dialog } from "./PaqueteForVal16Dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -211,23 +211,9 @@ function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "e
   }, 30);
 }
 
-async function descargarTendencias(f: Fila, instrMap: Map<string, Instrumento>, desde: Date, hasta: Date) {
-  const instrumento = f.registro.instrumento_id ? instrMap.get(f.registro.instrumento_id) : undefined;
-  const t = toast.loading(`Preparando tendencias de ${f.codigo}…`);
-  try {
-    const hojas = await exportarTendenciasExcel({ registro: f.registro, instrumento, area: f.area, desde, hasta });
-    if (hojas === 0) {
-      toast.info(`${f.codigo} no tiene lecturas válidas de temperatura, humedad o presión en este periodo.`, { id: t });
-      return;
-    }
-    toast.success(`Excel de tendencias descargado (${hojas} gráfica${hojas === 1 ? "" : "s"})`, { id: t });
-  } catch (e: unknown) {
-    toast.error(`No se pudo generar el Excel: ${e instanceof Error ? e.message : "error desconocido"}`, { id: t });
-  }
-}
-
 export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areasMap, desde, hasta }: Props) {
   const filas = useMemo(() => construirFilas(registros, areaDe, instrMap, catalogo, areasMap), [registros, areaDe, instrMap, catalogo, areasMap]);
+  const [paquete, setPaquete] = useState<string[] | null>(null);
   const { filtradas, ui } = useFiltro(filas);
   const lunes = useMemo(() => lunesDelPeriodo(desde, hasta), [desde, hasta]);
 
@@ -235,7 +221,7 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
     <section className="mt-3">
       <Leyenda>
         Lista de <b className="text-foreground">todo el catálogo de instrumentos</b>, sin importar el módulo. Los marcados como <b className="text-warning">Sin capturas</b> aún no tienen ningún registro: son los que faltan por capturar.
-        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">Tendencias Excel</b> para obtener las tablas diarias y gráficas editables del periodo elegido; "Ver bitácora" abre la captura para corregir.
+        "% completo" son las lecturas capturadas contra las esperadas en el periodo (sin contar días N/A). "Fuera de límites" cuenta lecturas fuera de LIE/LSE. Usa <b className="text-foreground">FOR-VAL-16-02</b> para descargar el paquete de reporte con límites y gráficas editables del periodo elegido; "Ver bitácora" abre la captura para corregir.
       </Leyenda>
       {ui}
       <div className="mt-3 rounded-xl border border-border bg-card overflow-x-auto">
@@ -290,10 +276,10 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
                       {!f.sinDatos && (
                         <>
                           {(f.modulo === "temphr" || f.modulo === "presiones" || f.modulo === "filtros") && (
-                            <Button type="button" size="sm" variant="outline" onClick={() => descargarTendencias(f, instrMap, desde, hasta)}
-                              title="Descargar promedios diarios, límites y gráficas editables en Excel"
+                            <Button type="button" size="sm" variant="outline" onClick={() => setPaquete([f.registro.id])}
+                              title="Paquete FOR-VAL-16-02: resumen, límites y gráficas editables en Excel"
                               className="h-7 gap-1 px-2 text-xs">
-                              <LineChart className="h-3.5 w-3.5" /> Tendencias Excel
+                              <LineChart className="h-3.5 w-3.5" /> FOR-VAL-16-02
                             </Button>
                           )}
                           <Button type="button" size="sm" onClick={() => descargarReporte(f, desde, hasta, "pdf")}
@@ -320,6 +306,8 @@ export function VistaInstrumentos({ registros, areaDe, instrMap, catalogo, areas
           </tbody>
         </table>
       </div>
+      <PaqueteForVal16Dialog open={paquete != null} onOpenChange={(v) => !v && setPaquete(null)}
+        registros={registros} instrMap={instrMap} areasMap={areasMap} desde={desde} hasta={hasta} preseleccion={paquete ?? undefined} />
     </section>
   );
 }
