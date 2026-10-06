@@ -194,7 +194,7 @@ export function exportarReportePDF(
       didParseCell: (data) => {
         if (data.section === "body" && data.column.index === 6) {
           const s = a.series[data.row.index];
-          const c = colorCpk(s.cpk);
+          const c = colorCpk(s.ppk ?? s.cpk);
           if (c) {
             data.cell.styles.fillColor = c;
             data.cell.styles.textColor = 255;
