@@ -10,3 +10,4 @@
 - /reporte/tendencias and the FOR-VAL-16-02 Excel share construirBloques() in src/lib/export-forval16.ts; screen, Excel and Word must show identical numbers.
 - registro_analisis_tendencias is versioned by a DB trigger (previous row copied to registro_analisis_tendencias_historial, created_by/updated_by set server-side); history can't be bypassed by the client.
 - AT records have estado borrador/emitido enforced by the registro_at_versionar trigger (emitido rows reject edits; only admins emit or reopen with a motivo); the app's read-only mode is just a convenience.
+- The FOR-VAL-16-02 Word is generated client-side with docx (src/lib/word-forval16.ts) from the same Bloque/PNG/texto as screen and Excel; template texts live in the versioned formato_forval16 table (insert-only, latest wins) so past exports stay reproducible.
