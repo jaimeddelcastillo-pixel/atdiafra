@@ -365,7 +365,7 @@ function bloqueTHR(base: BaseBloque, dias: { fecha: string; valores: number[] }[
     LAS: r3(lim?.LAS), LAI: r3(lim?.LAI), LAcS: r3(lim?.LAcS), LAcI: r3(lim?.LAcI),
     Cp: r3(cap?.Cp), Cpk: r3(cap?.Cpk), Pp: r3(cap?.Pp), Ppk: r3(cap?.Ppk),
     normalidad: norm ? `${norm.normal ? "Normal" : "No normal"} (p=${norm.p.toFixed(3)})` : "N/D",
-    nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado,
+    nSenales: idxSen.size, dict, tablaLimites, notaTabla, filas, encabezado, sigmaEntreDias: r3(carta?.sigmaEntreDias),
     puntos: (carta?.subgrupos ?? []).map((g, i) => {
       const vs = dias[g.indice].valores;
       return { fecha: fechas[i], valor: g.xbar, lecturas: vs, reglas: reglasDe(sen, i), fuera: vs.some((v) => (base.lie != null && v < base.lie) || (base.lse != null && v > base.lse)) };

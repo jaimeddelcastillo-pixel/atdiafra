@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Line, LineChart, ReferenceLine, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Copy, Download, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -95,7 +95,13 @@ function Grafico({ b, g, ratio, fijo }: { b: Bloque; g: Grafica; ratio?: string;
         tickFormatter={(v) => (+v).toFixed(g.yStep < 1 ? 1 : 0)}
         label={{ value: g.tituloY, angle: -90, position: "insideLeft", fontSize: fs, fill: "#374151", style: { textAnchor: "middle" } }} />
       {!fijo && <Tooltip content={<Punto b={b} />} />}
-      {g.series.filter((s) => !s.lit).map((s) => (
+      {(() => {
+        const sup = g.series.find((s) => s.banda === "sup"), inf = g.series.find((s) => s.banda === "inf");
+        const v = (s?: typeof sup) => (s ? (b.filas[0]?.[letraAIndice(s.col)] as number | undefined) : undefined);
+        const y1 = v(inf), y2 = v(sup);
+        return y1 != null && y2 != null ? <ReferenceArea y1={y1} y2={y2} fill="#D1D5DB" fillOpacity={0.45} stroke="none" ifOverflow="hidden" /> : null;
+      })()}
+      {g.series.filter((s) => !s.lit && !s.banda).map((s) => (
         <Line key={s.nombre} dataKey={`c${letraAIndice(s.col)}`} name={s.nombre} isAnimationActive={false}
           stroke={s.linea === "none" ? "none" : `#${s.color}`} strokeDasharray={dash(s.linea)} strokeWidth={s.ancho ? 1.8 : 1.2}
           dot={s.marcador ? (s.marcador.hueco
