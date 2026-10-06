@@ -453,6 +453,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
     lse_pa: "" as string | number,
     baseline_pa: "" as string | number,
     baseline_tolerancia_pct: 25 as string | number,
+    codigo_bitacora: "",
+    dp_final_fabricante: "" as string | number,
   });
   useEffect(() => {
     setForm({
@@ -463,6 +465,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
       lse_pa: item?.lse_pa ?? "",
       baseline_pa: item?.baseline_pa ?? "",
       baseline_tolerancia_pct: item?.baseline_tolerancia_pct ?? 25,
+      codigo_bitacora: item?.codigo_bitacora ?? "",
+      dp_final_fabricante: item?.dp_final_fabricante ?? "",
     });
   }, [item, open]);
 
@@ -478,6 +482,8 @@ function InstrumentoDialog({ open, onOpenChange, item, areas, objetivosAsignados
         lie_pa: num(form.lie_pa), lse_pa: num(form.lse_pa),
         baseline_pa: num(form.baseline_pa),
         baseline_tolerancia_pct: num(form.baseline_tolerancia_pct),
+        codigo_bitacora: form.codigo_bitacora.trim() || null,
+        dp_final_fabricante: num(form.dp_final_fabricante),
       });
       toast.success("Guardado"); onSaved();
     } catch (e) { toast.error((e as Error).message); }
