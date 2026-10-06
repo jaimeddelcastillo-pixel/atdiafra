@@ -48,6 +48,9 @@ export function exportarReporteExcel(
     ISO: a.registro.iso ?? "—",
     Periodo: a.rango.etiqueta,
     Semanas: a.semanasPeriodo,
+    "Primera lectura": fmtISO(a.cobertura.primera),
+    "Última lectura": fmtISO(a.cobertura.ultima),
+    "Días con lectura": a.cobertura.dias,
     "Lecturas totales": a.totalLecturas,
     "Mínimo normativo": MINIMO_NORMATIVO,
     "% vs mínimo": a.porcentajeMinimo,
@@ -176,7 +179,7 @@ export function exportarReportePDF(
     doc.text(a.registro.nombre, 40, 40);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
     doc.text(
-      `${a.registro.modulo} · ${a.registro.iso ?? "—"} · ${a.rango.etiqueta} · ${a.totalLecturas} lecturas (${a.porcentajeMinimo}% del mínimo) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
+      `${a.registro.modulo} · ${a.registro.iso ?? "—"} · ${a.rango.etiqueta} · datos ${fmtISO(a.cobertura.primera) || "—"} – ${fmtISO(a.cobertura.ultima) || "—"} (${a.cobertura.dias} días con lectura) · ${a.totalLecturas} lecturas (${a.porcentajeMinimo}% del mínimo) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
       40, 56,
     );
     doc.setTextColor(0);
@@ -239,4 +242,8 @@ export function exportarReportePDF(
   }
 
   doc.save(`reporte-diafra-${etiqueta.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
+}
+
+function fmtISO(iso: string | null): string {
+  return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "";
 }

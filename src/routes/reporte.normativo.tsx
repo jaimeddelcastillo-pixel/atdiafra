@@ -1,3 +1,4 @@
+import { coberturaReal } from "@/lib/fechas-lectura";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment as FragmentWithKey, useEffect, useMemo, useState } from "react";
 import {
@@ -16,7 +17,7 @@ import { toast } from "sonner";
 import { listRegistros, type Registro, type Modulo } from "@/lib/semanas";
 import { listAreas, listSistemasHVAC, listInstrumentos } from "@/lib/catalogos";
 import {
-  analizarRegistro, claveGrupo, etiquetaGrupo, MINIMO_NORMATIVO, CPK_WARN, CPK_FAIL,
+  analizarRegistro, semanasDelPeriodo, claveGrupo, etiquetaGrupo, MINIMO_NORMATIVO, CPK_WARN, CPK_FAIL,
   tipoRegistroReporte, etiquetaTipoRegistro,
   type AgruparPor, type AnalisisRegistro, type Periodo, type Trimestre, type TipoRegistroReporte,
 } from "@/lib/normativo";
@@ -247,7 +248,8 @@ function NormativoPage() {
     const criticos = analisisTab.filter((a) => severidad(a) === "critical").length;
     const advertencias = analisisTab.filter((a) => severidad(a) === "warning").length;
     const totalLecturas = analisisTab.reduce((s, a) => s + a.totalLecturas, 0);
-    return { total, cumplen, criticos, advertencias, totalLecturas };
+    const cobertura = coberturaReal(analisisTab.flatMap((a) => semanasDelPeriodo(a.registro, a.periodo)));
+    return { total, cumplen, criticos, advertencias, totalLecturas, cobertura };
   }, [analisisTab]);
 
   const periodoEsParcial = tipo === "trimestre" && anio === currentYear && trimestre === trimestreActual();
@@ -528,6 +530,14 @@ function NormativoPage() {
           </CardContent>
         </Card>
 
+        <p className="mt-4 text-sm text-muted-foreground">
+          {kpis.cobertura.dias > 0 ? (
+            <>Datos reales del <strong className="text-foreground">{fmtFechaISO(kpis.cobertura.primera)}</strong> al{" "}
+              <strong className="text-foreground">{fmtFechaISO(kpis.cobertura.ultima)}</strong> ·{" "}
+              <strong className="text-foreground">{kpis.cobertura.dias}</strong> días con lectura</>
+          ) : "Sin lecturas en el periodo seleccionado."}
+        </p>
+
         {/* KPIs semáforo */}
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <KPI label="Registros" value={kpis.total} tone="default" />
@@ -667,7 +677,14 @@ function NormativoPage() {
                               {etiquetaTipoRegistro(tipoReg)}
                             </Badge>
                           </td>
-                          <td className="px-3 py-3 text-center tabular-nums">{a.totalLecturas}</td>
+                          <td className="px-3 py-3 text-center tabular-nums">
+                            {a.totalLecturas}
+                            {a.cobertura.dias > 0 && (
+                              <span className="block text-[10px] text-muted-foreground">
+                                {fmtFechaISO(a.cobertura.primera)}–{fmtFechaISO(a.cobertura.ultima)} · {a.cobertura.dias} días
+                              </span>
+                            )}
+                          </td>
                           <td className="px-3 py-3 text-center tabular-nums">
                             <span className={a.cumpleMinimo ? "text-success font-medium" : a.porcentajeMinimo >= 60 ? "text-warning font-medium" : "text-destructive font-medium"}>
                               {a.porcentajeMinimo}%
@@ -821,4 +838,8 @@ function KPI({ label, value, tone = "default" }: { label: string; value: string 
       </CardContent>
     </Card>
   );
+}
+
+function fmtFechaISO(iso: string | null): string {
+  return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "—";
 }

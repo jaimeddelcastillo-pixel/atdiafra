@@ -1,3 +1,4 @@
+import { esLecturaUtil } from "./fechas-lectura";
 import * as XLSX from "xlsx";
 import JSZip from "jszip";
 import { format } from "date-fns";
@@ -39,12 +40,12 @@ function promediosDiarios(
   const dias = new Map<string, { fecha: Date; valores: number[] }>();
   for (const semana of semanas) {
     for (const punto of semana[campo] ?? []) {
-      if (punto._na || punto.valor == null || !Number.isFinite(punto.valor)) continue;
+      if (!esLecturaUtil(punto)) continue;
       const fecha = fechaDeLectura(semana, punto);
       if (fecha < inicio || fecha > fin) continue;
       const key = format(fecha, "yyyy-MM-dd");
       const dia = dias.get(key) ?? { fecha, valores: [] };
-      dia.valores.push(punto.valor);
+      dia.valores.push(punto.valor as number);
       dias.set(key, dia);
     }
   }

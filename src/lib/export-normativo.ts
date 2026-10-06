@@ -143,6 +143,9 @@ export function exportarNormativoExcel(
     "% vs mínimo": a.porcentajeMinimo,
     Cumple: a.cumpleMinimo ? "SÍ" : "NO",
     Semanas: a.semanasPeriodo,
+    "Primera lectura": fmtISO(a.cobertura.primera),
+    "Última lectura": fmtISO(a.cobertura.ultima),
+    "Días con lectura": a.cobertura.dias,
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumen), "Resumen");
 
@@ -437,7 +440,7 @@ export function exportarNormativoPDF(
       doc.text(`${g.etiqueta} · ${a.registro.nombre}`, 40, TOP_Y + 6);
       doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(90);
       doc.text(
-        `${a.rango.etiqueta} · ${a.totalLecturas} lecturas consolidadas (${a.porcentajeMinimo}% del mínimo ${MINIMO_NORMATIVO}) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
+        `${a.rango.etiqueta} · datos ${fmtISO(a.cobertura.primera) || "—"} – ${fmtISO(a.cobertura.ultima) || "—"} (${a.cobertura.dias} días con lectura) · ${a.totalLecturas} lecturas consolidadas (${a.porcentajeMinimo}% del mínimo ${MINIMO_NORMATIVO}) · ${a.cumpleMinimo ? "✓ cumple" : "✗ no cumple"}`,
         40, TOP_Y + 22,
       );
       doc.setTextColor(0);
@@ -622,3 +625,7 @@ export function exportarNormativoPDF(
   doc.save(`normativo-${periodo.replace(/\s+/g, "_")}-${fechaArchivo()}.pdf`);
 }
 
+
+function fmtISO(iso: string | null): string {
+  return iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "";
+}

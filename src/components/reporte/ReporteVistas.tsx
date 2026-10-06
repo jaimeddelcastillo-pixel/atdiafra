@@ -1,3 +1,4 @@
+import { coberturaReal, recortarSemanasPorFecha } from "@/lib/fechas-lectura";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
@@ -190,7 +191,7 @@ function EditarLink({ f, children, className }: { f: Fila; children: React.React
 function descargarReporte(f: Fila, desde: Date, hasta: Date, formato: "pdf" | "excel") {
   const d = format(desde, "yyyy-MM-dd");
   const h = format(hasta, "yyyy-MM-dd");
-  const conDatos = f.registro.semanas.some((s) => s.semana_inicio >= format(lunesDe(desde), "yyyy-MM-dd") && s.semana_inicio <= h);
+  const conDatos = coberturaReal(recortarSemanasPorFecha(f.registro.semanas, d, h)).dias > 0;
   if (!conDatos) {
     toast.info(`${f.codigo} no tiene lecturas en este periodo. Cambia el periodo arriba (por ejemplo "Últimos 12 meses").`);
     return;
