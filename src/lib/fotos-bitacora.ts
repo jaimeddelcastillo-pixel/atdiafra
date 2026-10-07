@@ -28,14 +28,16 @@ const idxDia = (s?: string) => (s ? IDX_DIA[s.toLowerCase().trim()] : undefined)
 /** 0=Lunes … 6=Domingo */
 const idxSemana = (d: Date) => (d.getDay() + 6) % 7;
 
-/** Año plausible escrito en el recuadro "Año" de la bitácora (2026, "26"), o null. */
-function anioEncabezado(a?: string | number | null): number | null {
-  const m = String(a ?? "").match(/\d{2,4}/);
-  if (!m) return null;
-  let y = Number(m[0]);
-  if (y < 100) y += 2000;
+/** Años plausibles del recuadro "Año" (2026, "26", o ambos si la hoja cruza de año: "2025/2026"). */
+function aniosEncabezado(a?: string | number | null): number[] {
   const now = new Date().getFullYear();
-  return y >= 2025 && y <= now + 1 ? y : null;
+  const out: number[] = [];
+  for (const m of String(a ?? "").match(/\d{2,4}/g) ?? []) {
+    let y = Number(m);
+    if (y < 100) y += 2000;
+    if (y >= 2025 && y <= now + 1 && !out.includes(y)) out.push(y);
+  }
+  return out.sort((x, y) => x - y);
 }
 
 /** Si el año leído no cuadra con el día de la columna, busca el año plausible MÁS CERCANO al de referencia. */
@@ -60,15 +62,15 @@ const MESES: Record<string, number> = {
   oct: 10, octubre: 10, nov: 11, noviembre: 11, dic: 12, diciembre: 12,
 };
 
-/** Mes escrito en el recuadro "Mes" de la bitácora ("Mayo", "05", "may"), o null. */
-export function mesEncabezado(m?: string | number | null): number | null {
-  const s = String(m ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-  if (!s) return null;
-  const n = s.match(/^\d{1,2}$/);
-  if (n) { const v = Number(n[0]); return v >= 1 && v <= 12 ? v : null; }
-  const w = s.match(/[a-z]+/);
-  if (!w) return null;
-  return MESES[w[0]] ?? MESES[w[0].slice(0, 3)] ?? null;
+/** Meses del recuadro "Mes" ("Mayo", "05", o ambos si la semana cruza de mes: "Abril/Mayo"). */
+export function mesesEncabezado(m?: string | number | null): number[] {
+  const s = String(m ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const out: number[] = [];
+  for (const t of s.match(/[a-z]+|\d{1,2}/g) ?? []) {
+    const v = /^\d+$/.test(t) ? Number(t) : (MESES[t] ?? MESES[t.slice(0, 3)]);
+    if (v && v >= 1 && v <= 12 && !out.includes(v)) out.push(v);
+  }
+  return out;
 }
 
 /**
@@ -79,28 +81,30 @@ export function mesEncabezado(m?: string | number | null): number | null {
 export function detectarLunesFoto(
   p: { anio?: string | number | null; mes?: string | number | null; fechas_columnas?: { dia?: string; fecha?: string }[] } | null | undefined,
 ): string {
-  const yHoja = anioEncabezado(p?.anio);
-  const mHoja = mesEncabezado(p?.mes);
+  const aHoja = aniosEncabezado(p?.anio);
+  const mHoja = mesesEncabezado(p?.mes);
   const votos = new Map<string, number>();
   for (const f0 of p?.fechas_columnas ?? []) {
     let f = f0;
     if (!f.fecha || !/^\d{4}-\d{2}-\d{2}$/.test(f.fecha)) continue;
-    if (mHoja) {
-      // Fuerza el mes de la hoja salvo que sea el mes contiguo (semana que cruza de mes)
+    if (mHoja.length) {
+      // Fuerza el mes de la hoja; con un solo mes se tolera el contiguo (semana que cruza de mes)
       const [y, m, d] = f.fecha.split("-").map(Number);
-      const dif = (m - mHoja + 12) % 12;
-      const contiguo = (dif === 1 && d <= 7) || (dif === 11 && d >= 22);
-      if (m !== mHoja && !contiguo) {
-        const ultimo = new Date(y, mHoja, 0).getDate();
-        if (d <= ultimo) f = { ...f, fecha: `${y}-${String(mHoja).padStart(2, "0")}-${String(d).padStart(2, "0")}` };
+      const contiguo = mHoja.length === 1 && (
+        (((m - mHoja[0] + 12) % 12) === 1 && d <= 7) || (((m - mHoja[0] + 12) % 12) === 11 && d >= 22));
+      if (!mHoja.includes(m) && !contiguo) {
+        // Con dos meses: días altos van al primero, días bajos al segundo
+        const mm = mHoja.length > 1 ? (d >= 15 ? mHoja[0] : mHoja[mHoja.length - 1]) : mHoja[0];
+        if (d <= new Date(y, mm, 0).getDate()) f = { ...f, fecha: `${y}-${String(mm).padStart(2, "0")}-${String(d).padStart(2, "0")}` };
       }
     }
     const di = idxDia(f.dia);
     let fecha: string;
-    if (yHoja) {
-      // Fuerza el año de la hoja (tolera cruce dic/ene adyacente)
+    if (aHoja.length) {
+      // Fuerza el año de la hoja; con dos años, diciembre va al primero y enero al segundo
       const [y, m, d] = f.fecha!.split("-").map(Number);
-      const yy = Math.abs(y - yHoja) === 1 && (m === 12 || m === 1) ? y : yHoja;
+      const yHoja = aHoja.length > 1 ? (m >= 7 ? aHoja[0] : aHoja[aHoja.length - 1]) : aHoja[0];
+      const yy = aHoja.includes(y) ? y : Math.abs(y - yHoja) === 1 && (m === 12 || m === 1) && aHoja.length === 1 ? y : yHoja;
       fecha = `${yy}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     } else {
       fecha = corregirAnio(f.fecha!);
