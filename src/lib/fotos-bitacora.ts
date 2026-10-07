@@ -103,11 +103,11 @@ export function detectarLunesFoto(
       const yy = Math.abs(y - yHoja) === 1 && (m === 12 || m === 1) ? y : yHoja;
       fecha = `${yy}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     } else {
-      fecha = corregirAnio(f.fecha);
+      fecha = corregirAnio(f.fecha!);
       if (di !== undefined) {
         const ok = fecha && idxSemana(new Date(fecha + "T00:00:00")) === di;
         const ref = fecha ? Number(fecha.slice(0, 4)) : new Date().getFullYear();
-        if (!ok) fecha = anioQueCuadra(fecha || f.fecha, di, ref) ?? fecha;
+        if (!ok) fecha = anioQueCuadra(fecha || f.fecha!, di, ref) ?? fecha;
       }
     }
     if (!fecha) continue;
