@@ -548,6 +548,7 @@ export type Database = {
           datos: Json
           fecha: string
           id: string
+          operacion: string
           registro_id: string
           usuario_email: string | null
           usuario_id: string | null
@@ -558,6 +559,7 @@ export type Database = {
           datos: Json
           fecha?: string
           id?: string
+          operacion?: string
           registro_id: string
           usuario_email?: string | null
           usuario_id?: string | null
@@ -568,6 +570,7 @@ export type Database = {
           datos?: Json
           fecha?: string
           id?: string
+          operacion?: string
           registro_id?: string
           usuario_email?: string | null
           usuario_id?: string | null
