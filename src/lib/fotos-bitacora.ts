@@ -104,7 +104,7 @@ export function detectarLunesFoto(
       // Fuerza el año de la hoja; con dos años, diciembre va al primero y enero al segundo
       const [y, m, d] = f.fecha!.split("-").map(Number);
       const yHoja = aHoja.length > 1 ? (m >= 7 ? aHoja[0] : aHoja[aHoja.length - 1]) : aHoja[0];
-      const yy = aHoja.includes(y) ? y : Math.abs(y - yHoja) === 1 && (m === 12 || m === 1) && aHoja.length === 1 ? y : yHoja;
+      const yy = aHoja.length > 1 ? yHoja : Math.abs(y - yHoja) === 1 && (m === 12 || m === 1) && aHoja.length === 1 ? y : yHoja;
       fecha = `${yy}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     } else {
       fecha = corregirAnio(f.fecha!);
