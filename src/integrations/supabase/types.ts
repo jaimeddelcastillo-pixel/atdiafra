@@ -437,19 +437,25 @@ export type Database = {
       perfiles: {
         Row: {
           cargo: string
+          foto_url: string | null
           nombre: string
+          telefono: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           cargo?: string
+          foto_url?: string | null
           nombre?: string
+          telefono?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           cargo?: string
+          foto_url?: string | null
           nombre?: string
+          telefono?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -457,6 +463,10 @@ export type Database = {
       }
       registro_analisis_tendencias: {
         Row: {
+          anulado_at: string | null
+          anulado_by: string | null
+          anulado_by_email: string | null
+          autoemitido: boolean
           codigo: string
           created_at: string
           created_by: string | null
@@ -465,15 +475,20 @@ export type Database = {
           emitido_at: string | null
           emitido_by: string | null
           emitido_by_email: string | null
+          emitido_por_cargo: string | null
+          emitido_por_nombre: string | null
           estado: string
           fecha: string
           id: string
           instrumentos: Json
           justificaciones: Json
+          motivo_anulacion: string | null
           motivo_version: string | null
           periodo_desde: string
           periodo_etiqueta: string | null
           periodo_hasta: string
+          realizado_por_cargo: string | null
+          realizado_por_nombre: string | null
           seleccion: Json | null
           sistema: string
           texto: Json
@@ -485,6 +500,10 @@ export type Database = {
           version: number
         }
         Insert: {
+          anulado_at?: string | null
+          anulado_by?: string | null
+          anulado_by_email?: string | null
+          autoemitido?: boolean
           codigo: string
           created_at?: string
           created_by?: string | null
@@ -493,15 +512,20 @@ export type Database = {
           emitido_at?: string | null
           emitido_by?: string | null
           emitido_by_email?: string | null
+          emitido_por_cargo?: string | null
+          emitido_por_nombre?: string | null
           estado?: string
           fecha?: string
           id?: string
           instrumentos?: Json
           justificaciones?: Json
+          motivo_anulacion?: string | null
           motivo_version?: string | null
           periodo_desde: string
           periodo_etiqueta?: string | null
           periodo_hasta: string
+          realizado_por_cargo?: string | null
+          realizado_por_nombre?: string | null
           seleccion?: Json | null
           sistema: string
           texto?: Json
@@ -513,6 +537,10 @@ export type Database = {
           version?: number
         }
         Update: {
+          anulado_at?: string | null
+          anulado_by?: string | null
+          anulado_by_email?: string | null
+          autoemitido?: boolean
           codigo?: string
           created_at?: string
           created_by?: string | null
@@ -521,15 +549,20 @@ export type Database = {
           emitido_at?: string | null
           emitido_by?: string | null
           emitido_by_email?: string | null
+          emitido_por_cargo?: string | null
+          emitido_por_nombre?: string | null
           estado?: string
           fecha?: string
           id?: string
           instrumentos?: Json
           justificaciones?: Json
+          motivo_anulacion?: string | null
           motivo_version?: string | null
           periodo_desde?: string
           periodo_etiqueta?: string | null
           periodo_hasta?: string
+          realizado_por_cargo?: string | null
+          realizado_por_nombre?: string | null
           seleccion?: Json | null
           sistema?: string
           texto?: Json
