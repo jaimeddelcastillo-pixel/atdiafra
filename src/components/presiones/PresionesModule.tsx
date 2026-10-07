@@ -604,8 +604,13 @@ function RegistroEditorPresion({ registro, objetivos, onPersist, onDelete }: {
               className="rounded-md border border-input bg-background px-2 py-1 text-xs"
               onChange={(e) => seleccionarOMoverSemana(e.target.value)}
             />
+            <CorregirFechaSemana
+              actual={activeWeek.semana_inicio}
+              existentes={draft.semanas.filter((s) => s.id !== activeWeek.id).map((s) => s.semana_inicio)}
+              onConfirm={(l) => cambiarFechaSemana(activeWeek.id, l)}
+            />
             <span className="text-[10px] text-muted-foreground">
-              Elige una semana existente o corrige la fecha de ésta. Se ajusta al lunes.
+              Elige una semana existente, o usa «Corregir fecha» para mover ésta. Se ajusta al lunes.
             </span>
           </div>
         )}
