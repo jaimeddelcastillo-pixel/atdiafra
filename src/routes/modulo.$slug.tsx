@@ -643,7 +643,20 @@ function RegistroEditor({ registro, onPersist, onDelete }: {
                 toast.success(`Semana movida al ${lunes} — recuerda Guardar`);
               }}
             />
-            <span className="text-[10px] text-muted-foreground">Elige una semana existente o corrige la fecha de ésta sin perder lecturas. Se ajusta al lunes.</span>
+            <CorregirFechaSemana
+              actual={activeWeek.semana_inicio}
+              existentes={draft.semanas.filter((s) => s.id !== activeWeek.id).map((s) => s.semana_inicio)}
+              onConfirm={(lunes) => {
+                const base = new Date(lunes + "T00:00:00");
+                mutate((r) => ({
+                  ...r,
+                  semanas: r.semanas.map((x) => x.id === activeWeek.id
+                    ? { ...x, semana_inicio: lunes, mes: nombreMes(base), anio: String(base.getFullYear()) } : x),
+                }));
+                toast.success(`Semana movida al ${lunes} — recuerda Guardar`);
+              }}
+            />
+            <span className="text-[10px] text-muted-foreground">Elige una semana existente, o usa «Corregir fecha» para mover ésta sin perder lecturas. Se ajusta al lunes.</span>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2">
