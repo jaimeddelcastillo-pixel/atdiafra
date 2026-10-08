@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TraceaLogo } from "@/components/TraceaLogo";
+import { TraceaSiteButton } from "@/components/TraceaSiteButton";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
@@ -127,6 +128,7 @@ function AuthPage() {
                     <Label htmlFor="email-in">Correo</Label>
                     <Input id="email-in" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
+                  <TraceaSiteButton />
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="pwd-in">Contraseña</Label>
@@ -151,6 +153,7 @@ function AuthPage() {
                     <Label htmlFor="email-up">Correo</Label>
                     <Input id="email-up" type="email" required placeholder="usuario@tracea.mx" value={email} onChange={(e) => setEmail(e.target.value)} />
                   </div>
+                  <TraceaSiteButton />
                   <div className="space-y-2">
                     <Label htmlFor="pwd-up">Contraseña</Label>
                     <PasswordInput id="pwd-up" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
