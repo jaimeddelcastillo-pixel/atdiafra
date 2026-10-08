@@ -15,7 +15,7 @@ export function TraceaSiteButton({ className }: TraceaSiteButtonProps) {
       variant="outline"
       size="sm"
       className={cn(
-        "w-full gap-2 border-border/70 bg-muted/40 font-normal text-foreground hover:bg-muted",
+        "gap-2 border-border/70 bg-background font-normal text-foreground hover:bg-muted",
         className,
       )}
     >
