@@ -58,7 +58,7 @@ En "fechas_columnas" lista SOLO los días que aparecen con fecha escrita en el e
 Incluye las 21 combinaciones por cada variable (7 días × 3 turnos: Lunes/Martes/Miércoles/Jueves/Viernes/Sábado/Domingo × Mañana/Media tarde/Tarde).
 La hora y quien registra es la MISMA para T y HR del mismo turno (cópiala en ambos arreglos).
 Si una celda está vacía, tachada, marcada N/A o ilegible escribe valor:null y confianza:0.
-El campo "confianza" es un número 0–1 que refleja qué tan seguro estás de la lectura del dígito (1 = muy claro, 0.5 = dudoso, 0 = no leíble). NO inventes valores: si no estás seguro, baja la confianza.`;
+El campo "confianza" es un número 0–1 que refleja qué tan seguro estás de la lectura del dígito (1 = muy claro, 0.5 = dudoso, 0 = no leíble). NO inventes valores: si no estás seguro, baja la confianza.` + REGLA_DIGITOS;
   }
   if (module === "presiones") {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIONES DIFERENCIALES de DIAFRA S.A. de C.V. (formato FOR-MAN-07-01).
@@ -72,14 +72,14 @@ En el encabezado de cada día suele estar escrita la FECHA (ej. "03-feb-25"): de
 📅 MES DE LA HOJA: el recuadro "Mes" del encabezado (ej. "Mes: Mayo") es la VERDAD del mes: devuélvelo en "mes" tal cual y usa ESE mes en las fechas_columnas (solo puede pasar al mes contiguo si la semana cruza de un mes a otro).
 📆 SÁBADO Y DOMINGO TRABAJADOS: en validación de procesos y otros casos la semana NO se interrumpe y sí hay lecturas en sábado y domingo. Lee las 7 columnas por igual: si sábado o domingo tienen fecha o valores escritos, extráelos (no los dejes en null ni los pases a otro día). NUNCA cambies el año o el día de una fecha para que caiga entre semana: el día de la columna (Lunes…Domingo) debe coincidir con la fecha real del calendario.
 Responde SOLO en JSON, 21 combinaciones, vacíos como null:
-{"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}`;
+{"mes":"","anio":"","instrumento":"","area":"","unidad":"Pa","fechas_columnas":[{"dia":"Lunes","fecha":"YYYY-MM-DD"}],"lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null,"confianza":1}],"observaciones":""}` + REGLA_DIGITOS;
   }
   if (module === "filtros") {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de PRESIÓN DE BANCO DE FILTROS de DIAFRA S.A. de C.V. Registra presión diferencial en inH₂O.
 Estructura: columnas Lunes a Domingo, 3 turnos por día, cuadrícula gráfica (ignórala), filas de texto al pie con el valor numérico escrito.
 
 Responde SOLO en JSON, 21 combinaciones, vacíos como null:
-{"mes":"","anio":"","instrumento":"","area":"","unidad":"inH2O","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}`;
+{"mes":"","anio":"","instrumento":"","area":"","unidad":"inH2O","lecturas":[{"dia":"Lunes","turno":"Mañana","valor":null,"hora":null,"quien":null}],"observaciones":""}` + REGLA_DIGITOS;
   }
   return "";
 }
