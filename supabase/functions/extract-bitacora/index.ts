@@ -13,6 +13,18 @@ interface RequestBody {
   context?: Record<string, string>;
 }
 
+// Regla de caligrafía de dígitos: aplica a todos los módulos (valores numéricos escritos a mano).
+const REGLA_DIGITOS = `
+
+🔢 REGLA DE DÍGITOS MANUSCRITOS (trazos y caligrafía):
+- Un «8» dibujado como DOS círculos u óvalos apilados verticalmente (uno arriba y otro abajo, SIN cruzarse en el centro) es un «8», NO un «0», NO dos marcas separadas y NO una mancha: los dos óvalos juntos forman UN solo dígito 8. Es muy común que el operador lo trace así.
+- Un «8» con trazo continuo cruzado en el centro (forma de «infinito» vertical) también es 8.
+- Diferéncialo: un «0» es un solo óvalo cerrado SIN estrangulamiento central; un «6» o «9» tienen un bucle y una cola; un «3» tiene dos arcos abiertos hacia la izquierda.
+- Los trazos suelen estar separados (no encimados) pero muy juntos: si ves dos óvalos redondos apilados que tocan o casi tocan, léelos como 8.
+- Ante un dígito dudoso entre 8 y 0, usa el contexto (rangos típicos de la variable) y baja la confianza, pero NO dejes el valor en null si el trazo es claramente visible.
+
+`;
+
 function buildPrompt(module: string, variable?: string): string {
   if (module === "temp_hr") {
     return `Eres un asistente de validación farmacéutica analizando una bitácora de TEMPERATURA y HUMEDAD RELATIVA de DIAFRA S.A. de C.V. (formato FOR-MAN-06-01).
