@@ -64,7 +64,7 @@ export const Route = createFileRoute("/modulo/$slug")({
       <AppHeader />
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-semibold text-destructive">Ocurrió un error</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </div>
   ),
