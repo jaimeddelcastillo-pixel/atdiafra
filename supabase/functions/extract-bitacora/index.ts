@@ -114,7 +114,9 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3.8-flash",
+        // Razonamiento no se puede apagar del todo en este modelo; 'minimal' es el mínimo aceptado.
+        reasoning_effort: "minimal",
         messages: [{
           role: "user",
           content: [
@@ -201,7 +203,7 @@ Deno.serve(async (req: Request) => {
           tokens_output,
           tokens_total: usage?.total_tokens ?? (tokens_input + tokens_output),
           costo_estimado_usd: Number(costo_estimado_usd.toFixed(6)),
-          modelo: "google/gemini-2.5-flash",
+          modelo: "google/gemini-3.8-flash",
         },
         requiere_revision,
         campos_dudosos,
