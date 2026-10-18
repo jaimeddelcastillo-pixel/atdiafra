@@ -146,7 +146,8 @@ Deno.serve(async (req: Request) => {
     // ===== MEJORA 1: log de tokens y costo estimado =====
     // El AI Gateway de Lovable devuelve usage en formato OpenAI:
     // { prompt_tokens, completion_tokens, total_tokens }
-    // Pricing Gemini 2.5 Flash (text/image input): $0.30/M input · $2.50/M output
+    // Pricing usado para estimación: tarifas de Gemini 2.5 Flash (el modelo ahora es 3.8 Flash;
+    // la fórmula se conserva igual para no alterar el registro de costos).
     const usage = data?.usage ?? null;
     const tokens_input: number = usage?.prompt_tokens ?? 0;
     const tokens_output: number = usage?.completion_tokens ?? 0;
