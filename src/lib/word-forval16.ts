@@ -70,11 +70,14 @@ function tablaLimites(b: Bloque) {
     width: { size: col * n, type: WidthType.DXA }, columnWidths: Array(n).fill(col),
     rows: b.tablaLimites.map((f, i) => {
       const span = Math.floor(n / f.length);
+      const enc = i > 0 ? b.tablaLimites[i - 1] : [];
       return new TableRow({
         cantSplit: true,
         children: f.map((v, j) => {
           const cs = j === f.length - 1 ? n - span * (f.length - 1) : span;
-          return celda([pc(fmtCelda(v), { b: i % 2 === 0, keep: true })], col * cs, { head: i % 2 === 0, span: cs > 1 ? cs : undefined });
+          const entero = enc[j] === "n días" || enc[j] === "n lecturas";
+          const txt = entero && typeof v === "number" ? String(Math.round(v)) : fmtCelda(v);
+          return celda([pc(txt, { b: i % 2 === 0, keep: true })], col * cs, { head: i % 2 === 0, span: cs > 1 ? cs : undefined });
         }),
       });
     }),
