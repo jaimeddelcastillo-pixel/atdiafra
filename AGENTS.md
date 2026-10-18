@@ -14,3 +14,4 @@
 - Manometer operating range (instrumentos.op_min_pa/op_max_pa) is informational only (grey band); LIE/LSE alone drive compliance and capacity, so normative spec and process setpoints never mix.
 - Signer names/positions come from the perfiles table (one row per auth user); FOR-VAL-16-02 change control and "Sustituye a" count only emitted versions.
 - Every drizzle/migrations file is mirrored to supabase/migrations with a reference header so the full schema is reviewable in GitHub; historial AT is immutable via triggers and deletes leave an ELIMINADO row.
+- Never install, update or bump packages/dependencies (including security patches and version upgrades) without the user's explicit authorization; report a needed update in one line (package, current → new version, reason) and wait for approval, to protect production stability.
