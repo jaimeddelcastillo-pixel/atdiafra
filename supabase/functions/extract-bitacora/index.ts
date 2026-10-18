@@ -114,7 +114,9 @@ Deno.serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-3.8-flash",
+        // Razonamiento no se puede apagar del todo en este modelo; 'minimal' es el mínimo aceptado.
+        reasoning_effort: "minimal",
         messages: [{
           role: "user",
           content: [
@@ -144,7 +146,8 @@ Deno.serve(async (req: Request) => {
     // ===== MEJORA 1: log de tokens y costo estimado =====
     // El AI Gateway de Lovable devuelve usage en formato OpenAI:
     // { prompt_tokens, completion_tokens, total_tokens }
-    // Pricing Gemini 2.5 Flash (text/image input): $0.30/M input · $2.50/M output
+    // Pricing usado para estimación: tarifas de Gemini 2.5 Flash (el modelo ahora es 3.8 Flash;
+    // la fórmula se conserva igual para no alterar el registro de costos).
     const usage = data?.usage ?? null;
     const tokens_input: number = usage?.prompt_tokens ?? 0;
     const tokens_output: number = usage?.completion_tokens ?? 0;
@@ -201,7 +204,7 @@ Deno.serve(async (req: Request) => {
           tokens_output,
           tokens_total: usage?.total_tokens ?? (tokens_input + tokens_output),
           costo_estimado_usd: Number(costo_estimado_usd.toFixed(6)),
-          modelo: "google/gemini-2.5-flash",
+          modelo: "google/gemini-3.8-flash",
         },
         requiere_revision,
         campos_dudosos,
