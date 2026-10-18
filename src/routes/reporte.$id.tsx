@@ -47,7 +47,7 @@ export const Route = createFileRoute("/reporte/$id")({
       <AppHeader />
       <div className="max-w-3xl mx-auto px-4 py-20 text-center">
         <h1 className="text-2xl font-semibold text-destructive">Error</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </div>
   ),
