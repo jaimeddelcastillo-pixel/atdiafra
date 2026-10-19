@@ -38,7 +38,7 @@ async function requireSuperAdmin(accessToken: string) {
   return userData.user;
 }
 
-async function leerTabla(tabla: string): Promise<unknown[]> {
+async function leerTabla(tabla: (typeof TABLAS)[number]): Promise<unknown[]> {
   const filas: unknown[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabaseAdmin.from(tabla).select("*").range(from, from + PAGE - 1);
