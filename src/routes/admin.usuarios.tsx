@@ -15,6 +15,7 @@ import {
   updateManagedUserRole,
   type AdminUserView,
 } from "@/lib/admin-users.functions";
+import { BackupCard } from "@/components/BackupCard";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -543,6 +544,11 @@ function UsuariosAdmin() {
 
           </CardContent>
         </Card>
+        {isSuperAdmin && (
+          <div className="mt-6">
+            <BackupCard />
+          </div>
+        )}
       </main>
 
       <Dialog
