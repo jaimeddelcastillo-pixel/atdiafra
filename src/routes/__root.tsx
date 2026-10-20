@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
@@ -68,6 +69,19 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  // Tras publicar una versión nueva, una pestaña abierta puede pedir archivos que ya no existen: recarga una vez.
+  useEffect(() => {
+    const onErr = (e: Event) => {
+      const k = "tracea-reload-chunk";
+      if (sessionStorage.getItem(k)) return;
+      sessionStorage.setItem(k, "1");
+      e.preventDefault();
+      window.location.reload();
+    };
+    const t = setTimeout(() => sessionStorage.removeItem("tracea-reload-chunk"), 10000);
+    window.addEventListener("vite:preloadError", onErr);
+    return () => { clearTimeout(t); window.removeEventListener("vite:preloadError", onErr); };
+  }, []);
   return (
     <AuthProvider>
       <Outlet />
