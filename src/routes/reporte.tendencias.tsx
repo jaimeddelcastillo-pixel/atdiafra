@@ -254,7 +254,14 @@ function TendenciasPage() {
     }
     setOcupado(true);
     try {
-      const [{ generarWordForVal16 }, { cargarFormato }] = await Promise.all([import("@/lib/word-forval16"), import("@/lib/formato-forval16")]);
+      const mods = await Promise.all([import("@/lib/word-forval16"), import("@/lib/formato-forval16")]).catch((e) => {
+        if (/dynamically imported module|Importing a module script failed/i.test(String(e?.message))) {
+          toast.info("Hay una versión nueva de la aplicación. Recargando…");
+          setTimeout(() => window.location.reload(), 800);
+        }
+        throw e;
+      });
+      const [{ generarWordForVal16 }, { cargarFormato }] = mods;
       const formato = await cargarFormato();
       // Control de cambios y «Sustituye a»: solo versiones EMITIDAS (los borradores nunca cuentan).
       const { data: hist } = await supabase.from("registro_analisis_tendencias_historial").select("version,datos").eq("registro_id", registroEditable.id).order("version");
